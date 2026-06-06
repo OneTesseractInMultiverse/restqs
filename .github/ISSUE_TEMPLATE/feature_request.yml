@@ -1,0 +1,33 @@
+name: Feature Request
+description: Propose a focused public API, parser, adapter, or docs change.
+title: "Feature: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please keep requests focused on REST Query Syntax for REST APIs.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the API query task that is hard today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the API, behavior, or documentation change.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This request keeps SQL generation out of the core parser.
+          required: true
+        - label: This request keeps raw field names out of SQL identifiers.
+          required: true

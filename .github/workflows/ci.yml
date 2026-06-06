@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust ${{ matrix.toolchain }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - "1.85.0"
+          - stable
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component clippy,rustfmt
+          rustup default "${{ matrix.toolchain }}"
+
+      - name: Check formatting
+        if: matrix.toolchain == 'stable'
+        run: cargo fmt --all -- --check
+
+      - name: Check
+        run: cargo check --all-targets --all-features
+
+      - name: Lint
+        if: matrix.toolchain == 'stable'
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test
+        run: cargo test --all-targets --all-features
+
+      - name: Test docs
+        run: cargo test --doc --all-features
+
+      - name: Build docs
+        env:
+          RUSTDOCFLAGS: --cfg docsrs -D warnings
+        run: cargo doc --no-deps --all-features
+
+      - name: Inspect package contents
+        if: matrix.toolchain == 'stable'
+        run: cargo package --list
+
+      - name: Package
+        if: matrix.toolchain == 'stable'
+        run: cargo package
+
+  security:
+    name: Security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked --version 0.22.1
+
+      - name: Audit dependencies
+        run: |
+          cargo generate-lockfile
+          cargo audit
+          rm -f Cargo.lock

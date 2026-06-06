@@ -1,0 +1,107 @@
+name: Publish
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to validate, for example v0.1.0"
+        required: true
+        type: string
+      publish:
+        description: "Publish to crates.io instead of running validation only"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    name: Validate release package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt
+          rustup default stable
+
+      - name: Check tag matches Cargo.toml version
+        run: |
+          version="$(python3 - <<'PY'
+          import tomllib
+
+          with open("Cargo.toml", "rb") as manifest:
+              print(tomllib.load(manifest)["package"]["version"])
+          PY
+          )"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          tag="${tag#refs/tags/}"
+          tag_version="${tag#v}"
+
+          if [ "${tag_version}" != "${version}" ]; then
+            echo "::error::Tag ${tag} does not match Cargo.toml version ${version}"
+            exit 1
+          fi
+
+      - name: Verify
+        run: make verify
+
+      - name: Inspect package contents
+        run: make package-list
+
+      - name: Package
+        run: make package
+
+      - name: Publish dry run
+        run: make publish-dry-run
+
+  publish:
+    name: Publish to crates.io
+    needs: validate
+    if: github.event_name == 'release' || inputs.publish
+    runs-on: ubuntu-latest
+    environment: crates-io
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Authenticate with crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
+
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: cargo publish

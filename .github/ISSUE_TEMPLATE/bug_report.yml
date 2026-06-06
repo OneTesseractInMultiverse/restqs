@@ -1,0 +1,48 @@
+name: Bug Report
+description: Report a reproducible defect in RestQS.
+title: "Bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include secrets, tokens, or private query strings.
+  - type: input
+    id: version
+    attributes:
+      label: RestQS version
+      description: The crate version from Cargo.toml or Cargo.lock.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Describe the result you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe the result you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest Rust example or test that shows the defect.
+      render: rust
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include rustc version, target, and operating system.
+      render: text
+    validations:
+      required: true
