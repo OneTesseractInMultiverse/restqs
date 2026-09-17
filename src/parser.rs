@@ -4,7 +4,8 @@ use std::collections::BTreeSet;
 
 use crate::{
     FieldCatalog, FieldRef, Filter, FilterOp, ParserLimits, Projection, RqsError, RqsQuery,
-    RqsResult, SortDirection, SortTerm, filter::build_value_filter, parameter::decode_parameters,
+    RqsResult, SortDirection, SortTerm, catalog::validate_public_name, filter::build_value_filter,
+    parameter::decode_parameters,
 };
 
 /// Parser configuration.
@@ -162,11 +163,7 @@ impl<'a> Parser<'a> {
     }
 
     fn resolve_field(&self, field_name: &str) -> RqsResult<FieldRef> {
-        if field_name.is_empty() {
-            return Err(RqsError::InvalidFieldName {
-                field: field_name.to_owned(),
-            });
-        }
+        validate_public_name(field_name)?;
         self.catalog
             .get(field_name)
             .map(crate::Field::to_ref)

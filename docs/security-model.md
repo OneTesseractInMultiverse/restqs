@@ -166,8 +166,18 @@ before parsing or during catalog selection.
 
 ## Logging And Error Responses
 
-`RqsError::error_code()` gives stable strings for API responses. Display text is safe for ordinary logs. It names fields
-and failure classes without echoing the full query string.
+`RqsError::error_code()` gives stable strings for API responses. Library-generated Display messages name failure classes
+and show field or column names only when they are valid dotted ASCII identifiers of at most 128 bytes. Other names are
+replaced in full with `[redacted]`. This prevents embedded newlines, terminal escapes, Unicode direction controls, and
+malformed field text containing values from entering the message. Valid identifiers longer than the display limit can
+still be registered in the catalog.
+
+Field syntax is validated before catalog lookup for filters, sorting, and projection. Malformed nonempty names now
+return `invalid_field_name` rather than `unknown_field`; valid names absent from the catalog still return
+`unknown_field`. The error-code strings themselves are unchanged.
+
+Use Display (`{}`) or error codes for ordinary logging. Error fields and Debug (`{:?}`) retain the original input; they
+are not redacted and should only be exposed under a deliberate debug policy.
 
 Recommended response mapping:
 

@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::{RqsError, RqsResult};
+use crate::{RqsError, RqsResult, identifier::is_dotted_identifier};
 
 /// Value type expected by an allowlisted field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -272,7 +272,7 @@ impl FieldRef {
     }
 }
 
-fn validate_public_name(name: &str) -> RqsResult<()> {
+pub(crate) fn validate_public_name(name: &str) -> RqsResult<()> {
     if is_dotted_identifier(name) {
         Ok(())
     } else {
@@ -290,17 +290,4 @@ fn validate_column_name(name: &str) -> RqsResult<()> {
             column: name.to_owned(),
         })
     }
-}
-
-fn is_dotted_identifier(value: &str) -> bool {
-    !value.is_empty() && value.split('.').all(is_identifier)
-}
-
-fn is_identifier(value: &str) -> bool {
-    let mut chars = value.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-    (first == '_' || first.is_ascii_alphabetic())
-        && chars.all(|character| character == '_' || character.is_ascii_alphanumeric())
 }

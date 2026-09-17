@@ -53,6 +53,7 @@ pub mod adapters;
 mod catalog;
 mod error;
 mod filter;
+mod identifier;
 mod limits;
 mod pagination;
 mod parameter;

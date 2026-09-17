@@ -121,8 +121,10 @@ The default limits reduce accidental high-cost queries:
 | List item count | 100 |
 | Maximum `limit` value | 100 |
 
-Error messages name failure classes and field names. They do not echo the raw
-query string.
+Display error messages name failure classes and valid identifiers up to 128
+bytes. Malformed or longer identifiers are replaced with `[redacted]`. Use
+Display or error codes for ordinary logs; error fields and Debug output retain
+the original input.
 
 ## SQLx-Oriented Adapter
 

@@ -104,7 +104,10 @@ sequenceDiagram
 ## Error Boundary
 
 `RqsError` gives stable error codes. Services can map those codes to HTTP responses, metrics, or tests. Display text
-avoids raw query strings and raw values, which keeps logs safer.
+uses a pure identifier-redaction computation: valid dotted ASCII names up to 128 bytes remain visible, and other names
+become `[redacted]`. The internal `identifier` module supplies the syntax computation shared by catalog validation and
+error formatting. The parser coordinates syntax validation and catalog lookup. Error fields and Debug output retain
+the original input and are outside the Display redaction contract.
 
 Parser errors represent invalid RQS input. Adapter errors represent unsupported translation for a valid plan.
 Authorization errors belong outside RestQS. The application decides the catalog and can reject the request before
