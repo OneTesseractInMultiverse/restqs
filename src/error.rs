@@ -58,9 +58,9 @@ pub enum RqsError {
         /// Expected value type.
         expected: &'static str,
     },
-    /// A field value exceeded the configured byte limit.
+    /// A decoded filter or query-control value exceeded the configured byte limit.
     ValueTooLarge {
-        /// Field that received the value.
+        /// Public field or query-control name that received the value.
         field: String,
         /// Maximum accepted byte length.
         max_bytes: usize,

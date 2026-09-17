@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use crate::{
     FieldCatalog, FieldRef, Filter, FilterOp, ParserLimits, Projection, RqsError, RqsQuery,
     RqsResult, SortDirection, SortTerm, catalog::validate_public_name, filter::build_value_filter,
-    parameter::decode_parameters,
+    limits::validate_value_size, parameter::decode_parameters,
 };
 
 /// Parser configuration.
@@ -76,15 +76,19 @@ impl<'a> Parser<'a> {
             return Err(RqsError::TextSearchUnsupported);
         }
         if let Some(value) = parameter.strip_prefix("sort=") {
+            validate_value_size("sort", value, self.config.limits().max_value_bytes)?;
             return self.apply_sort(value, output);
         }
         if let Some(value) = parameter.strip_prefix("fields=") {
+            validate_value_size("fields", value, self.config.limits().max_value_bytes)?;
             return self.apply_projection(value, output);
         }
         if let Some(value) = parameter.strip_prefix("limit=") {
+            validate_value_size("limit", value, self.config.limits().max_value_bytes)?;
             return self.apply_limit(value, output);
         }
         if let Some(value) = parameter.strip_prefix("skip=") {
+            validate_value_size("skip", value, self.config.limits().max_value_bytes)?;
             return self.apply_offset(value, output);
         }
         let filter = self.parse_filter(parameter)?;

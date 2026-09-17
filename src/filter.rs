@@ -1,6 +1,9 @@
 //! Filter expression types and parsing helpers.
 
-use crate::{FieldRef, ParserLimits, RqsError, RqsResult, RqsValue, value::parse_value};
+use crate::{
+    FieldRef, ParserLimits, RqsError, RqsResult, RqsValue, limits::validate_value_size,
+    value::parse_value,
+};
 
 /// Supported filter operators.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -142,6 +145,7 @@ pub(crate) fn build_value_filter(
     raw_value: &str,
     limits: ParserLimits,
 ) -> RqsResult<Filter> {
+    validate_value_size(field.public_name(), raw_value, limits.max_value_bytes)?;
     if raw_value.is_empty() {
         return Err(RqsError::MissingValue {
             field: field.public_name().to_owned(),

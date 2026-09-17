@@ -117,9 +117,14 @@ The default limits reduce accidental high-cost queries:
 | --- | --- |
 | Raw query length | 8 KiB |
 | Parameter count | 128 |
-| Single value length | 2 KiB |
+| Decoded value length | 2 KiB |
 | List item count | 100 |
 | Maximum `limit` value | 100 |
+
+`max_value_bytes` counts decoded UTF-8 bytes for filter values and the `sort`,
+`fields`, `limit`, and `skip` controls. It includes wrappers, regex delimiters and
+flags, and entire comma-separated lists. Existence filters have no value to
+limit. The raw query byte limit applies separately, before decoding.
 
 Display error messages name failure classes and valid identifiers up to 128
 bytes. Malformed or longer identifiers are replaced with `[redacted]`. Use

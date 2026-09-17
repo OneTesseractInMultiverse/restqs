@@ -80,6 +80,11 @@ assert_eq!(
 # Ok::<(), restqs::RqsError>(())
 ```
 
+`ParserLimits::max_value_bytes` limits decoded UTF-8 bytes for filter values and the `sort`, `fields`, `limit`, and `skip`
+controls. Cast wrappers, regex delimiters and flags, and entire comma-separated lists count toward the limit. Existence
+filters have no value to limit. Oversized values return `value_too_large` before their contents are interpreted; regex
+values within the limit still require field permission.
+
 ## Filters
 
 Filters use the public field name on the left side. The parser resolves that name through `FieldCatalog` and stores a
@@ -231,11 +236,15 @@ are unchanged; valid unknown names still return `unknown_field`.
 | `invalid_field_name`      | Field syntax was empty or invalid               |
 | `unknown_field`           | Public field was not in the catalog             |
 | `invalid_value`           | Value did not match the catalog type            |
+| `value_too_large`         | Decoded filter or control value exceeded the byte limit |
 | `regex_disabled`          | Regex was used on a field that did not allow it |
 | `text_search_unsupported` | `$text=` was requested                          |
 | `duplicate_filter`        | Same field and operator appeared twice          |
 | `limit_too_large`         | Requested `limit` exceeded parser config        |
 | `too_many_parameters`     | Query had more parameters than allowed          |
 | `too_many_list_items`     | List had more items than allowed                |
+
+For `value_too_large`, the `field` metadata identifies the filter's public field name or the control name (`sort`,
+`fields`, `limit`, or `skip`).
 
 Services can map these codes to HTTP 400 responses. Authorization failures belong in application code, not in RestQS.
