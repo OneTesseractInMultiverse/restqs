@@ -2,10 +2,18 @@
 
 use std::fmt::{self, Display, Formatter};
 
+use crate::identifier::is_dotted_identifier;
+
+const MAX_DIAGNOSTIC_IDENTIFIER_BYTES: usize = 128;
+
 /// Result type used by RestQS.
 pub type RqsResult<T> = Result<T, RqsError>;
 
 /// RQS parser and adapter errors.
+///
+/// Display text replaces malformed field and column identifiers, and identifiers
+/// longer than 128 bytes, with `[redacted]`. Error fields and `Debug` output retain
+/// the original data and should not be used for untrusted-input logging.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RqsError {
@@ -137,19 +145,49 @@ impl Display for RqsError {
                 write!(formatter, "query exceeds {max_parameters} parameters")
             }
             Self::InvalidEncoding => write!(formatter, "query uses invalid percent encoding"),
-            Self::InvalidFieldName { field } => write!(formatter, "field {field} is invalid"),
-            Self::InvalidColumnName { column } => write!(formatter, "column {column} is invalid"),
-            Self::UnknownField { field } => write!(formatter, "field {field} is not allowed"),
+            Self::InvalidFieldName { field } => {
+                write!(
+                    formatter,
+                    "field {} is invalid",
+                    diagnostic_identifier(field)
+                )
+            }
+            Self::InvalidColumnName { column } => write!(
+                formatter,
+                "column {} is invalid",
+                diagnostic_identifier(column)
+            ),
+            Self::UnknownField { field } => write!(
+                formatter,
+                "field {} is not allowed",
+                diagnostic_identifier(field)
+            ),
             Self::InvalidOperator => write!(formatter, "filter operator is invalid"),
-            Self::MissingValue { field } => write!(formatter, "field {field} needs a value"),
+            Self::MissingValue { field } => write!(
+                formatter,
+                "field {} needs a value",
+                diagnostic_identifier(field)
+            ),
             Self::InvalidValue { field, expected } => {
-                write!(formatter, "field {field} needs {expected}")
+                write!(
+                    formatter,
+                    "field {} needs {expected}",
+                    diagnostic_identifier(field)
+                )
             }
             Self::ValueTooLarge { field, max_bytes } => {
-                write!(formatter, "field {field} exceeds {max_bytes} bytes")
+                write!(
+                    formatter,
+                    "field {} exceeds {max_bytes} bytes",
+                    diagnostic_identifier(field)
+                )
             }
             Self::TooManyListItems { field, max_items } => {
-                write!(formatter, "field {field} exceeds {max_items} list items")
+                write!(
+                    formatter,
+                    "field {} exceeds {max_items} list items",
+                    diagnostic_identifier(field)
+                )
             }
             Self::InvalidPagination { parameter } => {
                 write!(formatter, "{parameter} pagination value is invalid")
@@ -161,11 +199,19 @@ impl Display for RqsError {
                 write!(formatter, "limit exceeds {max_limit}")
             }
             Self::RegexDisabled { field } => {
-                write!(formatter, "field {field} does not allow regex filters")
+                write!(
+                    formatter,
+                    "field {} does not allow regex filters",
+                    diagnostic_identifier(field)
+                )
             }
             Self::TextSearchUnsupported => write!(formatter, "text search is not supported"),
             Self::DuplicateFilter { field, operator } => {
-                write!(formatter, "field {field} repeats operator {operator}")
+                write!(
+                    formatter,
+                    "field {} repeats operator {operator}",
+                    diagnostic_identifier(field)
+                )
             }
             Self::AdapterUnsupported { feature } => {
                 write!(formatter, "adapter does not support {feature}")
@@ -175,3 +221,11 @@ impl Display for RqsError {
 }
 
 impl std::error::Error for RqsError {}
+
+fn diagnostic_identifier(value: &str) -> &str {
+    if value.len() <= MAX_DIAGNOSTIC_IDENTIFIER_BYTES && is_dotted_identifier(value) {
+        value
+    } else {
+        "[redacted]"
+    }
+}

@@ -40,8 +40,8 @@ assert_eq!(query.filters().len(), 3);
 ```
 
 The catalog accepts dotted identifiers such as `users.status`. It rejects spaces, quotes, comments, punctuation, and SQL
-fragments. The parser returns
-`unknown_field` for a public field that does not exist in the catalog.
+fragments. The parser validates field syntax before catalog lookup. Malformed names return `invalid_field_name`;
+syntactically valid names that do not exist in the catalog return `unknown_field`.
 
 Use a different catalog for each resource shape or authorization context. A public search endpoint can expose a small
 set of fields. An internal endpoint can expose a larger set. Both paths use the same parser.
@@ -215,8 +215,16 @@ rules and cost limits.
 
 ## Error Codes
 
-`RqsError::error_code()` gives stable strings for API responses and tests. The display text is safe for logs and public
-responses. It names the failure class without echoing the raw query string.
+`RqsError::error_code()` gives stable strings for API responses and tests. Library-generated Display messages name the
+failure class and show only valid dotted ASCII field or column identifiers of at most 128 bytes. Malformed or longer
+identifiers are replaced in full with `[redacted]`, so control characters and value text misidentified as a field do not
+enter the message. This display limit does not restrict accepted catalog identifiers.
+
+Use Display (`{}`) or error codes for ordinary logs and public error responses. Error fields and Debug (`{:?}`) retain
+the original input and are outside this redaction contract.
+
+Malformed nonempty field names now return `invalid_field_name` instead of `unknown_field`. Existing error-code strings
+are unchanged; valid unknown names still return `unknown_field`.
 
 | Code                      | Meaning                                         |
 |---------------------------|-------------------------------------------------|
