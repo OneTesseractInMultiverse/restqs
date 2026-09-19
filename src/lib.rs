@@ -30,8 +30,10 @@
 //! typed [`RqsValue`] values.
 //!
 //! The default [`ParserLimits`] cap raw query length at 8 KiB, parameter count
-//! at 128, single value length at 2 KiB, list item count at 100, and `limit=`
-//! at 100.
+//! at 128, decoded value length at 2 KiB, list item count at 100, and `limit=`
+//! at 100. The value byte limit covers filter values and `sort`, `fields`,
+//! `limit`, and `skip` controls, including wrappers, regex delimiters and flags,
+//! and complete lists. Existence filters have no value to limit.
 //!
 //! # Adapter Boundary
 //!

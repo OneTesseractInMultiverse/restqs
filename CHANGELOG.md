@@ -17,6 +17,11 @@ Error Display messages redact malformed field and column identifiers and identif
 prevents control-character injection and disclosure of value text misidentified as a field. Error fields and Debug
 output retain the original input.
 
+`max_value_bytes` now rejects oversized regex values and `sort`, `fields`, `limit`, and `skip` controls, closing paths
+that bypassed the value-size check. The limit counts decoded UTF-8 bytes, including wrappers, regex delimiters and flags,
+and complete lists. Existence filters have no value to limit. Oversized regex values return `value_too_large` before
+regex permission is checked; values within the limit still require permission.
+
 ### Changed
 
 The parser validates field syntax before catalog lookup. Malformed nonempty field names now return

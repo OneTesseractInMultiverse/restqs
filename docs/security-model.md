@@ -118,9 +118,19 @@ Default limits reduce accidental high-cost queries:
 |-----------------------|---------|
 | Raw query length      | 8 KiB   |
 | Parameter count       | 128     |
-| Single value length   | 2 KiB   |
+| Decoded value length  | 2 KiB   |
 | List item count       | 100     |
 | Maximum `limit` value | 100     |
+
+`max_value_bytes` counts UTF-8 bytes after percent and plus decoding. It applies to filter values and the `sort`,
+`fields`, `limit`, and `skip` controls, including cast wrappers, regex delimiters and flags, and complete comma-separated
+lists. For example, `/a/` takes three bytes, while `/é/` takes four. The raw query byte limit applies before decoding.
+
+After resolving a filter's field, the parser checks its value size before interpreting it or checking regex permission.
+Oversized values return `value_too_large`, including regex values on fields where regex is disabled. Values within the
+size limit still require regex permission. Controls are size-checked before parsing their contents; their error metadata
+uses the control name (`sort`, `fields`, `limit`, or `skip`). Existence filters have no value and remain valid when
+`max_value_bytes` is zero. List item limits and numeric pagination limits apply independently.
 
 Applications can set tighter limits per endpoint:
 

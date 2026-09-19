@@ -31,13 +31,6 @@ pub(crate) fn parse_value(
     kind: ValueKind,
     limits: ParserLimits,
 ) -> RqsResult<RqsValue> {
-    if raw.len() > limits.max_value_bytes {
-        return Err(RqsError::ValueTooLarge {
-            field: field.to_owned(),
-            max_bytes: limits.max_value_bytes,
-        });
-    }
-
     if raw.eq_ignore_ascii_case("null") {
         return Ok(RqsValue::Null);
     }
