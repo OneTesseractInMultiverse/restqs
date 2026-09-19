@@ -2,7 +2,7 @@
 #![cfg(feature = "sqlx")]
 
 use restqs::{
-    Field, FieldCatalog, ValueKind,
+    Field, FieldCatalog, RqsValue, ValueKind,
     adapters::sqlx::{SqlDialect, SqlxAdapter},
     parse,
 };
@@ -91,6 +91,94 @@ fn sqlx_adapter_builds_projection_columns() -> restqs::RqsResult<()> {
     let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
 
     assert_eq!(parts.projection.len(), 2);
+    Ok(())
+}
+
+#[test]
+fn postgres_pipeline_rejects_regex_not_equal() -> restqs::RqsResult<()> {
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let error = parse("email!=/admin/", &regex_catalog()?)
+        .and_then(|query| adapter.build(&query))
+        .map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn postgres_pipeline_rejects_regex_greater_than() -> restqs::RqsResult<()> {
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let error = parse("email>/admin/", &regex_catalog()?)
+        .and_then(|query| adapter.build(&query))
+        .map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn postgres_pipeline_rejects_regex_greater_than_or_equal() -> restqs::RqsResult<()> {
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let error = parse("email>=/admin/", &regex_catalog()?)
+        .and_then(|query| adapter.build(&query))
+        .map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn postgres_pipeline_rejects_regex_less_than() -> restqs::RqsResult<()> {
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let error = parse("email</admin/", &regex_catalog()?)
+        .and_then(|query| adapter.build(&query))
+        .map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn postgres_pipeline_rejects_regex_less_than_or_equal() -> restqs::RqsResult<()> {
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let error = parse("email<=/admin/", &regex_catalog()?)
+        .and_then(|query| adapter.build(&query))
+        .map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn mysql_pipeline_rejects_regex_not_equal() -> restqs::RqsResult<()> {
+    let adapter = SqlxAdapter::new(SqlDialect::MySql).allow_regex();
+    let error = parse("email!=/admin/", &regex_catalog()?)
+        .and_then(|query| adapter.build(&query))
+        .map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn postgres_regex_pattern_stays_in_bind_value() -> restqs::RqsResult<()> {
+    let query = parse("email=/admin/", &regex_catalog()?)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres)
+        .allow_regex()
+        .build(&query)?;
+
+    assert_eq!(parts.binds, vec![RqsValue::Text("admin".to_owned())]);
+    Ok(())
+}
+
+#[test]
+fn mysql_regex_pattern_stays_in_bind_value() -> restqs::RqsResult<()> {
+    let query = parse("email=/admin/", &regex_catalog()?)?;
+    let parts = SqlxAdapter::new(SqlDialect::MySql)
+        .allow_regex()
+        .build(&query)?;
+
+    assert_eq!(parts.binds, vec![RqsValue::Text("admin".to_owned())]);
     Ok(())
 }
 

@@ -118,6 +118,105 @@ fn parser_accepts_regex_with_field_permission() -> restqs::RqsResult<()> {
 }
 
 #[test]
+fn parser_rejects_regex_not_equal() -> restqs::RqsResult<()> {
+    let error = parse("email!=/admin/", &regex_catalog()?).map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn parser_rejects_regex_greater_than() -> restqs::RqsResult<()> {
+    let error = parse("email>/admin/", &regex_catalog()?).map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn parser_rejects_regex_greater_than_or_equal() -> restqs::RqsResult<()> {
+    let error = parse("email>=/admin/", &regex_catalog()?).map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn parser_rejects_regex_less_than() -> restqs::RqsResult<()> {
+    let error = parse("email</admin/", &regex_catalog()?).map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn parser_rejects_regex_less_than_or_equal() -> restqs::RqsResult<()> {
+    let error = parse("email<=/admin/", &regex_catalog()?).map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn parser_rejects_encoded_regex_not_equal() -> restqs::RqsResult<()> {
+    let error =
+        parse("email%21%3D%2Fadmin%2F", &regex_catalog()?).map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn parser_checks_regex_operator_before_permission() -> restqs::RqsResult<()> {
+    let error = parse("status!=/active/", &catalog()?).map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("invalid_operator"));
+    Ok(())
+}
+
+#[test]
+fn parser_checks_regex_size_before_operator() -> restqs::RqsResult<()> {
+    let catalog = regex_catalog()?;
+    let config = ParserConfig::with_limits(ParserLimits {
+        max_value_bytes: 3,
+        ..ParserLimits::default()
+    });
+    let error = Parser::with_config(&catalog, config)
+        .parse("email!=/admin/")
+        .map_err(|error| error.error_code());
+
+    assert_eq!(error, Err("value_too_large"));
+    Ok(())
+}
+
+#[test]
+fn parser_preserves_not_equal_for_scalar_text() -> restqs::RqsResult<()> {
+    let query = parse("email!=admin", &regex_catalog()?)?;
+
+    assert_eq!(query.filters().first().map(Filter::op), Some(FilterOp::Ne));
+    Ok(())
+}
+
+#[test]
+fn parser_preserves_slashes_in_explicit_text_cast() -> restqs::RqsResult<()> {
+    let query = parse("email!=str(/admin/)", &regex_catalog()?)?;
+
+    assert_eq!(
+        query.filters().first().and_then(Filter::value),
+        Some(&RqsValue::Text("/admin/".to_owned()))
+    );
+    Ok(())
+}
+
+#[test]
+fn parser_preserves_not_equal_for_unclosed_regex_text() -> restqs::RqsResult<()> {
+    let query = parse("email!=/admin", &regex_catalog()?)?;
+
+    assert_eq!(query.filters().first().map(Filter::op), Some(FilterOp::Ne));
+    Ok(())
+}
+
+#[test]
 fn parser_treats_single_slash_as_text() -> restqs::RqsResult<()> {
     let query = parse("email=/", &regex_catalog()?)?;
 

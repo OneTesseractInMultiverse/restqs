@@ -80,6 +80,11 @@ Regex is disabled by default. Two gates must open:
 - The catalog field must call `allow_regex()`.
 - The adapter must call `allow_regex()`.
 
+Regex matching supports `=` only. The parser rejects `!=`, `>`, `>=`, `<`, and `<=` with `invalid_operator` when the value
+is a recognized regex literal. Negation and ordered regex comparisons are unsupported; they never become positive-match
+plans. After resolving the field, the parser validates value size, then the regex operator, then field permission.
+Equality regex matching still requires both gates, and the adapter keeps the pattern in a bind value.
+
 ```rust
 use restqs::{
     Field, FieldCatalog, FilterOp, ValueKind, parse,

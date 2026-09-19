@@ -204,6 +204,20 @@ Negative pagination values fail with `negative_pagination`. Non-numeric values f
 
 Regex is an opt-in capability. The field must allow regex values. The adapter must allow regex SQL generation.
 
+Only equality supports regex literals:
+
+| Syntax | Result |
+| --- | --- |
+| `email=/admin/` | Positive regex match, requiring both permission gates |
+| `email!=/admin/` | `invalid_operator`; regex negation is unsupported |
+| `email>/admin/`, `email>=/admin/` | `invalid_operator` |
+| `email</admin/`, `email<=/admin/` | `invalid_operator` |
+
+For a resolved field and recognized regex literal, value-size validation runs first, followed by operator validation,
+then field permission. An unsupported operator returns `invalid_operator` even when the field has regex disabled.
+An equality regex without field permission still returns `regex_disabled`. These restrictions apply to recognized regex
+literals; `email!=str(/admin/)` compares against the literal text `/admin/`.
+
 ```rust
 use restqs::{Field, FieldCatalog, FilterOp, ValueKind, parse};
 
@@ -235,6 +249,7 @@ are unchanged; valid unknown names still return `unknown_field`.
 |---------------------------|-------------------------------------------------|
 | `invalid_field_name`      | Field syntax was empty or invalid               |
 | `unknown_field`           | Public field was not in the catalog             |
+| `invalid_operator`        | Invalid operator syntax or unsupported operator/value combination |
 | `invalid_value`           | Value did not match the catalog type            |
 | `value_too_large`         | Decoded filter or control value exceeded the byte limit |
 | `regex_disabled`          | Regex was used on a field that did not allow it |
