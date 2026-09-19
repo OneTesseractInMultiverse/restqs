@@ -13,6 +13,10 @@ SQLx-oriented fragments behind the `sqlx` feature, documentation-only SQLx examp
 
 ### Fixed
 
+Regex literals used with `!=`, `>`, `>=`, `<`, or `<=` now return `invalid_operator` instead of silently becoming positive
+matches. Regex matching supports equality only; negation is unsupported. Value-size validation precedes operator
+validation, which precedes field permission. Equality regex matching still requires both field and adapter permission.
+
 Error Display messages redact malformed field and column identifiers and identifiers longer than 128 bytes. This
 prevents control-character injection and disclosure of value text misidentified as a field. Error fields and Debug
 output retain the original input.

@@ -48,6 +48,9 @@ flowchart TD
 A function either coordinates work or computes a value. A coordinator calls smaller functions and assembles state. A
 computation receives input and returns one result. It does not perform unrelated orchestration.
 
+The filter coordinator calls a pure regex-operator validator before creating a regex plan node. This policy stays in
+the core, so every adapter receives the same equality-only regex contract.
+
 This rule keeps changes local. A new scalar type belongs in `catalog` and
 `value`. A new RQS operator belongs in `filter` and the parser split logic. A new database integration belongs in
 `adapters`.

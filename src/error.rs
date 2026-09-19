@@ -44,7 +44,9 @@ pub enum RqsError {
         /// Unknown public field name.
         field: String,
     },
-    /// A filter parameter used invalid operator syntax.
+    /// A filter used invalid operator syntax or an unsupported operator/value combination.
+    ///
+    /// Regex literals support equality only; other comparison operators are rejected.
     InvalidOperator,
     /// A filter value was missing.
     MissingValue {

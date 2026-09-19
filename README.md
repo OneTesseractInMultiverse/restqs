@@ -104,6 +104,9 @@ Text search is not part of this release. Regex parsing exists, but it stays
 off by default. A field must permit regex values, and the adapter must allow
 regex SQL generation.
 
+Regex literals support `=` only. Using `!=`, `>`, `>=`, `<`, or `<=` with a
+regex literal returns `invalid_operator`; regex negation is unsupported.
+
 ## Safe Defaults
 
 RestQS treats the query string as untrusted input. The parser never accepts a

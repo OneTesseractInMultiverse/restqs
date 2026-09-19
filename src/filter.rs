@@ -28,7 +28,7 @@ pub enum FilterOp {
     In,
     /// Field is not in list.
     NotIn,
-    /// Regex match.
+    /// Regex match, parsed only from equality with a regex literal.
     Regex,
 }
 
@@ -153,6 +153,7 @@ pub(crate) fn build_value_filter(
     }
 
     if let Some(regex) = parse_regex_literal(raw_value) {
+        validate_regex_operator(op)?;
         if !field.regex_allowed() {
             return Err(RqsError::RegexDisabled {
                 field: field.public_name().to_owned(),
@@ -164,6 +165,14 @@ pub(crate) fn build_value_filter(
     let value = parse_value(field.public_name(), raw_value, field.value_kind(), limits)?;
     let op = list_operator(op, &value);
     Ok(Filter::new(field, op, Some(value)))
+}
+
+fn validate_regex_operator(op: FilterOp) -> RqsResult<()> {
+    if op == FilterOp::Eq {
+        Ok(())
+    } else {
+        Err(RqsError::InvalidOperator)
+    }
 }
 
 fn list_operator(op: FilterOp, value: &RqsValue) -> FilterOp {
