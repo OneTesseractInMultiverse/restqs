@@ -52,6 +52,12 @@ The adapter returns the `WHERE` clause without the `WHERE` keyword. It returns t
 For PostgreSQL, the adapter emits numbered placeholders such as `$1` and `$2`. For MySQL and SQLite, it emits `?`
 placeholders. It quotes identifiers with the dialect rules and only quotes trusted catalog columns.
 
+Null equality and inequality produce `IS NULL` and `IS NOT NULL` in every supported dialect and consume no bind values.
+For example, `status=null&age>=18` produces `"users"."status" IS NULL AND "users"."age" >= $1` for PostgreSQL, with only
+`RqsValue::Integer(18)` in `parts.binds`. Bind values from `parts.binds` in order; filter positions do not determine bind
+positions. Ordered comparisons with null fail at adapter build time with `adapter_unsupported` and feature metadata
+`ordered null comparison`.
+
 ## SQLx Repository Pattern
 
 The repository owns the base SQL and the bind calls. RestQS provides the parts. The final assembly lives beside result

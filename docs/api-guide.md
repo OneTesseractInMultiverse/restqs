@@ -63,6 +63,15 @@ RestQS supports relational value kinds from the core crate. It avoids database-s
 `null` becomes `RqsValue::Null`. Lists use `in(...)` or `list(...)`. List items use the field type, so `age=in(18,21)`
 returns integer values.
 
+The top-level `null` literal is case-insensitive. The parser retains the comparison operator and a typed null value in
+the plan. In the SQLx adapter, equality with null becomes `IS NULL` and inequality becomes `IS NOT NULL` for PostgreSQL,
+MySQL, and SQLite. These predicates consume no binds or placeholders. A following scalar value uses the next available
+placeholder, starting at `$1` for PostgreSQL when there are no earlier binds.
+
+The SQLx adapter rejects `>`, `>=`, `<`, and `<=` with a null value using `adapter_unsupported` and feature metadata
+`ordered null comparison`. This error occurs during SQL translation; the core parser still produces a typed plan.
+Use `str(null)` on a text field to compare against the literal text `null` with an ordinary bind value.
+
 ```rust
 use restqs::{FieldCatalog, RqsValue, parse};
 
@@ -258,6 +267,7 @@ are unchanged; valid unknown names still return `unknown_field`.
 | `limit_too_large`         | Requested `limit` exceeded parser config        |
 | `too_many_parameters`     | Query had more parameters than allowed          |
 | `too_many_list_items`     | List had more items than allowed                |
+| `adapter_unsupported`     | SQL translation cannot represent the requested feature, including ordered null comparisons |
 
 For `value_too_large`, the `field` metadata identifies the filter's public field name or the control name (`sort`,
 `fields`, `limit`, or `skip`).
