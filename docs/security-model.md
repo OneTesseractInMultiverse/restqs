@@ -73,6 +73,11 @@ assert_eq!(parts.where_clause, Some("\"orders\".\"status\" = $1".to_owned()));
 The bind value `active` lives in `parts.binds`. Repository code passes it to SQLx through bind calls. That keeps SQL
 syntax and user data separate.
 
+Equality and inequality with the typed null value use fixed `IS NULL` and `IS NOT NULL` predicates without binds.
+Scalar values around these predicates keep their placeholder and bind order. Ordered null comparisons are rejected by
+the SQLx adapter with `adapter_unsupported` and feature metadata `ordered null comparison`. Explicit text such as
+`str(null)` remains a bound string.
+
 ## Regex Safety
 
 Regex is disabled by default. Two gates must open:

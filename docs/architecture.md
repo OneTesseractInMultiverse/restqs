@@ -92,6 +92,11 @@ The SQLx-oriented adapter returns:
 The adapter does not own connection state. It does not execute SQL. The host repository builds the final query and binds
 values.
 
+SQL null comparison semantics belong in the adapter. A pure computation selects `IS NULL`, `IS NOT NULL`, or an
+unsupported-comparison error from the typed value and operator. The comparison coordinator returns a null predicate
+without changing bind state, or allocates a scalar bind and delegates SQL formatting to a pure computation. The core
+plan retains its comparison operator and typed null value.
+
 ```mermaid
 sequenceDiagram
   participant P as Parser

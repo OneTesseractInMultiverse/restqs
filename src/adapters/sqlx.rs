@@ -2,6 +2,10 @@
 //!
 //! This adapter returns SQL text fragments and typed bind values. It does not
 //! run a query. Callers pass the fragments into their own SQLx code.
+//!
+//! Equality and inequality with [`RqsValue::Null`] produce `IS NULL` and
+//! `IS NOT NULL` without bind values. Ordered comparisons with null return
+//! [`RqsError::AdapterUnsupported`] with feature `ordered null comparison`.
 
 use crate::{Filter, FilterOp, RqsError, RqsQuery, RqsResult, RqsValue, SortDirection};
 
@@ -179,8 +183,11 @@ impl FragmentBuilder {
                 feature: "missing value",
             });
         };
+        if let Some(clause) = null_comparison_clause(column, operator, value)? {
+            return Ok(clause);
+        }
         let placeholder = self.push_bind(value.clone());
-        Ok(format!("{column} {operator} {placeholder}"))
+        Ok(format_comparison(column, operator, &placeholder))
     }
 
     fn list_clause(&mut self, filter: &Filter, column: &str) -> RqsResult<String> {
@@ -240,6 +247,25 @@ impl FragmentBuilder {
             SqlDialect::MySql | SqlDialect::Sqlite => "?".to_owned(),
         }
     }
+}
+
+fn null_comparison_clause(
+    column: &str,
+    operator: &str,
+    value: &RqsValue,
+) -> RqsResult<Option<String>> {
+    match (value, operator) {
+        (RqsValue::Null, "=") => Ok(Some(format_comparison(column, "IS", "NULL"))),
+        (RqsValue::Null, "<>") => Ok(Some(format_comparison(column, "IS NOT", "NULL"))),
+        (RqsValue::Null, _) => Err(RqsError::AdapterUnsupported {
+            feature: "ordered null comparison",
+        }),
+        _ => Ok(None),
+    }
+}
+
+fn format_comparison(column: &str, operator: &str, operand: &str) -> String {
+    format!("{column} {operator} {operand}")
 }
 
 fn quote_column(dialect: SqlDialect, column: &str) -> String {
@@ -528,6 +554,17 @@ mod tests {
             result,
             Ok(Some("\"users\".\"status\" NOT IN ($1)".to_owned()))
         );
+    }
+
+    #[test]
+    fn null_comparison_preserves_existing_bind_state() -> RqsResult<()> {
+        let filter = Filter::new(text_field(), FilterOp::Eq, Some(RqsValue::Null));
+        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, false);
+        builder.binds.push(RqsValue::Integer(18));
+        builder.filter_clause(&filter)?;
+
+        assert_eq!(builder.binds, vec![RqsValue::Integer(18)]);
+        Ok(())
     }
 
     #[test]

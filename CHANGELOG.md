@@ -13,6 +13,11 @@ SQLx-oriented fragments behind the `sqlx` feature, documentation-only SQLx examp
 
 ### Fixed
 
+The SQLx adapter translates null equality and inequality to `IS NULL` and `IS NOT NULL` in PostgreSQL, MySQL, and SQLite.
+These predicates no longer consume binds or placeholders, so subsequent scalar binds retain their correct positions.
+Ordered comparisons with null now return `adapter_unsupported` with feature metadata `ordered null comparison`.
+The core plan remains unchanged, and explicit text values such as `str(null)` remain ordinary bound comparisons.
+
 Regex literals used with `!=`, `>`, `>=`, `<`, or `<=` now return `invalid_operator` instead of silently becoming positive
 matches. Regex matching supports equality only; negation is unsupported. Value-size validation precedes operator
 validation, which precedes field permission. Equality regex matching still requires both field and adapter permission.
