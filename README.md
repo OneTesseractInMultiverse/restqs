@@ -94,6 +94,10 @@ filter or configures sorting, projection, or pagination.
 | `skip=20` | Offset |
 | `limit=50` | Maximum row count |
 
+Comparison operators are recognized at the field boundary after URL decoding.
+Later operator characters belong to the value: `name=a%3Eb` and
+`name=str(a%3Eb)` both produce the text `a>b`.
+
 The parser supports text, integer, float, boolean, date, date-time, UUID, null,
 and list values. Typed cast wrappers clarify intent for ambiguous values:
 `str(value)`, `int(18)`, `float(1.5)`, `bool(true)`, `date(2026-06-06)`,

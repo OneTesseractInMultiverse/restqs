@@ -37,7 +37,7 @@ fn filter_error_redacts_unicode_direction_override() {
 #[test]
 fn malformed_filter_error_does_not_disclose_value_text() -> restqs::RqsResult<()> {
     let catalog = FieldCatalog::new().allow_text("name", "users.name")?;
-    let result = parse("name=secret%3Eother", &catalog).map_err(|error| error.to_string());
+    let result = parse("name%0A=secret%3Eother", &catalog).map_err(|error| error.to_string());
 
     assert_eq!(result, Err("field [redacted] is invalid".to_owned()));
     Ok(())

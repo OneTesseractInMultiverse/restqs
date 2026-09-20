@@ -48,6 +48,10 @@ flowchart TD
 A function either coordinates work or computes a value. A coordinator calls smaller functions and assembles state. A
 computation receives input and returns one result. It does not perform unrelated orchestration.
 
+Filter splitting is a pure computation over decoded text. It finds the field boundary, recognizes the longest supported
+operator at that position, and returns borrowed field and value slices. The parser coordinates catalog resolution and
+typed value parsing after this split; it does not reinterpret comparison characters inside the value as field syntax.
+
 The filter coordinator calls a pure regex-operator validator before creating a regex plan node. This policy stays in
 the core, so every adapter receives the same equality-only regex contract.
 
