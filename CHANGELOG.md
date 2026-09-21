@@ -13,6 +13,12 @@ SQLx-oriented fragments behind the `sqlx` feature, documentation-only SQLx examp
 
 ### Fixed
 
+Filter operators are recognized at the field boundary instead of being selected from anywhere in the decoded parameter.
+Plain text, cast wrappers, lists, and regex patterns can contain comparison tokens without having value text mistaken
+for a field name. Percent-encoded comparison syntax remains supported. The longest supported operator at the boundary
+is consumed, and the remaining value text is preserved for value parsing. A lone `!` after a field now returns
+`invalid_operator` instead of `invalid_field_name`; leading `!` and existence filters retain their existing behavior.
+
 The SQLx adapter translates null equality and inequality to `IS NULL` and `IS NOT NULL` in PostgreSQL, MySQL, and SQLite.
 These predicates no longer consume binds or placeholders, so subsequent scalar binds retain their correct positions.
 Ordered comparisons with null now return `adapter_unsupported` with feature metadata `ordered null comparison`.

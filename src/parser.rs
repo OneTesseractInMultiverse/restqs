@@ -56,6 +56,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an RQS string into a database-neutral plan.
+    ///
+    /// Filter operators are recognized at the field boundary after decoding.
+    /// Later comparison characters remain part of the value.
     pub fn parse(&self, query: &str) -> RqsResult<RqsQuery> {
         let parameters = decode_parameters(query, self.config.limits())?;
         let mut output = RqsQuery::new();
@@ -182,6 +185,14 @@ fn split_filter(parameter: &str) -> RqsResult<(&str, FilterOp, &str)> {
         return Ok((field, FilterOp::NotExists, ""));
     }
 
+    let Some(boundary) = parameter.find(['!', '>', '<', '=']) else {
+        return Ok((parameter, FilterOp::Exists, ""));
+    };
+    let (field, expression) = parameter.split_at(boundary);
+    if field.is_empty() {
+        return Err(RqsError::InvalidOperator);
+    }
+
     for (token, op) in [
         (">=", FilterOp::Gte),
         ("<=", FilterOp::Lte),
@@ -190,15 +201,12 @@ fn split_filter(parameter: &str) -> RqsResult<(&str, FilterOp, &str)> {
         ("<", FilterOp::Lt),
         ("=", FilterOp::Eq),
     ] {
-        if let Some((field, value)) = parameter.split_once(token) {
-            if field.is_empty() {
-                return Err(RqsError::InvalidOperator);
-            }
+        if let Some(value) = expression.strip_prefix(token) {
             return Ok((field, op, value));
         }
     }
 
-    Ok((parameter, FilterOp::Exists, ""))
+    Err(RqsError::InvalidOperator)
 }
 
 fn parse_pagination_value(parameter: &'static str, value: &str) -> RqsResult<u64> {

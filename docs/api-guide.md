@@ -99,6 +99,16 @@ values within the limit still require field permission.
 Filters use the public field name on the left side. The parser resolves that name through `FieldCatalog` and stores a
 `FieldRef` in the plan.
 
+After URL decoding, the first `!`, `>`, `<`, or `=` marks the comparison boundary. The parser recognizes the longest
+supported operator at that position and passes the remaining text to value parsing without searching it for more
+operators. For example, `name=a%3Eb` and `name=str(a%3Eb)` both produce the text `a>b`. Encoded operators at the field
+boundary work as well: `age%3E%3D18` means `age>=18`.
+
+A value can itself start with an operator character: `name==value` compares against the text `=value`, and
+`name>=<=value` uses `>=` with the text `<=value`. A lone `!` after the field, such as `name!value`, returns
+`invalid_operator`. Leading `!` keeps its separate not-exists meaning, and a field without an operator remains an
+existence filter. Empty field names are still rejected.
+
 | Syntax                       | Operator              |
 |------------------------------|-----------------------|
 | `age=18`                     | `FilterOp::Eq`        |

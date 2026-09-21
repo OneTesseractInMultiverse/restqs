@@ -51,6 +51,11 @@ fails with `unknown_field`. A field name such as `status drop` fails before the 
 Column names must use dotted identifiers. Quotes, spaces, comments, and SQL syntax are rejected at catalog creation
 time. This rule keeps adapters from receiving untrusted SQL fragments.
 
+Comparison parsing separates the field and operator before inspecting value syntax. Once the operator at that boundary
+is consumed, later comparison characters stay in the value. Catalog lookup and field diagnostics therefore receive
+only the field portion, including when value text contains percent-encoded operators. The adapter keeps accepted text
+values in binds.
+
 ## Value Safety
 
 The parser casts every value according to the catalog type. The SQLx-oriented adapter returns bind values in placeholder

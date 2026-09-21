@@ -32,6 +32,27 @@ fn sqlx_adapter_builds_postgres_where_clause() -> restqs::RqsResult<()> {
 }
 
 #[test]
+fn comparison_tokens_in_text_do_not_change_sql_operator() -> restqs::RqsResult<()> {
+    let query = parse("status=a%3Eb", &catalog()?)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+
+    assert_eq!(
+        parts.where_clause,
+        Some("\"users\".\"status\" = $1".to_owned())
+    );
+    Ok(())
+}
+
+#[test]
+fn comparison_tokens_in_text_stay_in_bind_value() -> restqs::RqsResult<()> {
+    let query = parse("status=a%3Eb", &catalog()?)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+
+    assert_eq!(parts.binds, vec![RqsValue::Text("a>b".to_owned())]);
+    Ok(())
+}
+
+#[test]
 fn sqlx_adapter_preserves_bind_order() -> restqs::RqsResult<()> {
     let query = parse("age>=18&status=active", &catalog()?)?;
     let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
