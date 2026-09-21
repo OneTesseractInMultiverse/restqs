@@ -53,6 +53,35 @@ fn comparison_tokens_in_text_stay_in_bind_value() -> restqs::RqsResult<()> {
 }
 
 #[test]
+fn datetime_bind_preserves_negative_offset_and_precision() -> restqs::RqsResult<()> {
+    let query = parse(
+        "created_at=2026-09-16T12:00:00.123456789012-06:00",
+        &catalog()?,
+    )?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+
+    assert_eq!(
+        parts.binds,
+        vec![RqsValue::DateTime(
+            "2026-09-16T12:00:00.123456789012-06:00".to_owned()
+        )]
+    );
+    Ok(())
+}
+
+#[test]
+fn datetime_bind_preserves_positive_offset() -> restqs::RqsResult<()> {
+    let query = parse("created_at=2026-09-16T12:00:00%2B05:30", &catalog()?)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+
+    assert_eq!(
+        parts.binds,
+        vec![RqsValue::DateTime("2026-09-16T12:00:00+05:30".to_owned())]
+    );
+    Ok(())
+}
+
+#[test]
 fn sqlx_adapter_preserves_bind_order() -> restqs::RqsResult<()> {
     let query = parse("age>=18&status=active", &catalog()?)?;
     let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;

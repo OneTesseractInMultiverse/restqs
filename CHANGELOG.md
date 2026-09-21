@@ -13,6 +13,11 @@ SQLx-oriented fragments behind the `sqlx` feature, documentation-only SQLx examp
 
 ### Fixed
 
+Date and date-time parsing now validates Gregorian month lengths and leap years, clock components, and numeric offsets.
+Timestamps accept `Z`/`z`, positive and negative offsets, and fractional seconds while preserving the decoded string.
+The documented format requires four-digit years, `T`/`t`, seconds `00..59`, and an explicit offset; leap seconds are
+unsupported. Scalars, typed wrappers, and list items share validation and return `invalid_value` for invalid input.
+
 Filter operators are recognized at the field boundary instead of being selected from anywhere in the decoded parameter.
 Plain text, cast wrappers, lists, and regex patterns can contain comparison tokens without having value text mistaken
 for a field name. Percent-encoded comparison syntax remains supported. The longest supported operator at the boundary

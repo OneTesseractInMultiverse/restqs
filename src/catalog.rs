@@ -17,7 +17,7 @@ pub enum ValueKind {
     Boolean,
     /// Calendar date in `YYYY-MM-DD` form.
     Date,
-    /// Date-time text in RFC3339-like form.
+    /// Date-time text in the format described by [`crate::RqsValue::DateTime`].
     DateTime,
     /// UUID text.
     Uuid,
