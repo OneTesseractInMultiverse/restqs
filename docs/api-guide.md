@@ -94,6 +94,31 @@ controls. Cast wrappers, regex delimiters and flags, and entire comma-separated 
 filters have no value to limit. Oversized values return `value_too_large` before their contents are interpreted; regex
 values within the limit still require field permission.
 
+### Dates and Date-Times
+
+Dates use `YYYY-MM-DD` with four ASCII year digits (`0000` through `9999`) and Gregorian month lengths and leap-year
+rules. This includes the century rule: 1900 is not a leap year, while 2000 is. Years use proleptic Gregorian numbering,
+including year zero.
+
+Date-times use this [RFC 3339-based format](https://www.rfc-editor.org/rfc/rfc3339#section-5.6):
+
+```text
+YYYY-MM-DD[Tt]HH:MM:SS[.digits](Z|z|+HH:MM|-HH:MM)
+```
+
+Here brackets mark optional parts, except `[Tt]`, which means either letter. The final parentheses list offset choices.
+Clock and offset hours range from `00` to `23`; minutes and seconds range from `00` to `59`. The offset is mandatory.
+Leap seconds (`60`) are outside the supported format. A space cannot replace `T` or `t`.
+
+An optional fraction starts with a period and contains one or more ASCII digits. Fraction precision is preserved and
+bounded only by the configured query and value byte limits. Parsed strings retain their original letter case and
+offset, including `-00:00`; the parser does not normalize to UTC or round fractions. In query strings, encode positive
+offset signs as `%2B`, since a raw `+` decodes to a space.
+
+The same validation applies to scalar values, `date(...)` and `datetime(...)` wrappers, and list items (after the existing
+list whitespace trimming). Invalid dates, times, or offsets return `invalid_value` with the field name and expected
+`date` or `datetime` type.
+
 ## Filters
 
 Filters use the public field name on the left side. The parser resolves that name through `FieldCatalog` and stores a

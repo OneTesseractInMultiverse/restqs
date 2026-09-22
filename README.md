@@ -104,6 +104,12 @@ and list values. Typed cast wrappers clarify intent for ambiguous values:
 `datetime(2026-06-06T12:30:00Z)`, and
 `uuid(550e8400-e29b-41d4-a716-446655440000)`.
 
+Dates use Gregorian calendar validation. Timestamps require a valid date,
+time, and `Z` or numeric offset; both offset signs and fractional seconds are
+supported. Leap seconds are rejected. Encode positive offset signs as `%2B`
+in query strings. See the [date-time format](docs/api-guide.md#dates-and-date-times)
+for the complete grammar.
+
 The SQLx adapter translates `name=null` to `IS NULL` and `name!=null` to
 `IS NOT NULL`, without bind values. Ordered comparisons with null return
 `adapter_unsupported`. Use `str(null)` to compare against the text `null`.

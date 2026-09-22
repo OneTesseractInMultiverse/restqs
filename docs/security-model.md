@@ -61,6 +61,11 @@ values in binds.
 The parser casts every value according to the catalog type. The SQLx-oriented adapter returns bind values in placeholder
 order. It does not concatenate user values into SQL text.
 
+Date and date-time parsing checks calendar validity and bounded clock and offset components before constructing typed
+values. The [documented grammar](api-guide.md#dates-and-date-times) requires a timestamp offset and rejects leap seconds.
+Scalar inputs, cast wrappers, and list items use the same validation; malformed temporal values return `invalid_value`.
+Accepted strings retain their original precision and offset and remain subject to the normal query and value limits.
+
 ```rust
 use restqs::{
     FieldCatalog, parse,

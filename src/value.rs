@@ -1,6 +1,9 @@
 //! Typed values used in RQS plans.
 
-use crate::{ParserLimits, RqsError, RqsResult, ValueKind};
+use crate::{
+    ParserLimits, RqsError, RqsResult, ValueKind,
+    temporal::{is_valid_date, is_valid_datetime},
+};
 
 /// Value owned by an RQS plan.
 #[derive(Debug, Clone, PartialEq)]
@@ -16,8 +19,16 @@ pub enum RqsValue {
     /// UTF-8 text.
     Text(String),
     /// Date string in `YYYY-MM-DD` form.
+    ///
+    /// Parsed dates follow Gregorian calendar rules with years `0000..=9999`.
     Date(String),
-    /// Date-time string in RFC3339-like form.
+    /// Date-time string in `YYYY-MM-DD[Tt]HH:MM:SS[.digits](Z|z|+HH:MM|-HH:MM)` form.
+    ///
+    /// Parsed timestamps require a valid Gregorian date and an explicit offset.
+    /// Clock and offset hours are `00..=23`; minutes and seconds are `00..=59`.
+    /// Leap seconds are unsupported. Fractional seconds require at least one
+    /// ASCII digit. Precision, letter case, and offsets are preserved without
+    /// normalization, including `-00:00`.
     DateTime(String),
     /// UUID string.
     Uuid(String),
@@ -106,28 +117,11 @@ fn parse_boolean(raw: &str) -> Option<RqsValue> {
 }
 
 fn parse_date(raw: &str) -> Option<RqsValue> {
-    if raw.len() == 10
-        && raw.as_bytes().get(4) == Some(&b'-')
-        && raw.as_bytes().get(7) == Some(&b'-')
-        && raw
-            .chars()
-            .enumerate()
-            .all(|(index, character)| index == 4 || index == 7 || character.is_ascii_digit())
-    {
-        Some(RqsValue::Date(raw.to_owned()))
-    } else {
-        None
-    }
+    is_valid_date(raw).then(|| RqsValue::Date(raw.to_owned()))
 }
 
 fn parse_datetime(raw: &str) -> Option<RqsValue> {
-    let has_date = raw.len() >= 20 && raw.as_bytes().get(4) == Some(&b'-');
-    let has_time = raw.contains('T') && (raw.ends_with('Z') || raw.contains('+'));
-    if has_date && has_time {
-        Some(RqsValue::DateTime(raw.to_owned()))
-    } else {
-        None
-    }
+    is_valid_datetime(raw).then(|| RqsValue::DateTime(raw.to_owned()))
 }
 
 fn parse_uuid(raw: &str) -> Option<RqsValue> {

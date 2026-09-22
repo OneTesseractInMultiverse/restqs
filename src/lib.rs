@@ -63,6 +63,7 @@ mod parser;
 mod projection;
 mod query;
 mod sort;
+mod temporal;
 mod value;
 
 pub use catalog::{Field, FieldCatalog, FieldRef, ValueKind};
