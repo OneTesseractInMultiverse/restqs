@@ -38,7 +38,7 @@
 //! # Adapter Boundary
 //!
 //! The `sqlx` feature exposes SQLx-oriented fragment generation through
-//! [`adapters::sqlx`]. The adapter returns SQL fragments and bind values. The
+//! the [`adapters`] module. The adapter returns SQL fragments and bind values. The
 //! host repository still owns the final SQL statement, connection, transaction,
 //! and result mapping.
 

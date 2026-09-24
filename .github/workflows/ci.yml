@@ -6,13 +6,19 @@ on:
     branches:
       - main
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Immutable commit to verify for a release"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -30,6 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Install Rust
@@ -42,22 +49,24 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Check
-        run: cargo check --all-targets --all-features
+        run: make check
 
       - name: Lint
         if: matrix.toolchain == 'stable'
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: make lint
 
       - name: Test
-        run: cargo test --all-targets --all-features
+        run: make test
 
       - name: Test docs
-        run: cargo test --doc --all-features
+        run: make test-doc
 
       - name: Build docs
-        env:
-          RUSTDOCFLAGS: --cfg docsrs -D warnings
-        run: cargo doc --no-deps --all-features
+        run: make doc
+
+      - name: Test release selection
+        if: matrix.toolchain == 'stable'
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
 
       - name: Inspect package contents
         if: matrix.toolchain == 'stable'
@@ -73,6 +82,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Install Rust

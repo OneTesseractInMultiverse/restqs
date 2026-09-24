@@ -1,56 +1,49 @@
 # Release Checklist
 
-Use this checklist before publishing a new crate version.
+Use this checklist before publishing a new crate version. See [Publishing](publishing.md) for setup and CLI commands.
 
-Update `version` in `Cargo.toml`. Update `CHANGELOG.md` with user-facing changes. Confirm that repository and
-documentation metadata point to the public project locations. Confirm that public API changes appear in `README.md` and
-`/docs`.
+## Prepare the Version
+
+- Choose an unpublished version; `0.1.0` is already on crates.io.
+- Update `version` in `Cargo.toml` and record user-facing changes in `CHANGELOG.md`.
+- Review public API, plan shape, and `RqsError::error_code()` compatibility.
+- Update README and `/docs` for changed behavior.
+- Confirm package metadata points to the correct public repository and documentation.
+- Merge the reviewed changes into `main` before tagging.
 
 ## Local Gates
 
-Run the local checks:
-
 ```sh
+python3 -m unittest discover -s .github/scripts -p 'test_*.py'
 make verify
 make coverage
 make package-list
 make package
-make publish-dry-run
+cargo publish --dry-run --locked --registry crates-io
 ```
 
-`make verify` checks formatting, type checking, Clippy, tests, doc tests, and docs.rs-style docs. `make coverage` fails
-on uncovered source lines.
-`make package-list` shows the files shipped to crates.io. `make package`
-verifies the packaged copy.
+Use Python 3.11 or newer. `make verify` checks both the default parser and the `sqlx` feature configuration.
+`make coverage` requires 100% source line coverage. `make package` compiles the packaged copy.
 
-## Package Contents
+The package must contain source, tests, examples, README, documentation, policy files, support docs, and the MIT license.
+It must exclude build output, editor metadata, credentials, local coverage reports, and release automation.
 
-The package must include:
+## Check Publication Settings
 
-- Source files.
-- Tests.
-- Examples.
-- README.
-- Documentation under `/docs`.
-- Policy files.
-- Support docs.
-- MIT license text.
+- The `crates-io` environment allows only branch `main` and tags `v*`.
+- `OneTesseractInMultiverse` is the required reviewer; self-review is allowed for the solo maintainer.
+- Administrator bypass of environment protection is disabled.
+- The saved crates.io Trusted Publisher matches `OneTesseractInMultiverse/restqs`, `publish.yml`, and `crates-io`.
 
-The package must exclude build output, editor metadata, secrets, local coverage reports, and machine-specific files.
+## Validate and Publish
 
-## CI And Release
+- Create an actual `vMAJOR.MINOR.PATCH` tag whose version matches the manifest. Prerelease suffixes are also supported.
+- Dispatch Publish from `main` with the tag and `publish=false` for a validation-only run.
+- Check the resolved SHA in the run summary.
+- Confirm stable Rust, Rust 1.85.0, both feature configurations, RustSec, coverage, and package dry-run gates pass.
+- Publish the GitHub release for that tag, then approve its `crates-io` deployment after the checks succeed.
+- Confirm the intended version appears on crates.io and docs.rs.
 
-Confirm CI passes on stable Rust and the declared minimum Rust version. Confirm the RustSec advisory audit passes.
-Confirm that the package name is `restqs`.
-
-Use semantic versioning. Patch releases fix behavior without public API changes. Minor releases add compatible APIs.
-Major releases can change public API, plan shape, or error contracts.
-
-`RqsError::error_code()` values are compatibility-sensitive. Treat changes to existing codes as breaking changes.
-
-## Tagging
-
-Release tags use `vMAJOR.MINOR.PATCH`, such as `v0.1.0`. The tag version must match `Cargo.toml`.
-
-After the GitHub release is published, the publish workflow can publish the crate through the protected `crates-io`
-environment.
+All release jobs check out the resolved SHA, including after environment approval. Never move a published release tag.
+Do not reuse a published crate version; prepare a new version for follow-up changes. For a failed upload, check crates.io
+before using the manual `publish=true` retry flow.

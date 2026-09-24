@@ -13,6 +13,13 @@ SQLx-oriented fragments behind the `sqlx` feature, documentation-only SQLx examp
 
 ### Fixed
 
+Release validation and publication now use the same immutable tagged commit. Publication requires stable and minimum
+supported Rust checks, both feature configurations, the dependency audit, source coverage, package verification, and
+approval through the configured `crates-io` environment. Manual publication accepts an existing release tag from `main`.
+
+Default-feature Clippy and documentation builds now pass without suppressing warnings. CI and local verification check
+the parser both with and without the `sqlx` feature.
+
 Date and date-time parsing now validates Gregorian month lengths and leap years, clock components, and numeric offsets.
 Timestamps accept `Z`/`z`, positive and negative offsets, and fractional seconds while preserving the decoded string.
 The documented format requires four-digit years, `T`/`t`, seconds `00..59`, and an explicit offset; leap seconds are
