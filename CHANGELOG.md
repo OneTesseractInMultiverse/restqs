@@ -4,12 +4,7 @@ User-facing changes are tracked in this file.
 
 The project uses semantic versioning.
 
-## 0.1.0 - Unreleased
-
-### Added
-
-Initial RestQS crate with REST Query Syntax parsing, explicit field allowlists, typed query plans, safe parser limits,
-SQLx-oriented fragments behind the `sqlx` feature, documentation-only SQLx examples, tests, docs, and release files.
+## 0.1.1 - 2026-09-24
 
 ### Fixed
 
@@ -53,3 +48,10 @@ regex permission is checked; values within the limit still require permission.
 
 The parser validates field syntax before catalog lookup. Malformed nonempty field names now return
 `invalid_field_name` instead of `unknown_field`; valid names absent from the catalog still return `unknown_field`.
+
+## 0.1.0 - 2026-06-06
+
+### Added
+
+Initial RestQS crate with REST Query Syntax parsing, explicit field allowlists, typed query plans, safe parser limits,
+SQLx-oriented fragments behind the `sqlx` feature, documentation-only SQLx examples, tests, docs, and release files.

@@ -24,7 +24,7 @@ Turn on the `sqlx` feature to use the built-in SQL fragment adapter:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.0", features = ["sqlx"] }
+restqs = { version = "0.1.1", features = ["sqlx"] }
 ```
 
 The adapter accepts a parsed plan and returns SQLx-ready parts:
@@ -131,7 +131,7 @@ An application that uses PostgreSQL can depend on SQLx in its own manifest:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.0", features = ["sqlx"] }
+restqs = { version = "0.1.1", features = ["sqlx"] }
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio"] }
 ```
 
@@ -220,7 +220,7 @@ An application that uses SQLite can depend on SQLx in its own manifest:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.0", features = ["sqlx"] }
+restqs = { version = "0.1.1", features = ["sqlx"] }
 sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 

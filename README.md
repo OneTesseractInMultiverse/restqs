@@ -27,14 +27,14 @@ Use the core parser with no runtime dependencies:
 
 ```toml
 [dependencies]
-restqs = "0.1.0"
+restqs = "0.1.1"
 ```
 
 Turn on the SQLx-oriented adapter contract with the `sqlx` feature:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.0", features = ["sqlx"] }
+restqs = { version = "0.1.1", features = ["sqlx"] }
 ```
 
 The `sqlx` feature exposes fragment generation for SQLx-style repositories.
@@ -199,7 +199,7 @@ For PostgreSQL applications:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.0", features = ["sqlx"] }
+restqs = { version = "0.1.1", features = ["sqlx"] }
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio"] }
 ```
 
@@ -207,7 +207,7 @@ For SQLite applications:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.0", features = ["sqlx"] }
+restqs = { version = "0.1.1", features = ["sqlx"] }
 sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
@@ -234,8 +234,8 @@ validates both feature configurations, audits dependencies, and verifies
 coverage and packaging. Publication uses Trusted Publishing after approval in
 the `crates-io` environment. Manual validation defaults to a dry run.
 
-Version `0.1.0` is already published. Update the manifest and changelog to a new
-version before tagging the next release. See [Publishing](docs/publishing.md)
+Update the manifest and changelog to an unpublished version before tagging
+each release. See [Publishing](docs/publishing.md)
 for setup and release commands.
 
 ## Documentation

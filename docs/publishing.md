@@ -1,7 +1,8 @@
 # Publishing
 
-This project publishes to crates.io as `restqs`. Version `0.1.0` is already published; the next release must use a new
-version in `Cargo.toml`. Published crate versions cannot be overwritten.
+This project publishes to crates.io as `restqs`. Each release must use an unpublished version in `Cargo.toml`.
+Published crate versions cannot be overwritten; check the [version history](https://crates.io/crates/restqs/versions)
+before preparing an update.
 
 The package ships source, tests, examples, docs, policy files, `Makefile`, `SUPPORT.md`, and `LICENSE`. Release automation
 and its Python tests stay in `.github/` and are excluded from the crate.
