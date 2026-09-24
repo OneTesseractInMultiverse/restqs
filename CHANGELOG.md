@@ -15,6 +15,10 @@ sort term, and projection resolves through that trusted configuration. Missing a
 `missing_column_mapping` and `duplicate_column_mapping` error codes. Physical identifier validation moves into the
 adapter. This breaking API change targets 0.2.0; see [Migrating to 0.2](docs/migration-0.2.md).
 
+Parameter classification, control-size policy, and duplicate-filter identity and rejection are now pure internal
+computations. The parser coordinates them before updating query state. This refactor preserves syntax, stable error
+codes, validation precedence, and repeated-control behavior without changing the public API.
+
 ### Fixed
 
 The SQLx repository examples now apply parsed limits and offsets before execution and bind pagination after filter
