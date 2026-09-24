@@ -7,15 +7,15 @@ use restqs::{
 
 fn catalog() -> restqs::RqsResult<FieldCatalog> {
     FieldCatalog::new()
-        .allow_integer("age", "users.age")?
-        .allow_text("status", "users.status")?
-        .allow_boolean("active", "users.active")?
-        .allow_datetime("created_at", "users.created_at")?
-        .allow_uuid("id", "users.id")
+        .allow_integer("age")?
+        .allow_text("status")?
+        .allow_boolean("active")?
+        .allow_datetime("created_at")?
+        .allow_uuid("id")
 }
 
 fn regex_catalog() -> restqs::RqsResult<FieldCatalog> {
-    let field = Field::new("email", "users.email", restqs::ValueKind::Text)?.allow_regex();
+    let field = Field::new("email", restqs::ValueKind::Text)?.allow_regex();
     FieldCatalog::new().allow(field)
 }
 

@@ -4,8 +4,8 @@ use restqs::{FieldCatalog, Filter, RqsError, RqsQuery, RqsResult, RqsValue, pars
 
 fn parse_temporal(input: &str) -> RqsResult<RqsQuery> {
     let catalog = FieldCatalog::new()
-        .allow_date("day", "events.day")?
-        .allow_datetime("timestamp", "events.timestamp")?;
+        .allow_date("day")?
+        .allow_datetime("timestamp")?;
     parse(input, &catalog)
 }
 

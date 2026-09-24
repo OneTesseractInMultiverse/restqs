@@ -23,7 +23,7 @@ verification checks one fact.
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};
 
-let catalog = FieldCatalog::new().allow_integer("age", "users.age") ?;
+let catalog = FieldCatalog::new().allow_integer("age") ?;
 let query = parse("age>=18", & catalog) ?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::Gte);
@@ -49,6 +49,7 @@ Important failure cases include:
 
 - Unknown public fields.
 - Invalid database column identifiers.
+- Missing or duplicate adapter column mappings, including sort-only and projection-only plans.
 - Wrong value type for a field.
 - Duplicate filters with the same field and operator.
 - Regex on a field that does not allow regex.
@@ -61,6 +62,10 @@ Each failure test checks `RqsError::error_code()`. Display text can change for c
 compatibility-sensitive.
 
 ## Repository Example Checks
+
+The logical plan and column-mapping tests verify that SQL configuration cannot authorize fields, and that one plan
+can be consumed with different SQL schemas or by the [in-memory example](../examples/in_memory.rs). Run the latter
+without SQL support using `cargo run --example in_memory --no-default-features`.
 
 The [repository pagination tests](../tests/repository_pagination.rs) compile the same helper module used by the SQLx
 integration examples. They verify SQL and complete bind sequences for PostgreSQL and SQLite without database services

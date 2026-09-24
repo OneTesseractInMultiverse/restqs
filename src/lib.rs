@@ -4,8 +4,8 @@
 //! emit SQL. Database and ORM translation lives in adapters, so application
 //! code can keep parsing, authorization, and persistence concerns separate.
 //!
-//! A service starts with a [`FieldCatalog`]. The catalog maps public query
-//! fields to trusted database columns and value kinds. The parser checks every
+//! A service starts with a [`FieldCatalog`]. The catalog authorizes logical query
+//! fields and defines their value kinds and capabilities. The parser checks every
 //! requested field against that catalog and returns [`RqsQuery`].
 //!
 //! # Basic Parsing
@@ -14,8 +14,8 @@
 //! use restqs::{FieldCatalog, parse};
 //!
 //! let catalog = FieldCatalog::new()
-//!     .allow_integer("age", "users.age")?
-//!     .allow_text("status", "users.status")?;
+//!     .allow_integer("age")?
+//!     .allow_text("status")?;
 //!
 //! let query = parse("age>=18&status=in(active,pending)", &catalog)?;
 //!
@@ -26,8 +26,8 @@
 //! # Safe Defaults
 //!
 //! RestQS treats query strings as untrusted input. User field names never
-//! become database identifiers. Adapters receive trusted catalog columns and
-//! typed [`RqsValue`] values.
+//! become database identifiers. SQL adapters resolve logical fields through
+//! explicit trusted column mappings and bind typed [`RqsValue`] values.
 //!
 //! The default [`ParserLimits`] cap raw query length at 8 KiB, parameter count
 //! at 128, decoded value length at 2 KiB, list item count at 100, and `limit=`
@@ -41,6 +41,10 @@
 //! the [`adapters`] module. The adapter returns SQL fragments and bind values. The
 //! host repository still owns the final SQL statement, connection, transaction,
 //! and result mapping.
+//!
+//! Version 0.2 removes column arguments from [`Field::new`] and catalog builders.
+//! SQL adapter construction now requires an explicit column map. Plans contain
+//! no physical storage metadata and can also be consumed without a SQL adapter.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]

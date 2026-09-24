@@ -7,14 +7,22 @@ use restqs::{
     parse,
 };
 
+fn columns() -> RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
+    restqs::adapters::sqlx::SqlxColumnMap::new()
+        .map("name", "users.name")?
+        .map("status", "users.status")?
+        .map("age", "users.age")?
+        .map("active", "users.active")
+}
+
 fn build(query: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
     let catalog = FieldCatalog::new()
-        .allow_text("name", "users.name")?
-        .allow_text("status", "users.status")?
-        .allow_integer("age", "users.age")?
-        .allow_boolean("active", "users.active")?;
+        .allow_text("name")?
+        .allow_text("status")?
+        .allow_integer("age")?
+        .allow_boolean("active")?;
     let query = parse(query, &catalog)?;
-    SqlxAdapter::new(dialect).build(&query)
+    SqlxAdapter::new(dialect, columns()?).build(&query)
 }
 
 #[test]

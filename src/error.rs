@@ -39,6 +39,16 @@ pub enum RqsError {
         /// Invalid column name.
         column: String,
     },
+    /// A SQL adapter has no physical column mapping for a referenced logical field.
+    MissingColumnMapping {
+        /// Unmapped logical field name.
+        field: String,
+    },
+    /// SQL adapter configuration registered the same logical field more than once.
+    DuplicateColumnMapping {
+        /// Logical field name registered more than once.
+        field: String,
+    },
     /// A query referenced a field that is not in the catalog.
     UnknownField {
         /// Unknown public field name.
@@ -125,6 +135,8 @@ impl RqsError {
             Self::InvalidEncoding => "invalid_encoding",
             Self::InvalidFieldName { .. } => "invalid_field_name",
             Self::InvalidColumnName { .. } => "invalid_column_name",
+            Self::MissingColumnMapping { .. } => "missing_column_mapping",
+            Self::DuplicateColumnMapping { .. } => "duplicate_column_mapping",
             Self::UnknownField { .. } => "unknown_field",
             Self::InvalidOperator => "invalid_operator",
             Self::MissingValue { .. } => "missing_value",
@@ -168,6 +180,16 @@ impl Display for RqsError {
             Self::UnknownField { field } => write!(
                 formatter,
                 "field {} is not allowed",
+                diagnostic_identifier(field)
+            ),
+            Self::MissingColumnMapping { field } => write!(
+                formatter,
+                "field {} has no SQL column mapping",
+                diagnostic_identifier(field)
+            ),
+            Self::DuplicateColumnMapping { field } => write!(
+                formatter,
+                "field {} has more than one SQL column mapping",
                 diagnostic_identifier(field)
             ),
             Self::InvalidOperator => write!(formatter, "filter operator is invalid"),

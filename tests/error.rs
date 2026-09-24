@@ -14,6 +14,12 @@ fn all_error_codes_are_stable() {
         RqsError::InvalidColumnName {
             column: "bad".to_owned(),
         },
+        RqsError::MissingColumnMapping {
+            field: "status".to_owned(),
+        },
+        RqsError::DuplicateColumnMapping {
+            field: "status".to_owned(),
+        },
         RqsError::UnknownField {
             field: "bad".to_owned(),
         },
@@ -56,6 +62,8 @@ fn all_error_codes_are_stable() {
             "invalid_encoding",
             "invalid_field_name",
             "invalid_column_name",
+            "missing_column_mapping",
+            "duplicate_column_mapping",
             "unknown_field",
             "invalid_operator",
             "missing_value",
@@ -86,6 +94,14 @@ fn all_error_display_messages_are_safe() {
         .to_string(),
         RqsError::InvalidColumnName {
             column: "bad".to_owned(),
+        }
+        .to_string(),
+        RqsError::MissingColumnMapping {
+            field: "status".to_owned(),
+        }
+        .to_string(),
+        RqsError::DuplicateColumnMapping {
+            field: "status".to_owned(),
         }
         .to_string(),
         RqsError::UnknownField {
@@ -129,5 +145,5 @@ fn all_error_display_messages_are_safe() {
         RqsError::AdapterUnsupported { feature: "regex" }.to_string(),
     ];
 
-    assert_eq!(messages.len(), 19);
+    assert_eq!(messages.len(), 21);
 }

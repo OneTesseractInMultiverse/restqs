@@ -7,22 +7,30 @@ use restqs::{
     parse,
 };
 
+fn columns() -> restqs::RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
+    restqs::adapters::sqlx::SqlxColumnMap::new()
+        .map("age", "users.age")?
+        .map("status", "users.status")?
+        .map("created_at", "users.created_at")?
+        .map("email", "users.email")
+}
+
 fn catalog() -> restqs::RqsResult<FieldCatalog> {
     FieldCatalog::new()
-        .allow_integer("age", "users.age")?
-        .allow_text("status", "users.status")?
-        .allow_datetime("created_at", "users.created_at")
+        .allow_integer("age")?
+        .allow_text("status")?
+        .allow_datetime("created_at")
 }
 
 fn regex_catalog() -> restqs::RqsResult<FieldCatalog> {
-    let field = Field::new("email", "users.email", ValueKind::Text)?.allow_regex();
+    let field = Field::new("email", ValueKind::Text)?.allow_regex();
     FieldCatalog::new().allow(field)
 }
 
 #[test]
 fn sqlx_adapter_builds_postgres_where_clause() -> restqs::RqsResult<()> {
     let query = parse("age>=18", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -34,7 +42,7 @@ fn sqlx_adapter_builds_postgres_where_clause() -> restqs::RqsResult<()> {
 #[test]
 fn comparison_tokens_in_text_do_not_change_sql_operator() -> restqs::RqsResult<()> {
     let query = parse("status=a%3Eb", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -46,7 +54,7 @@ fn comparison_tokens_in_text_do_not_change_sql_operator() -> restqs::RqsResult<(
 #[test]
 fn comparison_tokens_in_text_stay_in_bind_value() -> restqs::RqsResult<()> {
     let query = parse("status=a%3Eb", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(parts.binds, vec![RqsValue::Text("a>b".to_owned())]);
     Ok(())
@@ -58,7 +66,7 @@ fn datetime_bind_preserves_negative_offset_and_precision() -> restqs::RqsResult<
         "created_at=2026-09-16T12:00:00.123456789012-06:00",
         &catalog()?,
     )?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.binds,
@@ -72,7 +80,7 @@ fn datetime_bind_preserves_negative_offset_and_precision() -> restqs::RqsResult<
 #[test]
 fn datetime_bind_preserves_positive_offset() -> restqs::RqsResult<()> {
     let query = parse("created_at=2026-09-16T12:00:00%2B05:30", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.binds,
@@ -84,7 +92,7 @@ fn datetime_bind_preserves_positive_offset() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_preserves_bind_order() -> restqs::RqsResult<()> {
     let query = parse("age>=18&status=active", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(parts.binds.len(), 2);
     Ok(())
@@ -93,7 +101,7 @@ fn sqlx_adapter_preserves_bind_order() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_mysql_identifier_quotes() -> restqs::RqsResult<()> {
     let query = parse("age=18", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::MySql).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::MySql, columns()?).build(&query)?;
 
     assert_eq!(parts.where_clause, Some("`users`.`age` = ?".to_owned()));
     Ok(())
@@ -102,7 +110,7 @@ fn sqlx_adapter_builds_mysql_identifier_quotes() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_in_clause() -> restqs::RqsResult<()> {
     let query = parse("status=in(active,pending)", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -114,7 +122,7 @@ fn sqlx_adapter_builds_in_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_order_by_clause() -> restqs::RqsResult<()> {
     let query = parse("sort=-created_at", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.order_by,
@@ -126,7 +134,7 @@ fn sqlx_adapter_builds_order_by_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_ascending_order_by_clause() -> restqs::RqsResult<()> {
     let query = parse("sort=created_at", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.order_by,
@@ -138,7 +146,7 @@ fn sqlx_adapter_builds_ascending_order_by_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_projection_columns() -> restqs::RqsResult<()> {
     let query = parse("fields=status,age", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(parts.projection.len(), 2);
     Ok(())
@@ -146,7 +154,7 @@ fn sqlx_adapter_builds_projection_columns() -> restqs::RqsResult<()> {
 
 #[test]
 fn postgres_pipeline_rejects_regex_not_equal() -> restqs::RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres, columns()?).allow_regex();
     let error = parse("email!=/admin/", &regex_catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());
@@ -157,7 +165,7 @@ fn postgres_pipeline_rejects_regex_not_equal() -> restqs::RqsResult<()> {
 
 #[test]
 fn postgres_pipeline_rejects_regex_greater_than() -> restqs::RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres, columns()?).allow_regex();
     let error = parse("email>/admin/", &regex_catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());
@@ -168,7 +176,7 @@ fn postgres_pipeline_rejects_regex_greater_than() -> restqs::RqsResult<()> {
 
 #[test]
 fn postgres_pipeline_rejects_regex_greater_than_or_equal() -> restqs::RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres, columns()?).allow_regex();
     let error = parse("email>=/admin/", &regex_catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());
@@ -179,7 +187,7 @@ fn postgres_pipeline_rejects_regex_greater_than_or_equal() -> restqs::RqsResult<
 
 #[test]
 fn postgres_pipeline_rejects_regex_less_than() -> restqs::RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres, columns()?).allow_regex();
     let error = parse("email</admin/", &regex_catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());
@@ -190,7 +198,7 @@ fn postgres_pipeline_rejects_regex_less_than() -> restqs::RqsResult<()> {
 
 #[test]
 fn postgres_pipeline_rejects_regex_less_than_or_equal() -> restqs::RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::Postgres).allow_regex();
+    let adapter = SqlxAdapter::new(SqlDialect::Postgres, columns()?).allow_regex();
     let error = parse("email<=/admin/", &regex_catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());
@@ -201,7 +209,7 @@ fn postgres_pipeline_rejects_regex_less_than_or_equal() -> restqs::RqsResult<()>
 
 #[test]
 fn mysql_pipeline_rejects_regex_not_equal() -> restqs::RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::MySql).allow_regex();
+    let adapter = SqlxAdapter::new(SqlDialect::MySql, columns()?).allow_regex();
     let error = parse("email!=/admin/", &regex_catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());
@@ -213,7 +221,7 @@ fn mysql_pipeline_rejects_regex_not_equal() -> restqs::RqsResult<()> {
 #[test]
 fn postgres_regex_pattern_stays_in_bind_value() -> restqs::RqsResult<()> {
     let query = parse("email=/admin/", &regex_catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres)
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?)
         .allow_regex()
         .build(&query)?;
 
@@ -224,7 +232,7 @@ fn postgres_regex_pattern_stays_in_bind_value() -> restqs::RqsResult<()> {
 #[test]
 fn mysql_regex_pattern_stays_in_bind_value() -> restqs::RqsResult<()> {
     let query = parse("email=/admin/", &regex_catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::MySql)
+    let parts = SqlxAdapter::new(SqlDialect::MySql, columns()?)
         .allow_regex()
         .build(&query)?;
 
@@ -235,7 +243,7 @@ fn mysql_regex_pattern_stays_in_bind_value() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_rejects_regex_by_default() -> restqs::RqsResult<()> {
     let query = parse("email=/@example.com$/i", &regex_catalog()?)?;
-    let error = SqlxAdapter::new(SqlDialect::Postgres)
+    let error = SqlxAdapter::new(SqlDialect::Postgres, columns()?)
         .build(&query)
         .map_err(|error| error.error_code());
 
@@ -246,7 +254,7 @@ fn sqlx_adapter_rejects_regex_by_default() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_exists_clause() -> restqs::RqsResult<()> {
     let query = parse("status", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -258,7 +266,7 @@ fn sqlx_adapter_builds_exists_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_not_exists_clause() -> restqs::RqsResult<()> {
     let query = parse("!status", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -270,7 +278,7 @@ fn sqlx_adapter_builds_not_exists_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_not_in_clause() -> restqs::RqsResult<()> {
     let query = parse("status!=in(active,pending)", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -282,7 +290,7 @@ fn sqlx_adapter_builds_not_in_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_not_equal_clause() -> restqs::RqsResult<()> {
     let query = parse("age!=18", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -294,7 +302,7 @@ fn sqlx_adapter_builds_not_equal_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_less_than_clause() -> restqs::RqsResult<()> {
     let query = parse("age<18", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -306,7 +314,7 @@ fn sqlx_adapter_builds_less_than_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_greater_than_clause() -> restqs::RqsResult<()> {
     let query = parse("age>18", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -318,7 +326,7 @@ fn sqlx_adapter_builds_greater_than_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_less_than_or_equal_clause() -> restqs::RqsResult<()> {
     let query = parse("age<=18", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(
         parts.where_clause,
@@ -330,7 +338,7 @@ fn sqlx_adapter_builds_less_than_or_equal_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_rejects_empty_list_clause() -> restqs::RqsResult<()> {
     let query = parse("status=in()", &catalog()?)?;
-    let error = SqlxAdapter::new(SqlDialect::Postgres)
+    let error = SqlxAdapter::new(SqlDialect::Postgres, columns()?)
         .build(&query)
         .map_err(|error| error.error_code());
 
@@ -341,7 +349,7 @@ fn sqlx_adapter_rejects_empty_list_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_mysql_regex_when_enabled() -> restqs::RqsResult<()> {
     let query = parse("email=/@example.com$/", &regex_catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::MySql)
+    let parts = SqlxAdapter::new(SqlDialect::MySql, columns()?)
         .allow_regex()
         .build(&query)?;
 
@@ -355,7 +363,7 @@ fn sqlx_adapter_builds_mysql_regex_when_enabled() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_postgres_case_sensitive_regex() -> restqs::RqsResult<()> {
     let query = parse("email=/@example.com$/", &regex_catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres)
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?)
         .allow_regex()
         .build(&query)?;
 
@@ -369,7 +377,7 @@ fn sqlx_adapter_builds_postgres_case_sensitive_regex() -> restqs::RqsResult<()> 
 #[test]
 fn sqlx_adapter_keeps_limit_value() -> restqs::RqsResult<()> {
     let query = parse("limit=25", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(parts.limit, Some(25));
     Ok(())
@@ -378,7 +386,7 @@ fn sqlx_adapter_keeps_limit_value() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_keeps_offset_value() -> restqs::RqsResult<()> {
     let query = parse("skip=50", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(parts.offset, Some(50));
     Ok(())
@@ -387,7 +395,7 @@ fn sqlx_adapter_keeps_offset_value() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_returns_none_for_empty_where_clause() -> restqs::RqsResult<()> {
     let query = parse("sort=age", &catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
     assert_eq!(parts.where_clause, None);
     Ok(())
@@ -396,7 +404,7 @@ fn sqlx_adapter_returns_none_for_empty_where_clause() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_builds_postgres_regex_when_enabled() -> restqs::RqsResult<()> {
     let query = parse("email=/@example.com$/i", &regex_catalog()?)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres)
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?)
         .allow_regex()
         .build(&query)?;
 
@@ -410,7 +418,7 @@ fn sqlx_adapter_builds_postgres_regex_when_enabled() -> restqs::RqsResult<()> {
 #[test]
 fn sqlx_adapter_rejects_sqlite_regex() -> restqs::RqsResult<()> {
     let query = parse("email=/@example.com$/", &regex_catalog()?)?;
-    let error = SqlxAdapter::new(SqlDialect::Sqlite)
+    let error = SqlxAdapter::new(SqlDialect::Sqlite, columns()?)
         .allow_regex()
         .build(&query)
         .map_err(|error| error.error_code());

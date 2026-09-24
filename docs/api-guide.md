@@ -1,5 +1,7 @@
 # API Guide
 
+This guide describes the unreleased 0.2 API. See the [migration guide](migration-0.2.md) for changes from 0.1.x.
+
 RestQS starts with one explicit catalog and ends with one typed plan. The catalog names the public fields accepted by an
 endpoint. The plan describes filters, sort terms, projection fields, and pagination values.
 
@@ -22,16 +24,16 @@ flowchart TD
 
 ## Field Catalog
 
-`FieldCatalog` is the public contract for an endpoint. It maps public names to trusted database column identifiers and
-value kinds.
+`FieldCatalog` is the public contract for an endpoint. It authorizes logical public names and defines value kinds and
+query capabilities. Physical storage names are configured separately by each adapter.
 
 ```rust
 use restqs::{FieldCatalog, parse};
 
 let catalog = FieldCatalog::new()
-.allow_integer("age", "users.age") ?
-.allow_text("status", "users.status") ?
-.allow_boolean("active", "users.active") ?;
+.allow_integer("age") ?
+.allow_text("status") ?
+.allow_boolean("active") ?;
 
 let query = parse("age>=18&status=active&active=true", & catalog) ?;
 
@@ -39,8 +41,8 @@ assert_eq!(query.filters().len(), 3);
 # Ok::<(), restqs::RqsError>(())
 ```
 
-The catalog accepts dotted identifiers such as `users.status`. It rejects spaces, quotes, comments, punctuation, and SQL
-fragments. The parser validates field syntax before catalog lookup. Malformed names return `invalid_field_name`;
+The public query grammar accepts dotted names such as `profile.status`. This is logical identity, not a database path.
+It rejects spaces, quotes, comments, and other punctuation. The parser validates field syntax before catalog lookup. Malformed names return `invalid_field_name`;
 syntactically valid names that do not exist in the catalog return `unknown_field`.
 
 Use a different catalog for each resource shape or authorization context. A public search endpoint can expose a small
@@ -48,7 +50,7 @@ set of fields. An internal endpoint can expose a larger set. Both paths use the 
 
 ## Value Kinds
 
-RestQS supports relational value kinds from the core crate. It avoids database-specific types in the parser.
+RestQS supports storage-independent value kinds in the core crate. It avoids database-specific types in the parser.
 
 | Catalog method   | Value kind | Accepted examples                                   |
 |------------------|------------|-----------------------------------------------------|
@@ -75,7 +77,7 @@ Use `str(null)` on a text field to compare against the literal text `null` with 
 ```rust
 use restqs::{FieldCatalog, RqsValue, parse};
 
-let catalog = FieldCatalog::new().allow_integer("age", "users.age") ?;
+let catalog = FieldCatalog::new().allow_integer("age") ?;
 let query = parse("age=in(18,21)", & catalog) ?;
 let value = query.filters()[0].value();
 
@@ -152,7 +154,7 @@ Comparison filters map to typed plan nodes:
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};
 
-let catalog = FieldCatalog::new().allow_integer("age", "users.age") ?;
+let catalog = FieldCatalog::new().allow_integer("age") ?;
 let query = parse("age>=18", & catalog) ?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::Gte);
@@ -164,7 +166,7 @@ Existence filters use field presence. They do not carry a value.
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};
 
-let catalog = FieldCatalog::new().allow_text("deleted_at", "users.deleted_at") ?;
+let catalog = FieldCatalog::new().allow_text("deleted_at") ?;
 let query = parse("!deleted_at", & catalog) ?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::NotExists);
@@ -183,7 +185,7 @@ order. A bare field name means ascending order too.
 ```rust
 use restqs::{FieldCatalog, SortDirection, parse};
 
-let catalog = FieldCatalog::new().allow_datetime("created_at", "users.created_at") ?;
+let catalog = FieldCatalog::new().allow_datetime("created_at") ?;
 let query = parse("sort=-created_at", & catalog) ?;
 
 assert_eq!(query.sort()[0].direction(), SortDirection::Desc);
@@ -201,8 +203,8 @@ Projection uses `fields=` and comma-separated field names. The plan stores the r
 use restqs::{FieldCatalog, parse};
 
 let catalog = FieldCatalog::new()
-.allow_text("name", "users.name") ?
-.allow_text("email", "users.email") ?;
+.allow_text("name") ?
+.allow_text("email") ?;
 let query = parse("fields=name,email", & catalog) ?;
 
 assert_eq!(query.projection().fields().len(), 2);
@@ -218,7 +220,7 @@ An empty `fields=` value produces an empty projection. Application code can inte
 ```rust
 use restqs::{FieldCatalog, parse};
 
-let catalog = FieldCatalog::new().allow_text("status", "users.status") ?;
+let catalog = FieldCatalog::new().allow_text("status") ?;
 let query = parse("limit=25&skip=50", & catalog) ?;
 
 assert_eq!(query.pagination().limit(), Some(25));
@@ -230,7 +232,7 @@ The default maximum `limit` is 100. Use `ParserConfig` for a resource-specific c
 ```rust
 use restqs::{FieldCatalog, Parser, ParserConfig, ParserLimits};
 
-let catalog = FieldCatalog::new().allow_text("status", "users.status") ?;
+let catalog = FieldCatalog::new().allow_text("status") ?;
 let limits = ParserLimits {
 max_limit: 250,
 ..ParserLimits::default ()
@@ -290,7 +292,7 @@ guarantee case sensitivity. See [MySQL regular expressions](https://dev.mysql.co
 ```rust
 use restqs::{Field, FieldCatalog, FilterOp, ValueKind, parse};
 
-let email = Field::new("email", "users.email", ValueKind::Text) ?.allow_regex();
+let email = Field::new("email", ValueKind::Text) ?.allow_regex();
 let catalog = FieldCatalog::new().allow(email) ?;
 let query = parse("email=/@example.com$/i", & catalog) ?;
 
@@ -318,6 +320,9 @@ are unchanged; valid unknown names still return `unknown_field`.
 |---------------------------|-------------------------------------------------|
 | `invalid_field_name`      | Field syntax was empty or invalid               |
 | `unknown_field`           | Public field was not in the catalog             |
+| `missing_column_mapping` | SQL adapter has no mapping for a referenced logical field |
+| `duplicate_column_mapping` | SQL configuration registered the same logical field twice |
+| `invalid_column_name`    | SQL configuration contains an invalid physical identifier |
 | `invalid_operator`        | Invalid operator syntax or unsupported operator/value combination |
 | `invalid_value`           | Value did not match the catalog type            |
 | `value_too_large`         | Decoded filter or control value exceeded the byte limit |

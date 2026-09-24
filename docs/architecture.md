@@ -15,6 +15,7 @@ flowchart LR
   catalog --> parser
   parser --> plan["RqsQuery"]
   plan --> sqlx["SQLx adapter"]
+  columns["Trusted SQL column map"] --> sqlx
   plan --> seaquery["SeaQuery adapter design"]
   plan --> custom["Custom repository adapter"]
   sqlx --> db["Relational database"]
@@ -28,7 +29,7 @@ does not decide who can see a field. The host application builds the catalog for
 ## Responsibility Model
 
 Each module owns one reason to change. `parameter` decodes query-string text.
-`parser` coordinates the parsing flow. `catalog` owns public field validation and trusted column metadata. `value` casts
+`parser` coordinates the parsing flow. `catalog` owns logical field validation, value kinds, and capabilities. `value` casts
 scalar and list values. `filter`,
 `sort`, `projection`, and `pagination` construct plan pieces. `adapters`
 translate finished plans.
@@ -76,9 +77,9 @@ This rule keeps changes local. A new scalar type belongs in `catalog` and
 | Projection | `Projection`    | Fields requested for selection    |
 | Pagination | `Pagination`    | Limit and offset data             |
 
-Each filter stores a `FieldRef`, not raw user text. The field reference comes from `FieldCatalog`, so adapters receive
-trusted column names only. User input stays in typed `RqsValue` values. Repository code binds those values through the
-database library.
+Each filter stores a logical `FieldRef` resolved through `FieldCatalog`, including its name, value kind, and regex
+permission. Filters, sorting, and projections contain no physical column names. User input stays in typed `RqsValue`
+values. SQL repositories supply a separate trusted column map and bind values through the database library.
 
 The plan is database-neutral. SQLx, SeaQuery, and custom repositories can read the same plan. This keeps parsing tests
 independent from database tests.
@@ -87,6 +88,15 @@ independent from database tests.
 
 Adapters depend on the plan. The plan does not depend on adapters. Cargo feature flags keep heavier integrations outside
 the core parser.
+
+`SqlxColumnMap` lives at the SQL adapter boundary and validates physical identifiers when configured. `SqlxAdapter`
+requires this mapping and resolves every referenced field explicitly, including fields used only for sorting or
+projection. It rejects missing entries instead of deriving identifiers from logical names. Catalog authorization
+remains independent: a mapping cannot make an unlisted request field valid.
+
+The same plan can be translated with different physical schemas or consumed without SQL. The
+[in-memory example](../examples/in_memory.rs) reads logical `age` and its integer value to filter application records.
+It explicitly rejects unsupported plan shapes. See the [0.2 migration](migration-0.2.md) for the API transition.
 
 The SQLx-oriented adapter returns:
 
