@@ -8,6 +8,11 @@ The project uses semantic versioning.
 
 ### Fixed
 
+The SQLx repository examples now apply parsed limits and offsets before execution and bind pagination after filter
+values. A shared, tested example module handles PostgreSQL placeholder numbering, SQLite's `LIMIT -1 OFFSET ?` form
+for offset-only requests, and checked signed-integer conversion. Values above `i64::MAX` fail before SQLx query
+creation. The guide explicitly documents that an omitted limit leaves results uncapped and requires application policy.
+
 Regex suffix flags are no longer silently discarded or ignored. The parser accepts unique lowercase `i`, `m`, `s`,
 and `x` flags, preserving their order, and returns the new `invalid_regex_flags` error for unknown or repeated flags.
 The SQLx adapter accepts no flags or `i` for PostgreSQL, and no flags for MySQL; other recognized flags return

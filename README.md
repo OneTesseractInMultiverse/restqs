@@ -41,6 +41,10 @@ The `sqlx` feature exposes fragment generation for SQLx-style repositories.
 It returns SQL text fragments and typed bind values. It does not open a
 connection, run a query, or own transaction logic.
 
+Repositories must append parsed pagination and bind its values before execution.
+The [pagination examples](docs/integrations.md#pagination-contract) cover PostgreSQL
+placeholder numbering, SQLite offset-only requests, and checked integer conversion.
+
 ## Quick Start
 
 Start with a catalog. The catalog maps public query names to trusted database
