@@ -6,6 +6,11 @@
 //! Equality and inequality with [`RqsValue::Null`] produce `IS NULL` and
 //! `IS NOT NULL` without bind values. Ordered comparisons with null return
 //! [`RqsError::AdapterUnsupported`] with feature `ordered null comparison`.
+//!
+//! Regex is opt-in. PostgreSQL supports no suffix flags or `i`; MySQL supports
+//! no suffix flags. Other recognized flags return [`RqsError::AdapterUnsupported`].
+//! SQLite rejects all regex. Patterns retain the database's native regex syntax
+//! and are always passed as bind values.
 
 use crate::{Filter, FilterOp, RqsError, RqsQuery, RqsResult, RqsValue, SortDirection};
 
@@ -38,6 +43,10 @@ impl SqlxAdapter {
     }
 
     /// Enable regex SQL generation for dialects that support it.
+    ///
+    /// PostgreSQL accepts no suffix flags or `i`. MySQL accepts no suffix flags,
+    /// with matching behavior determined by its collation and regex engine.
+    /// Unsupported flags and SQLite regex return [`RqsError::AdapterUnsupported`].
     #[must_use]
     pub fn allow_regex(mut self) -> Self {
         self.regex_enabled = true;
@@ -227,17 +236,9 @@ impl FragmentBuilder {
                 feature: "regex literal",
             });
         };
+        let operator = regex_operator(self.dialect, regex.flags())?;
         let placeholder = self.push_bind(RqsValue::Text(regex.pattern().to_owned()));
-        match self.dialect {
-            SqlDialect::Postgres if regex.flags().contains('i') => {
-                Ok(format!("{column} ~* {placeholder}"))
-            }
-            SqlDialect::Postgres => Ok(format!("{column} ~ {placeholder}")),
-            SqlDialect::MySql => Ok(format!("{column} REGEXP {placeholder}")),
-            SqlDialect::Sqlite => Err(RqsError::AdapterUnsupported {
-                feature: "sqlite regex",
-            }),
-        }
+        Ok(format_comparison(column, operator, &placeholder))
     }
 
     fn push_bind(&mut self, value: RqsValue) -> String {
@@ -246,6 +247,23 @@ impl FragmentBuilder {
             SqlDialect::Postgres => format!("${}", self.binds.len()),
             SqlDialect::MySql | SqlDialect::Sqlite => "?".to_owned(),
         }
+    }
+}
+
+fn regex_operator(dialect: SqlDialect, flags: &str) -> RqsResult<&'static str> {
+    match (dialect, flags) {
+        (SqlDialect::Postgres, "") => Ok("~"),
+        (SqlDialect::Postgres, "i") => Ok("~*"),
+        (SqlDialect::Postgres, _) => Err(RqsError::AdapterUnsupported {
+            feature: "postgres regex flags",
+        }),
+        (SqlDialect::MySql, "") => Ok("REGEXP"),
+        (SqlDialect::MySql, _) => Err(RqsError::AdapterUnsupported {
+            feature: "mysql regex flags",
+        }),
+        (SqlDialect::Sqlite, _) => Err(RqsError::AdapterUnsupported {
+            feature: "sqlite regex",
+        }),
     }
 }
 
@@ -617,5 +635,32 @@ mod tests {
             .map_err(|error| error.error_code());
 
         assert_eq!(error, Err("adapter_unsupported"));
+    }
+
+    #[test]
+    fn postgres_unsupported_flags_do_not_add_a_bind() {
+        let filter = Filter::regex(regex_field(), RegexLiteral::new_for_test("a.b", "s"));
+        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, true);
+        let _ = builder.filter_clause(&filter);
+
+        assert!(builder.binds.is_empty());
+    }
+
+    #[test]
+    fn mysql_unsupported_flags_do_not_add_a_bind() {
+        let filter = Filter::regex(regex_field(), RegexLiteral::new_for_test("admin", "i"));
+        let mut builder = FragmentBuilder::new(SqlDialect::MySql, true);
+        let _ = builder.filter_clause(&filter);
+
+        assert!(builder.binds.is_empty());
+    }
+
+    #[test]
+    fn sqlite_regex_does_not_add_a_bind() {
+        let filter = Filter::regex(regex_field(), RegexLiteral::new_for_test("admin", ""));
+        let mut builder = FragmentBuilder::new(SqlDialect::Sqlite, true);
+        let _ = builder.filter_clause(&filter);
+
+        assert!(builder.binds.is_empty());
     }
 }

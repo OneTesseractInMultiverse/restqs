@@ -94,6 +94,11 @@ pub enum RqsError {
         /// Field that received a regex value.
         field: String,
     },
+    /// Regex suffix flags included an unknown letter or a duplicate.
+    ///
+    /// Only unique lowercase `i`, `m`, `s`, and `x` flags are recognized.
+    /// The pattern and flags are not included in this error.
+    InvalidRegexFlags,
     /// Text search is not part of the current RQS contract.
     TextSearchUnsupported,
     /// A filter repeated the same field and operator.
@@ -130,6 +135,7 @@ impl RqsError {
             Self::NegativePagination { .. } => "negative_pagination",
             Self::LimitTooLarge { .. } => "limit_too_large",
             Self::RegexDisabled { .. } => "regex_disabled",
+            Self::InvalidRegexFlags => "invalid_regex_flags",
             Self::TextSearchUnsupported => "text_search_unsupported",
             Self::DuplicateFilter { .. } => "duplicate_filter",
             Self::AdapterUnsupported { .. } => "adapter_unsupported",
@@ -205,6 +211,12 @@ impl Display for RqsError {
                     formatter,
                     "field {} does not allow regex filters",
                     diagnostic_identifier(field)
+                )
+            }
+            Self::InvalidRegexFlags => {
+                write!(
+                    formatter,
+                    "regex flags must be unique letters from i, m, s, x"
                 )
             }
             Self::TextSearchUnsupported => write!(formatter, "text search is not supported"),
