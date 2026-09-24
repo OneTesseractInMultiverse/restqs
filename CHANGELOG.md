@@ -13,6 +13,10 @@ SQLx-oriented fragments behind the `sqlx` feature, documentation-only SQLx examp
 
 ### Fixed
 
+Ordered comparisons (`>`, `>=`, `<`, `<=`) with `in(...)` or `list(...)` values now return `invalid_operator` during
+parsing, preventing list values from reaching SQLx as scalar binds. Equality and inequality still produce `In` and
+`NotIn` filters with one bind per item. Value-size, item-count, and item-type validation retain their precedence.
+
 Date and date-time parsing now validates Gregorian month lengths and leap years, clock components, and numeric offsets.
 Timestamps accept `Z`/`z`, positive and negative offsets, and fractional seconds while preserving the decoded string.
 The documented format requires four-digit years, `T`/`t`, seconds `00..59`, and an explicit offset; leap seconds are

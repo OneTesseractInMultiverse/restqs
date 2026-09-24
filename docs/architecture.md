@@ -59,6 +59,10 @@ does not depend on an adapter, external configuration, or a clock.
 The filter coordinator calls a pure regex-operator validator before creating a regex plan node. This policy stays in
 the core, so every adapter receives the same equality-only regex contract.
 
+After parsing a typed value, the filter coordinator calls a pure list-operator computation. It maps list equality and
+inequality to `In` and `NotIn`, rejects other operators with lists, and preserves scalar operators. This compatibility
+rule belongs to the core; adapters expand membership lists into individual binds without receiving ordered list plans.
+
 This rule keeps changes local. A new scalar type belongs in `catalog` and
 `value`. A new RQS operator belongs in `filter` and the parser split logic. A new database integration belongs in
 `adapters`.

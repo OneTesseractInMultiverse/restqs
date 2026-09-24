@@ -47,6 +47,7 @@ pub enum RqsError {
     /// A filter used invalid operator syntax or an unsupported operator/value combination.
     ///
     /// Regex literals support equality only; other comparison operators are rejected.
+    /// Lists support equality and inequality only; ordered comparisons are rejected.
     InvalidOperator,
     /// A filter value was missing.
     MissingValue {
