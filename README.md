@@ -226,6 +226,18 @@ completed plans.
 Functions either coordinate work or compute a value. Tests follow the same
 rule: each test function checks one fact.
 
+## Publishing Updates
+
+GitHub releases trigger the crates.io publishing workflow. Each release checks
+one immutable tagged commit on stable Rust and the minimum supported version,
+validates both feature configurations, audits dependencies, and verifies
+coverage and packaging. Publication uses Trusted Publishing after approval in
+the `crates-io` environment. Manual validation defaults to a dry run.
+
+Version `0.1.0` is already published. Update the manifest and changelog to a new
+version before tagging the next release. See [Publishing](docs/publishing.md)
+for setup and release commands.
+
 ## Documentation
 
 - [API Guide](docs/api-guide.md)
@@ -255,7 +267,7 @@ make package
 
 `make test` runs all in-memory tests. `make coverage` fails on any uncovered
 source line. `make verify` checks formatting, type checking, Clippy, tests,
-doc tests, and docs.rs-style docs.
+doc tests, and docs.rs-style docs with and without the `sqlx` feature.
 
 ## License
 

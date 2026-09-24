@@ -72,7 +72,7 @@ impl RegexLiteral {
         &self.flags
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "sqlx"))]
     pub(crate) fn new_for_test(pattern: &str, flags: &str) -> Self {
         Self {
             pattern: pattern.to_owned(),

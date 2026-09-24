@@ -255,7 +255,7 @@ impl FieldCatalog {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "sqlx"))]
 impl FieldRef {
     pub(crate) fn new_for_test(
         public_name: &str,
