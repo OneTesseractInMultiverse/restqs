@@ -121,6 +121,12 @@ regex SQL generation.
 Regex literals support `=` only. Using `!=`, `>`, `>=`, `<`, or `<=` with a
 regex literal returns `invalid_operator`; regex negation is unsupported.
 
+Suffix flags must be unique lowercase letters from `i`, `m`, `s`, and `x`;
+unknown or repeated flags return `invalid_regex_flags`. The SQLx adapter supports
+no flags or `i` for PostgreSQL, no flags for MySQL, and no regex for SQLite.
+Other recognized flags return `adapter_unsupported`. See the
+[regex support matrix](docs/api-guide.md#regex) for dialect behavior.
+
 ## Safe Defaults
 
 RestQS treats the query string as untrusted input. The parser never accepts a

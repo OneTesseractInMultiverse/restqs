@@ -4,6 +4,16 @@ User-facing changes are tracked in this file.
 
 The project uses semantic versioning.
 
+## Unreleased
+
+### Fixed
+
+Regex suffix flags are no longer silently discarded or ignored. The parser accepts unique lowercase `i`, `m`, `s`,
+and `x` flags, preserving their order, and returns the new `invalid_regex_flags` error for unknown or repeated flags.
+The SQLx adapter accepts no flags or `i` for PostgreSQL, and no flags for MySQL; other recognized flags return
+`adapter_unsupported`. SQLite still rejects all regex. Previously accepted requests with invalid or unsupported flags
+now fail explicitly. Both permission gates and bound patterns are preserved.
+
 ## 0.1.1 - 2026-09-24
 
 ### Fixed

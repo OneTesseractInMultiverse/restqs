@@ -39,6 +39,7 @@ fn all_error_codes_are_stable() {
         RqsError::RegexDisabled {
             field: "email".to_owned(),
         },
+        RqsError::InvalidRegexFlags,
         RqsError::TextSearchUnsupported,
         RqsError::DuplicateFilter {
             field: "age".to_owned(),
@@ -65,6 +66,7 @@ fn all_error_codes_are_stable() {
             "negative_pagination",
             "limit_too_large",
             "regex_disabled",
+            "invalid_regex_flags",
             "text_search_unsupported",
             "duplicate_filter",
             "adapter_unsupported"
@@ -117,6 +119,7 @@ fn all_error_display_messages_are_safe() {
             field: "email".to_owned(),
         }
         .to_string(),
+        RqsError::InvalidRegexFlags.to_string(),
         RqsError::TextSearchUnsupported.to_string(),
         RqsError::DuplicateFilter {
             field: "age".to_owned(),
@@ -126,5 +129,5 @@ fn all_error_display_messages_are_safe() {
         RqsError::AdapterUnsupported { feature: "regex" }.to_string(),
     ];
 
-    assert_eq!(messages.len(), 18);
+    assert_eq!(messages.len(), 19);
 }

@@ -258,9 +258,34 @@ Only equality supports regex literals:
 | `email</admin/`, `email<=/admin/` | `invalid_operator` |
 
 For a resolved field and recognized regex literal, value-size validation runs first, followed by operator validation,
-then field permission. An unsupported operator returns `invalid_operator` even when the field has regex disabled.
-An equality regex without field permission still returns `regex_disabled`. These restrictions apply to recognized regex
-literals; `email!=str(/admin/)` compares against the literal text `/admin/`.
+then field permission, then flag validation. An unsupported operator returns `invalid_operator` even when the field
+has regex disabled. An equality regex without field permission still returns `regex_disabled`. These restrictions apply
+to recognized regex literals; `email!=str(/admin/)` compares against the literal text `/admin/`.
+
+The parser recognizes the suffix flags `i` (case insensitive), `m` (multiline), `s` (dot matches newlines), and `x`
+(extended syntax). Each flag can occur at most once, in any order. Unknown flags, uppercase flags, whitespace, and
+duplicates such as `/admin/ii` return `invalid_regex_flags`. Accepted flags retain their input order in
+`RegexLiteral::flags()`. The error does not include the submitted pattern or flags.
+
+The following matrix describes the current SQLx adapter, with both regex permission gates enabled:
+
+| Suffix flags | PostgreSQL | MySQL | SQLite |
+| --- | --- | --- | --- |
+| None | `column ~ $1` | `column REGEXP ?` | `adapter_unsupported` |
+| `i` | `column ~* $1` | `adapter_unsupported` | `adapter_unsupported` |
+| `m` | `adapter_unsupported` | `adapter_unsupported` | `adapter_unsupported` |
+| `s` | `adapter_unsupported` | `adapter_unsupported` | `adapter_unsupported` |
+| `x` | `adapter_unsupported` | `adapter_unsupported` | `adapter_unsupported` |
+
+Any combination containing an unsupported flag is rejected in full, including `/admin/im` on PostgreSQL. The error's
+`feature` is `postgres regex flags` or `mysql regex flags` for unsupported flags, and `sqlite regex` for SQLite.
+These are limits of this adapter's translation; the parser preserves recognized flags for custom adapters.
+
+Patterns remain unmodified bind values and use the database's native regex syntax. PostgreSQL's `~` and `~*` operators
+select case-sensitive and case-insensitive matching, respectively; embedded pattern options can override that choice
+as documented in [PostgreSQL pattern matching](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP).
+With no suffix flags, MySQL matching follows the arguments' collations and its regex engine; omitting flags does not
+guarantee case sensitivity. See [MySQL regular expressions](https://dev.mysql.com/doc/refman/8.4/en/regexp.html).
 
 ```rust
 use restqs::{Field, FieldCatalog, FilterOp, ValueKind, parse};
@@ -297,12 +322,13 @@ are unchanged; valid unknown names still return `unknown_field`.
 | `invalid_value`           | Value did not match the catalog type            |
 | `value_too_large`         | Decoded filter or control value exceeded the byte limit |
 | `regex_disabled`          | Regex was used on a field that did not allow it |
+| `invalid_regex_flags`     | Regex suffix flags contain an unknown or repeated flag |
 | `text_search_unsupported` | `$text=` was requested                          |
 | `duplicate_filter`        | Same field and operator appeared twice          |
 | `limit_too_large`         | Requested `limit` exceeded parser config        |
 | `too_many_parameters`     | Query had more parameters than allowed          |
 | `too_many_list_items`     | List had more items than allowed                |
-| `adapter_unsupported`     | SQL translation cannot represent the requested feature, including ordered null comparisons |
+| `adapter_unsupported`     | SQL translation cannot represent the requested feature, including regex flags and ordered null comparisons |
 
 For `value_too_large`, the `field` metadata identifies the filter's public field name or the control name (`sort`,
 `fields`, `limit`, or `skip`).

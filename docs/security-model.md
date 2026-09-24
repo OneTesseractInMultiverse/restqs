@@ -97,8 +97,14 @@ Regex is disabled by default. Two gates must open:
 
 Regex matching supports `=` only. The parser rejects `!=`, `>`, `>=`, `<`, and `<=` with `invalid_operator` when the value
 is a recognized regex literal. Negation and ordered regex comparisons are unsupported; they never become positive-match
-plans. After resolving the field, the parser validates value size, then the regex operator, then field permission.
+plans. After resolving the field, the parser validates value size, then the regex operator, then field permission,
+then suffix flags. Unknown or duplicate suffix flags return `invalid_regex_flags` without echoing the pattern or flags.
 Equality regex matching still requires both gates, and the adapter keeps the pattern in a bind value.
+
+The SQLx adapter rejects unsupported flags before adding a bind. PostgreSQL accepts no suffix flags or `i`; MySQL
+accepts no suffix flags; SQLite rejects all regex. Requests with other recognized flags return `adapter_unsupported`
+instead of silently losing requested behavior. See the [support matrix](api-guide.md#regex). This validates suffix
+flags, not the regex language inside a pattern; the database still interprets native syntax and embedded options.
 
 ```rust
 use restqs::{

@@ -56,8 +56,10 @@ The internal `temporal` module owns pure calendar, clock, fraction, and offset v
 computations before constructing date or date-time values. Scalars, wrappers, and lists share that path, so validation
 does not depend on an adapter, external configuration, or a clock.
 
-The filter coordinator calls a pure regex-operator validator before creating a regex plan node. This policy stays in
-the core, so every adapter receives the same equality-only regex contract.
+The filter coordinator calls pure regex-operator and suffix-flag validators before creating a regex plan node. These
+policies stay in the core, so every adapter receives the same equality-only contract with unique, recognized flags.
+Dialect support stays in the adapter: a pure computation selects the regex operator or returns an unsupported error.
+The regex clause coordinator calls that computation before adding the pattern bind, then delegates SQL formatting.
 
 This rule keeps changes local. A new scalar type belongs in `catalog` and
 `value`. A new RQS operator belongs in `filter` and the parser split logic. A new database integration belongs in

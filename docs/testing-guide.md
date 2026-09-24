@@ -52,6 +52,7 @@ Important failure cases include:
 - Wrong value type for a field.
 - Duplicate filters with the same field and operator.
 - Regex on a field that does not allow regex.
+- Unknown or duplicate regex suffix flags, and recognized flags unsupported by each SQL dialect.
 - Text search through `$text=`.
 - Pagination above the configured limit.
 - Too many parameters or list items.
