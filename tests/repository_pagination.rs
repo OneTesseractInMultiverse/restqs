@@ -13,12 +13,18 @@ use restqs::{
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+fn columns() -> RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
+    restqs::adapters::sqlx::SqlxColumnMap::new()
+        .map("id", "users.id")?
+        .map("status", "users.status")
+}
+
 fn query_parts(raw: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
     let catalog = FieldCatalog::new()
-        .allow_integer("id", "users.id")?
-        .allow_text("status", "users.status")?;
+        .allow_integer("id")?
+        .allow_text("status")?;
     let query = parse(raw, &catalog)?;
-    SqlxAdapter::new(dialect).build(&query)
+    SqlxAdapter::new(dialect, columns()?).build(&query)
 }
 
 fn base_sql(parts: &SqlxQueryParts) -> String {

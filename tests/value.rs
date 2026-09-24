@@ -4,18 +4,18 @@ use restqs::{FieldCatalog, RqsValue, parse};
 
 fn scalar_catalog() -> restqs::RqsResult<FieldCatalog> {
     FieldCatalog::new()
-        .allow_text("name", "users.name")?
-        .allow_integer("age", "users.age")?
-        .allow_float("score", "users.score")?
-        .allow_boolean("active", "users.active")?
-        .allow_date("created_on", "users.created_on")?
-        .allow_datetime("created_at", "users.created_at")?
-        .allow_uuid("id", "users.id")
+        .allow_text("name")?
+        .allow_integer("age")?
+        .allow_float("score")?
+        .allow_boolean("active")?
+        .allow_date("created_on")?
+        .allow_datetime("created_at")?
+        .allow_uuid("id")
 }
 
 #[test]
 fn parser_casts_uuid_values() -> restqs::RqsResult<()> {
-    let catalog = FieldCatalog::new().allow_uuid("id", "users.id")?;
+    let catalog = FieldCatalog::new().allow_uuid("id")?;
     let query = parse("id=550e8400-e29b-41d4-a716-446655440000", &catalog)?;
 
     assert_eq!(
@@ -29,7 +29,7 @@ fn parser_casts_uuid_values() -> restqs::RqsResult<()> {
 
 #[test]
 fn parser_casts_date_values() -> restqs::RqsResult<()> {
-    let catalog = FieldCatalog::new().allow_date("created_on", "users.created_on")?;
+    let catalog = FieldCatalog::new().allow_date("created_on")?;
     let query = parse("created_on=2026-06-06", &catalog)?;
 
     assert_eq!(
@@ -41,7 +41,7 @@ fn parser_casts_date_values() -> restqs::RqsResult<()> {
 
 #[test]
 fn parser_casts_datetime_values() -> restqs::RqsResult<()> {
-    let catalog = FieldCatalog::new().allow_datetime("created_at", "users.created_at")?;
+    let catalog = FieldCatalog::new().allow_datetime("created_at")?;
     let query = parse("created_at=2026-06-06T12:30:00Z", &catalog)?;
 
     assert_eq!(
@@ -53,7 +53,7 @@ fn parser_casts_datetime_values() -> restqs::RqsResult<()> {
 
 #[test]
 fn parser_casts_datetime_values_with_offset() -> restqs::RqsResult<()> {
-    let catalog = FieldCatalog::new().allow_datetime("created_at", "users.created_at")?;
+    let catalog = FieldCatalog::new().allow_datetime("created_at")?;
     let query = parse("created_at=2026-06-06T12:30:00%2B00:00", &catalog)?;
 
     assert_eq!(
@@ -65,7 +65,7 @@ fn parser_casts_datetime_values_with_offset() -> restqs::RqsResult<()> {
 
 #[test]
 fn parser_rejects_wrong_cast_wrapper() -> restqs::RqsResult<()> {
-    let catalog = FieldCatalog::new().allow_integer("age", "users.age")?;
+    let catalog = FieldCatalog::new().allow_integer("age")?;
     let error = parse("age=str(18)", &catalog).map_err(|error| error.error_code());
 
     assert_eq!(error, Err("invalid_value"));

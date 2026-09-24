@@ -1,5 +1,8 @@
 # Integration Guide
 
+These examples target the unreleased 0.2 API and use a local checkout at `../restqs` in dependency snippets.
+See [Migrating to 0.2](migration-0.2.md) for the released 0.1.x constructor changes.
+
 RestQS keeps framework and database code outside the core parser. A REST handler extracts the raw query string, selects
 a field catalog, and parses RQS. A repository receives the `RqsQuery` plan and translates it for the database layer.
 
@@ -24,7 +27,7 @@ Turn on the `sqlx` feature to use the built-in SQL fragment adapter:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.1", features = ["sqlx"] }
+restqs = { path = "../restqs", features = ["sqlx"] }
 ```
 
 The adapter accepts a parsed plan and returns SQLx-ready parts:
@@ -32,14 +35,17 @@ The adapter accepts a parsed plan and returns SQLx-ready parts:
 ```rust
 use restqs::{
     FieldCatalog, parse,
-    adapters::sqlx::{SqlDialect, SqlxAdapter},
+    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
 };
 
 let catalog = FieldCatalog::new()
-.allow_integer("age", "users.age") ?
-.allow_text("status", "users.status") ?;
+.allow_integer("age") ?
+.allow_text("status") ?;
 let query = parse("age>=18&status=active&sort=-age&limit=25", & catalog) ?;
-let parts = SqlxAdapter::new(SqlDialect::Postgres).build( & query) ?;
+let columns = SqlxColumnMap::new()
+    .map("age", "users.age")?
+    .map("status", "users.status")?;
+let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build( & query) ?;
 
 assert_eq!(parts.binds.len(), 2);
 # Ok::<(), restqs::RqsError>(())
@@ -50,7 +56,7 @@ The adapter returns the `WHERE` clause without the `WHERE` keyword. It returns t
 `offset` as integers. It stores bind values in placeholder order.
 
 For PostgreSQL, the adapter emits numbered placeholders such as `$1` and `$2`. For MySQL and SQLite, it emits `?`
-placeholders. It quotes identifiers with the dialect rules and only quotes trusted catalog columns.
+placeholders. It quotes identifiers with the dialect rules and only quotes columns from the trusted adapter mapping.
 
 Null equality and inequality produce `IS NULL` and `IS NOT NULL` in every supported dialect and consume no bind values.
 For example, `status=null&age>=18` produces `"users"."status" IS NULL AND "users"."age" >= $1` for PostgreSQL, with only
@@ -181,7 +187,7 @@ An application that uses PostgreSQL can depend on SQLx in its own manifest:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.1", features = ["sqlx"] }
+restqs = { path = "../restqs", features = ["sqlx"] }
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio"] }
 ```
 
@@ -195,20 +201,26 @@ mod pagination;
 use pagination::{SqlStatement, append_postgres_pagination};
 use restqs::{
     FieldCatalog, RqsValue, parse,
-    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxQueryParts},
+    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap, SqlxQueryParts},
 };
 use sqlx::{PgPool, Row};
 
 async fn list_users(pool: &PgPool, raw: &str) -> Result<Vec<(i64, String)>, Box<dyn std::error::Error>> {
     let catalog = FieldCatalog::new()
-        .allow_integer("id", "users.id")?
-        .allow_text("name", "users.name")?
-        .allow_text("status", "users.status")?
-        .allow_integer("age", "users.age")?
-        .allow_boolean("active", "users.active")?;
+        .allow_integer("id")?
+        .allow_text("name")?
+        .allow_text("status")?
+        .allow_integer("age")?
+        .allow_boolean("active")?;
 
     let query = parse(raw, &catalog)?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+    let columns = SqlxColumnMap::new()
+        .map("id", "users.id")?
+        .map("name", "users.name")?
+        .map("status", "users.status")?
+        .map("age", "users.age")?
+        .map("active", "users.active")?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build(&query)?;
     let statement = postgres_users_sql(&parts)?;
     let mut query = sqlx::query(&statement.sql);
 
@@ -275,7 +287,7 @@ An application that uses SQLite can depend on SQLx in its own manifest:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.1", features = ["sqlx"] }
+restqs = { path = "../restqs", features = ["sqlx"] }
 sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
@@ -287,19 +299,24 @@ mod pagination;
 use pagination::{SqlStatement, append_sqlite_pagination};
 use restqs::{
     FieldCatalog, RqsValue, parse,
-    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxQueryParts},
+    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap, SqlxQueryParts},
 };
 use sqlx::{Row, SqlitePool};
 
 async fn list_sqlite_users(pool: &SqlitePool, raw: &str) -> Result<Vec<(i64, String)>, Box<dyn std::error::Error>> {
     let catalog = FieldCatalog::new()
-        .allow_integer("id", "users.id")?
-        .allow_text("name", "users.name")?
-        .allow_text("status", "users.status")?
-        .allow_integer("age", "users.age")?;
+        .allow_integer("id")?
+        .allow_text("name")?
+        .allow_text("status")?
+        .allow_integer("age")?;
 
     let query = parse(raw, &catalog)?;
-    let parts = SqlxAdapter::new(SqlDialect::Sqlite).build(&query)?;
+    let columns = SqlxColumnMap::new()
+        .map("id", "users.id")?
+        .map("name", "users.name")?
+        .map("status", "users.status")?
+        .map("age", "users.age")?;
+    let parts = SqlxAdapter::new(SqlDialect::Sqlite, columns).build(&query)?;
     let statement = sqlite_users_sql(&parts)?;
     let mut query = sqlx::query(&statement.sql);
 
@@ -346,7 +363,8 @@ fn bind_sqlite_value<'query>(
 
 ### Security Boundary In The Examples
 
-The examples do not concatenate raw query values into SQL. Generated SQL identifiers come from `FieldCatalog`. Fixed SQL
+The examples do not concatenate raw query values into SQL. Logical fields are authorized by `FieldCatalog` and physical
+SQL identifiers come from the separately configured `SqlxColumnMap`. Missing mappings fail before execution. Fixed SQL
 keywords come from repository code. User values enter the database through `.bind(...)`.
 
 The snippets treat regex as disabled. Text search remains unsupported. Date, date-time, and UUID values stay as text in
@@ -362,9 +380,9 @@ use restqs::{FieldCatalog, RqsQuery, parse};
 
 fn parse_users_query(raw_query: &str) -> restqs::RqsResult<RqsQuery> {
     let catalog = FieldCatalog::new()
-        .allow_text("status", "users.status")?
-        .allow_integer("age", "users.age")?
-        .allow_boolean("active", "users.active")?;
+        .allow_text("status")?
+        .allow_integer("age")?
+        .allow_boolean("active")?;
 
     parse(raw_query, &catalog)
 }
@@ -382,7 +400,7 @@ current release does not ship a SeaQuery adapter, but the plan already carries t
 |---------------------------|----------------------------------|
 | `Filter`                  | Condition expression             |
 | `FilterOp`                | Comparison or existence operator |
-| `FieldRef::column_name()` | Trusted column identifier        |
+| `FieldRef::public_name()` | Logical key resolved by the repository's trusted storage mapping |
 | `SortTerm`                | Ordered expression               |
 | `Projection`              | Select expression list           |
 | `Pagination`              | Limit and offset                 |
@@ -431,7 +449,7 @@ that adapter. Regex translation, case folding, collation behavior, and date comp
 The parser and adapter boundaries stay safest with a few rules:
 
 - Build the catalog per endpoint or authorization context.
-- Keep database column names in the catalog, not in request data.
+- Keep physical columns in trusted adapter mappings, separate from the logical catalog and request data.
 - Bind every value through the database library.
 - Keep regex off until the adapter has dialect rules and cost limits.
 - Treat `text_search_unsupported` as a deliberate release constraint.

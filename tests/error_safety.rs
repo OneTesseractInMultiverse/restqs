@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use restqs::{Field, FieldCatalog, RqsError, ValueKind, parse};
+use restqs::{FieldCatalog, RqsError, parse};
 
 #[test]
 fn filter_error_redacts_line_feed() {
@@ -36,7 +36,7 @@ fn filter_error_redacts_unicode_direction_override() {
 
 #[test]
 fn malformed_filter_error_does_not_disclose_value_text() -> restqs::RqsResult<()> {
-    let catalog = FieldCatalog::new().allow_text("name", "users.name")?;
+    let catalog = FieldCatalog::new().allow_text("name")?;
     let result = parse("name%0A=secret%3Eother", &catalog).map_err(|error| error.to_string());
 
     assert_eq!(result, Err("field [redacted] is invalid".to_owned()));
@@ -87,10 +87,36 @@ fn unknown_field_error_preserves_valid_dotted_identifier() {
 
 #[test]
 fn invalid_column_error_redacts_sql_text() {
-    let result = Field::new("name", "users.name; SELECT secret", ValueKind::Text)
-        .map_err(|error| error.to_string());
+    let message = RqsError::InvalidColumnName {
+        column: "users.name; SELECT secret".to_owned(),
+    }
+    .to_string();
 
-    assert_eq!(result, Err("column [redacted] is invalid".to_owned()));
+    assert_eq!(message, "column [redacted] is invalid");
+}
+
+#[test]
+fn missing_mapping_error_redacts_invalid_field() {
+    let error = RqsError::MissingColumnMapping {
+        field: "name\nsecret".to_owned(),
+    };
+
+    assert_eq!(
+        error.to_string(),
+        "field [redacted] has no SQL column mapping"
+    );
+}
+
+#[test]
+fn duplicate_mapping_error_redacts_invalid_field() {
+    let error = RqsError::DuplicateColumnMapping {
+        field: "name=secret".to_owned(),
+    };
+
+    assert_eq!(
+        error.to_string(),
+        "field [redacted] has more than one SQL column mapping"
+    );
 }
 
 #[test]

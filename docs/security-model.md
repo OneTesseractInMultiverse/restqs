@@ -4,8 +4,8 @@ RestQS treats all RQS input as untrusted. The parser protects identifiers, value
 limits. It does not replace authorization. The host application still decides which fields each actor can use.
 
 The core security idea is simple: user field names never become database identifiers. The parser resolves every public
-field through `FieldCatalog`. Adapters receive trusted column metadata from the catalog and typed user values from the
-plan.
+field through `FieldCatalog`. Plans contain logical field references and typed user values. SQL adapters resolve those
+references through a separate trusted `SqlxColumnMap`.
 
 ```mermaid
 flowchart LR
@@ -13,6 +13,7 @@ flowchart LR
   catalog["Trusted FieldCatalog"] --> parser
   parser --> plan["RqsQuery"]
   plan --> adapter["Adapter"]
+  columns["Trusted SqlxColumnMap"] --> adapter
   adapter --> sql["SQL fragments"]
   plan --> binds["Typed bind values"]
 ```
@@ -23,33 +24,40 @@ RQS appears in query strings. Attackers can send arbitrary field names, operator
 and pagination values. They can try to expose private fields, inject SQL syntax, force expensive scans, or trigger logs
 that reveal private input.
 
-RestQS reduces these risks through a narrow parser contract. It rejects unknown fields. It rejects invalid column
-identifiers during catalog creation. It casts values into `RqsValue`. It leaves database-specific execution to adapters
-and repositories.
+RestQS reduces these risks through a narrow parser contract. It rejects unknown fields and casts values into
+`RqsValue`. SQL configuration rejects invalid physical identifiers, duplicate mappings, and missing mappings for
+referenced fields. Database-specific execution stays in adapters and repositories.
 
 ## Identifier Safety
 
 SQL bind parameters protect values. They do not protect column names. A query builder that accepts raw user field names
 can still produce unsafe SQL.
 
-RestQS avoids that failure mode with `FieldCatalog`:
+RestQS separates logical authorization from trusted SQL configuration:
 
 ```rust
-use restqs::FieldCatalog;
+use restqs::{FieldCatalog, adapters::sqlx::SqlxColumnMap};
 
 let catalog = FieldCatalog::new()
-.allow_text("status", "orders.status") ?
-.allow_integer("amount", "orders.amount_cents") ?;
+.allow_text("status") ?
+.allow_integer("amount") ?;
+let columns = SqlxColumnMap::new()
+    .map("status", "orders.status")?
+    .map("amount", "orders.amount_cents")?;
 
 assert_eq!(catalog.len(), 2);
 # Ok::<(), restqs::RqsError>(())
 ```
 
-A request for `status` maps to `orders.status`. A request for `secret_token`
-fails with `unknown_field`. A field name such as `status drop` fails before the parser builds a plan.
+A request for `status` creates a logical field reference; the SQL adapter resolves it to `orders.status` using the
+explicit mapping. A request for `secret_token` fails with `unknown_field`, even if the SQL map contains that name.
+A field name such as `status drop` fails before the parser builds a plan.
 
-Column names must use dotted identifiers. Quotes, spaces, comments, and SQL syntax are rejected at catalog creation
-time. This rule keeps adapters from receiving untrusted SQL fragments.
+Physical column names must use dotted identifiers. Quotes, spaces, comments, and SQL syntax are rejected when a
+`SqlxColumnMap` entry is registered. Every field used by a filter, sort, or projection requires an explicit mapping;
+missing entries return `missing_column_mapping`. Logical names never become SQL identifiers by fallback, even when
+they look like database paths. Duplicate map keys return `duplicate_column_mapping`. Build these maps from trusted
+application configuration, never request parameters.
 
 Comparison parsing separates the field and operator before inspecting value syntax. Once the operator at that boundary
 is consumed, later comparison characters stay in the value. Catalog lookup and field diagnostics therefore receive
@@ -69,12 +77,14 @@ Accepted strings retain their original precision and offset and remain subject t
 ```rust
 use restqs::{
     FieldCatalog, parse,
-    adapters::sqlx::{SqlDialect, SqlxAdapter},
+    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
 };
 
-let catalog = FieldCatalog::new().allow_text("status", "orders.status") ?;
+let catalog = FieldCatalog::new().allow_text("status") ?;
 let query = parse("status=active", & catalog) ?;
-let parts = SqlxAdapter::new(SqlDialect::Postgres).build( & query) ?;
+let columns = SqlxColumnMap::new()
+    .map("status", "orders.status")?;
+let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build( & query) ?;
 
 assert_eq!(parts.where_clause, Some("\"orders\".\"status\" = $1".to_owned()));
 # Ok::<(), restqs::RqsError>(())
@@ -109,13 +119,15 @@ flags, not the regex language inside a pattern; the database still interprets na
 ```rust
 use restqs::{
     Field, FieldCatalog, FilterOp, ValueKind, parse,
-    adapters::sqlx::{SqlDialect, SqlxAdapter},
+    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
 };
 
-let email = Field::new("email", "users.email", ValueKind::Text) ?.allow_regex();
+let email = Field::new("email", ValueKind::Text) ?.allow_regex();
 let catalog = FieldCatalog::new().allow(email) ?;
 let query = parse("email=/@example.com$/i", & catalog) ?;
-let parts = SqlxAdapter::new(SqlDialect::Postgres)
+let columns = SqlxColumnMap::new()
+    .map("email", "users.email")?;
+let parts = SqlxAdapter::new(SqlDialect::Postgres, columns)
 .allow_regex()
 .build( & query) ?;
 
@@ -163,7 +175,7 @@ Applications can set tighter limits per endpoint:
 ```rust
 use restqs::{FieldCatalog, Parser, ParserConfig, ParserLimits};
 
-let catalog = FieldCatalog::new().allow_text("status", "orders.status") ?;
+let catalog = FieldCatalog::new().allow_text("status") ?;
 let parser = Parser::with_config(
 & catalog,
 ParserConfig::with_limits(ParserLimits {

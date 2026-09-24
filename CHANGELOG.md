@@ -4,7 +4,16 @@ User-facing changes are tracked in this file.
 
 The project uses semantic versioning.
 
-## Unreleased
+## Unreleased - 0.2.0
+
+### Changed
+
+The core catalog and plan now contain logical field identity, value kind, and query capabilities without SQL column
+metadata. `Field::new` and all `FieldCatalog::allow_*` builders drop the physical column argument; `column_name()`
+accessors are removed. `SqlxAdapter::new` requires an owned `SqlxColumnMap` and is no longer `Copy`. Every SQL filter,
+sort term, and projection resolves through that trusted configuration. Missing and duplicate entries return the new
+`missing_column_mapping` and `duplicate_column_mapping` error codes. Physical identifier validation moves into the
+adapter. This breaking API change targets 0.2.0; see [Migrating to 0.2](docs/migration-0.2.md).
 
 ### Fixed
 

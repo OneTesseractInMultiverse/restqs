@@ -6,7 +6,7 @@ use restqs::{
 };
 
 fn regex_catalog() -> RqsResult<FieldCatalog> {
-    FieldCatalog::new().allow(Field::new("email", "users.email", ValueKind::Text)?.allow_regex())
+    FieldCatalog::new().allow(Field::new("email", ValueKind::Text)?.allow_regex())
 }
 
 #[test]
@@ -189,7 +189,7 @@ fn parser_checks_operator_before_regex_flags() -> RqsResult<()> {
 
 #[test]
 fn parser_checks_field_permission_before_regex_flags() -> RqsResult<()> {
-    let catalog = FieldCatalog::new().allow_text("email", "users.email")?;
+    let catalog = FieldCatalog::new().allow_text("email")?;
     let result = parse("email=/admin/z", &catalog).map_err(|error| error.error_code());
 
     assert_eq!(result, Err("regex_disabled"));
@@ -224,13 +224,19 @@ fn explicit_text_bypasses_regex_flag_validation() -> RqsResult<()> {
 
 #[cfg(feature = "sqlx")]
 mod sqlx {
+    fn columns() -> RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
+        restqs::adapters::sqlx::SqlxColumnMap::new().map("email", "users.email")
+    }
+
     use super::*;
     use restqs::RqsError;
     use restqs::adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxQueryParts};
 
     fn build_regex(input: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
         let query = parse(input, &regex_catalog()?)?;
-        SqlxAdapter::new(dialect).allow_regex().build(&query)
+        SqlxAdapter::new(dialect, columns()?)
+            .allow_regex()
+            .build(&query)
     }
 
     #[test]
@@ -380,7 +386,7 @@ mod sqlx {
     #[test]
     fn adapter_permission_precedes_dialect_flag_support() -> RqsResult<()> {
         let query = parse("email=/a.b/s", &regex_catalog()?)?;
-        let result = SqlxAdapter::new(SqlDialect::Postgres).build(&query);
+        let result = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query);
 
         assert_eq!(
             result,
