@@ -63,10 +63,18 @@ positions. Ordered comparisons with null fail at adapter build time with `adapte
 The repository owns the base SQL and the bind calls. RestQS provides the parts. The final assembly lives beside result
 mapping and transaction code.
 
+The examples below share [the pagination module](../examples/support/pagination.rs). For a standalone example, copy that
+file beside `main.rs` as `pagination.rs` and declare `mod pagination;` at crate scope. Adjust the module path for your
+application's layout. This is application-owned example code, not an exported RestQS API. Its `SqlStatement` keeps
+completed SQL and the full bind sequence together.
+
 ```rust
+mod pagination;
+
+use pagination::{SqlStatement, append_postgres_pagination};
 use restqs::{RqsValue, adapters::sqlx::SqlxQueryParts};
 
-fn users_select_sql(parts: &SqlxQueryParts) -> String {
+fn users_select_sql(parts: &SqlxQueryParts) -> Result<SqlStatement, std::num::TryFromIntError> {
     let projection = if parts.projection.is_empty() {
         "\"users\".\"id\", \"users\".\"status\"".to_owned()
     } else {
@@ -82,7 +90,7 @@ fn users_select_sql(parts: &SqlxQueryParts) -> String {
         sql.push_str(" ORDER BY ");
         sql.push_str(order_by);
     }
-    sql
+    append_postgres_pagination(&sql, parts)
 }
 
 let parts = SqlxQueryParts {
@@ -94,14 +102,56 @@ offset: None,
 binds: vec![RqsValue::Text("active".to_owned())],
 };
 
+let statement = users_select_sql(&parts)?;
+
 assert_eq!(
-    users_select_sql(&parts),
-    "SELECT \"users\".\"id\", \"users\".\"status\" FROM \"users\" WHERE \"users\".\"status\" = $1"
+    statement.sql,
+    "SELECT \"users\".\"id\", \"users\".\"status\" FROM \"users\" WHERE \"users\".\"status\" = $1 LIMIT $2"
 );
+# Ok::<(), std::num::TryFromIntError>(())
 ```
 
 Real SQLx code then binds each `RqsValue` with the matching database type. Keep that mapping inside the repository. That
-location has the schema knowledge needed for precise binding.
+location has the schema knowledge needed for precise binding. Bind `statement.binds`, which includes pagination, rather
+than only `parts.binds`. The example above binds `Text("active")` followed by `Integer(25)`.
+
+### Pagination Contract
+
+The shared module appends pagination after the repository's filters and ordering. The base SQL must contain exactly
+the filter placeholders described by `parts.binds`, and no pagination or trailing semicolon. PostgreSQL numbering starts
+at `parts.binds.len() + 1`, so lists and null comparisons do not shift pagination incorrectly. SQLite uses positional
+placeholders. Both bind filter values first, then the supplied limit, then the supplied offset, regardless of query
+parameter order.
+
+| Requested controls | PostgreSQL suffix after one filter bind | SQLite suffix | Appended binds |
+| --- | --- | --- | --- |
+| `limit=1&skip=2` | `LIMIT $2 OFFSET $3` | `LIMIT ? OFFSET ?` | `Integer(1), Integer(2)` |
+| `limit=1` | `LIMIT $2` | `LIMIT ?` | `Integer(1)` |
+| `skip=2` | `OFFSET $2` | `LIMIT -1 OFFSET ?` | `Integer(2)` |
+| Neither | None | None | None |
+
+PostgreSQL permits an offset without a limit. SQLite requires a limit when using an offset; the fixed `-1` sentinel
+means no upper bound and consumes no bind. See [PostgreSQL LIMIT and OFFSET](https://www.postgresql.org/docs/current/queries-limit.html)
+and [SQLite's LIMIT clause](https://www.sqlite.org/lang_select.html#the_limit_clause).
+
+Both values use `i64::try_from`, matching the signed integer binds used by these repositories. Values above `i64::MAX`
+return `TryFromIntError` before a SQLx query is created. They are never narrowed with `as`, clamped, or turned into an
+unlimited sentinel. `limit=0` is preserved and returns no rows.
+
+These examples preserve an omitted limit as **no row cap**, including offset-only requests. The parser's `max_limit`
+only bounds an explicitly supplied limit; it does not add a default. Applications using `fetch_all` should enforce
+their own default or required limit before calling these repositories. For repeatable pages, repository ordering must
+include a unique key; pagination does not invent an ordering or protect against changes between requests.
+
+Run the focused SQL and bind-sequence checks without a database or SQLx dependency:
+
+```sh
+cargo test --all-features --test repository_pagination
+```
+
+These tests compile the same pagination module linked above and cover both dialects, limit-only and offset-only
+requests, null and list filter binds, zero values, omitted limits, and signed-integer boundaries. They also run in
+`make test`. Database execution remains the application's responsibility.
 
 ## Documentation-Only SQLx Examples
 
@@ -140,6 +190,9 @@ float values. Date, date-time, and UUID values stay as text here. A repository c
 types after it owns the schema rules.
 
 ```rust
+mod pagination;
+
+use pagination::{SqlStatement, append_postgres_pagination};
 use restqs::{
     FieldCatalog, RqsValue, parse,
     adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxQueryParts},
@@ -156,23 +209,25 @@ async fn list_users(pool: &PgPool, raw: &str) -> Result<Vec<(i64, String)>, Box<
 
     let query = parse(raw, &catalog)?;
     let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
-    let sql = postgres_users_sql(&parts);
-    let mut query = sqlx::query(&sql);
+    let statement = postgres_users_sql(&parts)?;
+    let mut query = sqlx::query(&statement.sql);
 
-    for value in &parts.binds {
+    for value in &statement.binds {
         query = bind_postgres_value(query, value)?;
     }
 
     let rows = query.fetch_all(pool).await?;
-    let users = rows
-        .into_iter()
-        .map(|row| Ok((row.try_get("id")?, row.try_get("name")?)))
-        .collect::<Result<Vec<_>, sqlx::Error>>()?;
-
-    Ok(users)
+    Ok(decode_postgres_users(rows)?)
 }
 
-fn postgres_users_sql(parts: &SqlxQueryParts) -> String {
+fn decode_postgres_users(rows: Vec<sqlx::postgres::PgRow>) -> Result<Vec<(i64, String)>, sqlx::Error> {
+    rows
+        .into_iter()
+        .map(|row| Ok((row.try_get("id")?, row.try_get("name")?)))
+        .collect()
+}
+
+fn postgres_users_sql(parts: &SqlxQueryParts) -> Result<SqlStatement, std::num::TryFromIntError> {
     let projection = if parts.projection.is_empty() {
         r#""users"."id", "users"."name""#.to_owned()
     } else {
@@ -188,7 +243,7 @@ fn postgres_users_sql(parts: &SqlxQueryParts) -> String {
         sql.push_str(" ORDER BY ");
         sql.push_str(order_by);
     }
-    sql
+    append_postgres_pagination(&sql, parts)
 }
 
 fn bind_postgres_value<'query>(
@@ -211,8 +266,8 @@ fn bind_postgres_value<'query>(
 }
 ```
 
-The PostgreSQL adapter emits numbered placeholders such as `$1` and `$2`. Pagination placeholders can be appended by the
-repository after `parts.binds.len()`.
+The shared pagination module appends numbered placeholders after `parts.binds.len()` and supplies the corresponding
+integer values in `statement.binds`. For `status=active&limit=1&skip=1`, the last two placeholders are `$2` and `$3`.
 
 ### SQLite
 
@@ -227,9 +282,12 @@ sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runti
 SQLite uses `?` placeholders. The repository can reuse the same catalog and bind mapping style:
 
 ```rust
+mod pagination;
+
+use pagination::{SqlStatement, append_sqlite_pagination};
 use restqs::{
     FieldCatalog, RqsValue, parse,
-    adapters::sqlx::{SqlDialect, SqlxAdapter},
+    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxQueryParts},
 };
 use sqlx::{Row, SqlitePool};
 
@@ -242,21 +300,28 @@ async fn list_sqlite_users(pool: &SqlitePool, raw: &str) -> Result<Vec<(i64, Str
 
     let query = parse(raw, &catalog)?;
     let parts = SqlxAdapter::new(SqlDialect::Sqlite).build(&query)?;
-    let where_clause = parts.where_clause.unwrap_or_else(|| "1 = 1".to_owned());
-    let sql = format!("SELECT \"users\".\"id\", \"users\".\"name\" FROM users WHERE {where_clause}");
-    let mut query = sqlx::query(&sql);
+    let statement = sqlite_users_sql(&parts)?;
+    let mut query = sqlx::query(&statement.sql);
 
-    for value in &parts.binds {
+    for value in &statement.binds {
         query = bind_sqlite_value(query, value)?;
     }
 
     let rows = query.fetch_all(pool).await?;
-    let users = rows
+    Ok(decode_sqlite_users(rows)?)
+}
+
+fn decode_sqlite_users(rows: Vec<sqlx::sqlite::SqliteRow>) -> Result<Vec<(i64, String)>, sqlx::Error> {
+    rows
         .into_iter()
         .map(|row| Ok((row.try_get("id")?, row.try_get("name")?)))
-        .collect::<Result<Vec<_>, sqlx::Error>>()?;
+        .collect()
+}
 
-    Ok(users)
+fn sqlite_users_sql(parts: &SqlxQueryParts) -> Result<SqlStatement, std::num::TryFromIntError> {
+    let where_clause = parts.where_clause.as_deref().unwrap_or("1 = 1");
+    let sql = format!("SELECT \"users\".\"id\", \"users\".\"name\" FROM users WHERE {where_clause}");
+    append_sqlite_pagination(&sql, parts)
 }
 
 fn bind_sqlite_value<'query>(
