@@ -104,6 +104,11 @@ and list values. Typed cast wrappers clarify intent for ambiguous values:
 `datetime(2026-06-06T12:30:00Z)`, and
 `uuid(550e8400-e29b-41d4-a716-446655440000)`.
 
+Lists use `in(...)` or `list(...)` with `=` or `!=`, producing `In` or `NotIn`
+filters. Ordered comparisons (`>`, `>=`, `<`, `<=`) with lists return
+`invalid_operator` during parsing. The SQLx adapter expands accepted list
+items into individual binds.
+
 Dates use Gregorian calendar validation. Timestamps require a valid date,
 time, and `Z` or numeric offset; both offset signs and fractional seconds are
 supported. Leap seconds are rejected. Encode positive offset signs as `%2B`

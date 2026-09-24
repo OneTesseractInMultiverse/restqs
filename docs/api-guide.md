@@ -147,6 +147,15 @@ existence filter. Empty field names are still rejected.
 | `status=in(active,pending)`  | `FilterOp::In`        |
 | `status!=in(active,pending)` | `FilterOp::NotIn`     |
 
+Both `in(...)` and its alias `list(...)` support `=` and `!=` only. After value-size, list-item-count, and item-type
+validation, ordered comparisons (`>`, `>=`, `<`, `<=`) with a list return `invalid_operator` before a plan is produced.
+For example, `age>in(1,2)` and `age<=list(1,2)` are rejected, including when the syntax is percent-encoded. Ordered
+comparisons with empty lists are rejected as well. Use `str(in(a,b))` on a text field to compare against literal text.
+
+The SQLx adapter expands each accepted `In` or `NotIn` list into one scalar bind per item, preserving item and filter
+order across PostgreSQL, MySQL, and SQLite. Empty membership lists (`age=in()` or `age!=list()`) still parse but return
+`adapter_unsupported` with feature metadata `empty list` during SQL translation.
+
 Comparison filters map to typed plan nodes:
 
 ```rust

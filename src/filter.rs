@@ -6,6 +6,9 @@ use crate::{
 };
 
 /// Supported filter operators.
+///
+/// List operands support equality and inequality only, parsed as [`Self::In`]
+/// and [`Self::NotIn`]. Ordered comparisons with lists are rejected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FilterOp {
     /// Equals.
@@ -163,7 +166,7 @@ pub(crate) fn build_value_filter(
     }
 
     let value = parse_value(field.public_name(), raw_value, field.value_kind(), limits)?;
-    let op = list_operator(op, &value);
+    let op = list_operator(op, &value)?;
     Ok(Filter::new(field, op, Some(value)))
 }
 
@@ -175,11 +178,12 @@ fn validate_regex_operator(op: FilterOp) -> RqsResult<()> {
     }
 }
 
-fn list_operator(op: FilterOp, value: &RqsValue) -> FilterOp {
+fn list_operator(op: FilterOp, value: &RqsValue) -> RqsResult<FilterOp> {
     match (op, value) {
-        (FilterOp::Eq, RqsValue::List(_)) => FilterOp::In,
-        (FilterOp::Ne, RqsValue::List(_)) => FilterOp::NotIn,
-        _ => op,
+        (FilterOp::Eq, RqsValue::List(_)) => Ok(FilterOp::In),
+        (FilterOp::Ne, RqsValue::List(_)) => Ok(FilterOp::NotIn),
+        (_, RqsValue::List(_)) => Err(RqsError::InvalidOperator),
+        _ => Ok(op),
     }
 }
 

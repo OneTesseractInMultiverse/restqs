@@ -61,6 +61,10 @@ values in binds.
 The parser casts every value according to the catalog type. The SQLx-oriented adapter returns bind values in placeholder
 order. It does not concatenate user values into SQL text.
 
+List operands accept equality and inequality only. The parser rejects ordered list comparisons with `invalid_operator`
+after the existing value-size, item-count, and item-type checks. Accepted membership lists become individual scalar
+binds in the SQLx adapter, so a list cannot enter a scalar comparison through the public parser API.
+
 Date and date-time parsing checks calendar validity and bounded clock and offset components before constructing typed
 values. The [documented grammar](api-guide.md#dates-and-date-times) requires a timestamp offset and rejects leap seconds.
 Scalar inputs, cast wrappers, and list items use the same validation; malformed temporal values return `invalid_value`.
