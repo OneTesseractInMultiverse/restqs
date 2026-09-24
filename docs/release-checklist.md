@@ -4,7 +4,7 @@ Use this checklist before publishing a new crate version. See [Publishing](publi
 
 ## Prepare the Version
 
-- Choose an unpublished version; `0.1.0` is already on crates.io.
+- Choose an unpublished version after checking the crates.io version history.
 - Update `version` in `Cargo.toml` and record user-facing changes in `CHANGELOG.md`.
 - Review public API, plan shape, and `RqsError::error_code()` compatibility.
 - Update README and `/docs` for changed behavior.

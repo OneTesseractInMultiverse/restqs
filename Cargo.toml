@@ -1,6 +1,6 @@
 [package]
 name = "restqs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 description = "REST Query Syntax parser for safe REST API filtering plans."
