@@ -19,6 +19,9 @@ Parameter classification, control-size policy, and duplicate-filter identity and
 computations. The parser coordinates them before updating query state. This refactor preserves syntax, stable error
 codes, validation precedence, and repeated-control behavior without changing the public API.
 
+Sort-prefix interpretation is now a pure computation, separate from authorized field resolution and sort-term
+construction. Bare, descending, and percent-encoded ascending sort terms retain their syntax and validation errors.
+
 ### Fixed
 
 The SQLx repository examples now apply parsed limits and offsets before execution and bind pagination after filter

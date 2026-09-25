@@ -60,6 +60,12 @@ Filter splitting is a pure computation over decoded text. It finds the field bou
 operator at that position, and returns borrowed field and value slices. The parser coordinates catalog resolution and
 typed value parsing after this split; it does not reinterpret comparison characters inside the value as field syntax.
 
+Sort-token interpretation is a pure computation in `sort`. It removes at most one leading `-` or `+` from a decoded
+token and returns the borrowed logical field name and direction, defaulting bare names to ascending. `parse_sort_term`
+coordinates this split, authorized catalog resolution, and `SortTerm` construction. Empty or malformed names still
+fail field validation, and valid unknown names still fail catalog lookup. URL decoding remains in `parameter`, so
+an explicit ascending prefix in a query string must use `%2B`.
+
 The internal `temporal` module owns pure calendar, clock, fraction, and offset validation. The value layer uses those
 computations before constructing date or date-time values. Scalars, wrappers, and lists share that path, so validation
 does not depend on an adapter, external configuration, or a clock.
