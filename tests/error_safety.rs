@@ -129,6 +129,61 @@ fn manually_constructed_unknown_field_error_redacts_malformed_identifier() {
 }
 
 #[test]
+fn unknown_field_error_redacts_line_feed() {
+    let error = RqsError::UnknownField {
+        field: "name\nINJECTED".to_owned(),
+    };
+
+    assert_eq!(error.to_string(), "field [redacted] is not allowed");
+}
+
+#[test]
+fn unknown_field_error_redacts_terminal_escape() {
+    let error = RqsError::UnknownField {
+        field: "name\u{1b}[31m".to_owned(),
+    };
+
+    assert_eq!(error.to_string(), "field [redacted] is not allowed");
+}
+
+#[test]
+fn invalid_column_error_redacts_carriage_return() {
+    let error = RqsError::InvalidColumnName {
+        column: "users.name\rINJECTED".to_owned(),
+    };
+
+    assert_eq!(error.to_string(), "column [redacted] is invalid");
+}
+
+#[test]
+fn invalid_field_error_redacts_nul() {
+    let error = RqsError::InvalidFieldName {
+        field: "name\0secret".to_owned(),
+    };
+
+    assert_eq!(error.to_string(), "field [redacted] is invalid");
+}
+
+#[test]
+fn invalid_value_error_omits_decoded_value_text() -> restqs::RqsResult<()> {
+    let catalog = FieldCatalog::new().allow_integer("age")?;
+    let result = parse("age=private%0Avalue%1B%5B31m", &catalog).map_err(|error| error.to_string());
+
+    assert_eq!(result, Err("field age needs integer".to_owned()));
+    Ok(())
+}
+
+#[test]
+fn duplicate_filter_error_omits_both_values() -> restqs::RqsResult<()> {
+    let catalog = FieldCatalog::new().allow_text("status")?;
+    let result = parse("status=first_secret&status=second%0Asecret", &catalog)
+        .map_err(|error| error.to_string());
+
+    assert_eq!(result, Err("field status repeats operator =".to_owned()));
+    Ok(())
+}
+
+#[test]
 fn missing_value_error_redacts_invalid_field() {
     let error = RqsError::MissingValue {
         field: "bad\nINJECTED".to_owned(),
