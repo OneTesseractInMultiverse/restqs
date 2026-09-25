@@ -62,8 +62,14 @@ Important failure cases include:
 - Pagination above the configured limit.
 - Too many parameters or list items.
 
-Each failure test checks `RqsError::error_code()`. Display text can change for clarity. Error codes are
-compatibility-sensitive.
+Error-code tests track compatibility-sensitive `RqsError::error_code()` values. Keep display tests separate: compare
+rendered messages against concrete expected text for each relevant error variant. Display wording can change for
+clarity when the corresponding tests are updated deliberately.
+
+Safety tests use hostile field and column names to check newline, carriage-return, NUL, and terminal-escape redaction.
+Also verify that malformed input and invalid or duplicated filter values do not appear in rendered messages. Preserve
+the distinction between valid identifiers, which remain visible within the display byte limit, and malformed or long
+identifiers, which become `[redacted]`. Counting messages does not test any of these properties.
 
 ## Repository Example Checks
 

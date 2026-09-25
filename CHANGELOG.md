@@ -28,6 +28,9 @@ insertion. PostgreSQL numbering, MySQL and SQLite anonymous placeholders, SQL fr
 Bind-order tests and the integration example now compare complete typed value sequences. Focused mixed scalar/list
 tests cover input order and repeated list values instead of relying on bind counts.
 
+Error-display tests now check rendered messages for each error variant and hostile-input redaction instead of counting
+messages. Stable error-code checks remain separate from display formatting and safety checks.
+
 ### Fixed
 
 The SQLx repository examples now apply parsed limits and offsets before execution and bind pagination after filter
