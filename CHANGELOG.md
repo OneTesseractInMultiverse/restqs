@@ -22,6 +22,9 @@ codes, validation precedence, and repeated-control behavior without changing the
 Sort-prefix interpretation is now a pure computation, separate from authorized field resolution and sort-term
 construction. Bare, descending, and percent-encoded ascending sort terms retain their syntax and validation errors.
 
+SQL placeholder formatting is now a pure computation over the dialect and explicit bind position, separate from bind
+insertion. PostgreSQL numbering, MySQL and SQLite anonymous placeholders, SQL fragments, and bind order are unchanged.
+
 ### Fixed
 
 The SQLx repository examples now apply parsed limits and offsets before execution and bind pagination after filter

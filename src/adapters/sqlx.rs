@@ -234,10 +234,16 @@ impl<'a> FragmentBuilder<'a> {
 
     fn push_bind(&mut self, value: RqsValue) -> String {
         self.binds.push(value);
-        match self.dialect {
-            SqlDialect::Postgres => format!("${}", self.binds.len()),
-            SqlDialect::MySql | SqlDialect::Sqlite => "?".to_owned(),
-        }
+        let position = self.binds.len();
+        format_placeholder(self.dialect, position)
+    }
+}
+
+/// Format a placeholder for an explicit one-based bind position.
+fn format_placeholder(dialect: SqlDialect, position: usize) -> String {
+    match dialect {
+        SqlDialect::Postgres => format!("${position}"),
+        SqlDialect::MySql | SqlDialect::Sqlite => "?".to_owned(),
     }
 }
 
@@ -340,6 +346,26 @@ fn quote_identifier(dialect: SqlDialect, value: &str) -> String {
 mod tests {
     use super::*;
     use crate::{FieldRef, Projection, RegexLiteral, RqsQuery, SortDirection, SortTerm, ValueKind};
+
+    #[test]
+    fn postgres_placeholder_formats_the_first_position() {
+        assert_eq!(format_placeholder(SqlDialect::Postgres, 1), "$1");
+    }
+
+    #[test]
+    fn postgres_placeholder_formats_an_explicit_later_position() {
+        assert_eq!(format_placeholder(SqlDialect::Postgres, 12), "$12");
+    }
+
+    #[test]
+    fn mysql_placeholder_does_not_include_the_position() {
+        assert_eq!(format_placeholder(SqlDialect::MySql, 12), "?");
+    }
+
+    #[test]
+    fn sqlite_placeholder_does_not_include_the_position() {
+        assert_eq!(format_placeholder(SqlDialect::Sqlite, 12), "?");
+    }
 
     fn columns() -> RqsResult<SqlxColumnMap> {
         SqlxColumnMap::new()
