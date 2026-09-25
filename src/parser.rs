@@ -11,8 +11,8 @@ use self::{
 };
 use crate::{
     FieldCatalog, FieldRef, Filter, FilterOp, ParserLimits, Projection, RqsError, RqsQuery,
-    RqsResult, SortDirection, SortTerm, catalog::validate_public_name, filter::build_value_filter,
-    parameter::decode_parameters,
+    RqsResult, SortTerm, catalog::validate_public_name, filter::build_value_filter,
+    parameter::decode_parameters, sort::split_sort_token,
 };
 
 /// Parser configuration.
@@ -122,12 +122,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_sort_term(&self, item: &str) -> RqsResult<SortTerm> {
-        let (direction, field_name) = match item.as_bytes().first() {
-            Some(b'-') => (SortDirection::Desc, &item[1..]),
-            Some(b'+') => (SortDirection::Asc, &item[1..]),
-            _ => (SortDirection::Asc, item),
-        };
-        Ok(SortTerm::new(self.resolve_field(field_name)?, direction))
+        let (field_name, direction) = split_sort_token(item);
+        let field = self.resolve_field(field_name)?;
+        Ok(SortTerm::new(field, direction))
     }
 
     fn apply_projection(&self, value: &str, output: &mut RqsQuery) -> RqsResult<()> {
