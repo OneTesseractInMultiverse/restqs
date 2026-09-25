@@ -49,6 +49,13 @@ flowchart TD
 A function either coordinates work or computes a value. A coordinator calls smaller functions and assembles state. A
 computation receives input and returns one result. It does not perform unrelated orchestration.
 
+The parser's internal `parameter_policy` module classifies decoded text into an explicit parameter kind and validates
+control value sizes without changing the plan. `apply_parameter` coordinates classification, validation, and dispatch.
+The internal `filter_policy` module computes duplicate identities from logical field names and normalized operator
+tokens, then checks them against an immutable set of seen identities. `apply_filter` parses and validates before
+explicitly updating that set and appending the filter. Repeated controls retain their existing replacement behavior;
+filter validation errors still take precedence over duplicate rejection.
+
 Filter splitting is a pure computation over decoded text. It finds the field boundary, recognizes the longest supported
 operator at that position, and returns borrowed field and value slices. The parser coordinates catalog resolution and
 typed value parsing after this split; it does not reinterpret comparison characters inside the value as field syntax.

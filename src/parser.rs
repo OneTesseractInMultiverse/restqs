@@ -1,11 +1,18 @@
 //! RQS parser orchestration.
 
+mod filter_policy;
+mod parameter_policy;
+
 use std::collections::BTreeSet;
 
+use self::{
+    filter_policy::{FilterKey, filter_key, validate_new_filter},
+    parameter_policy::{Parameter, classify_parameter, validate_control_size},
+};
 use crate::{
     FieldCatalog, FieldRef, Filter, FilterOp, ParserLimits, Projection, RqsError, RqsQuery,
     RqsResult, SortDirection, SortTerm, catalog::validate_public_name, filter::build_value_filter,
-    limits::validate_value_size, parameter::decode_parameters,
+    parameter::decode_parameters,
 };
 
 /// Parser configuration.
@@ -73,35 +80,29 @@ impl<'a> Parser<'a> {
         &self,
         parameter: &str,
         output: &mut RqsQuery,
-        seen_filters: &mut BTreeSet<(String, &'static str)>,
+        seen_filters: &mut BTreeSet<FilterKey>,
     ) -> RqsResult<()> {
-        if parameter.starts_with("$text=") {
-            return Err(RqsError::TextSearchUnsupported);
+        let parameter = classify_parameter(parameter)?;
+        validate_control_size(parameter, self.config.limits().max_value_bytes)?;
+        match parameter {
+            Parameter::Sort(value) => self.apply_sort(value, output),
+            Parameter::Projection(value) => self.apply_projection(value, output),
+            Parameter::Limit(value) => self.apply_limit(value, output),
+            Parameter::Offset(value) => self.apply_offset(value, output),
+            Parameter::Filter(value) => self.apply_filter(value, output, seen_filters),
         }
-        if let Some(value) = parameter.strip_prefix("sort=") {
-            validate_value_size("sort", value, self.config.limits().max_value_bytes)?;
-            return self.apply_sort(value, output);
-        }
-        if let Some(value) = parameter.strip_prefix("fields=") {
-            validate_value_size("fields", value, self.config.limits().max_value_bytes)?;
-            return self.apply_projection(value, output);
-        }
-        if let Some(value) = parameter.strip_prefix("limit=") {
-            validate_value_size("limit", value, self.config.limits().max_value_bytes)?;
-            return self.apply_limit(value, output);
-        }
-        if let Some(value) = parameter.strip_prefix("skip=") {
-            validate_value_size("skip", value, self.config.limits().max_value_bytes)?;
-            return self.apply_offset(value, output);
-        }
+    }
+
+    fn apply_filter(
+        &self,
+        parameter: &str,
+        output: &mut RqsQuery,
+        seen_filters: &mut BTreeSet<FilterKey>,
+    ) -> RqsResult<()> {
         let filter = self.parse_filter(parameter)?;
-        let key = (filter.field().public_name().to_owned(), filter.op().token());
-        if !seen_filters.insert(key.clone()) {
-            return Err(RqsError::DuplicateFilter {
-                field: key.0,
-                operator: key.1,
-            });
-        }
+        let key = filter_key(&filter);
+        validate_new_filter(&key, seen_filters)?;
+        seen_filters.insert(key);
         output.push_filter(filter);
         Ok(())
     }
