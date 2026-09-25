@@ -130,6 +130,11 @@ unsupported-comparison error from the typed value and operator. The comparison c
 without changing bind state, or allocates a scalar bind and delegates SQL formatting to a pure computation. The core
 plan retains its comparison operator and typed null value.
 
+Placeholder formatting is a pure computation over the SQL dialect and an explicit one-based bind position. The bind
+coordinator appends the value, reads the resulting position, and calls that formatter. Comparisons, lists, and regex
+share this path: PostgreSQL receives a continuous numbered sequence, while MySQL and SQLite receive anonymous `?`
+placeholders. Null comparisons and existence predicates do not consume positions.
+
 ```mermaid
 sequenceDiagram
   participant P as Parser
