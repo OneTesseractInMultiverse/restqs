@@ -38,6 +38,10 @@ behavior or one failure mode.
 Coverage alone does not prove behavior. Tests must prove correctness. Each operator needs a positive case. Each failure
 mode needs a negative case. Each adapter path needs expected fragment text and bind order.
 
+Compare the complete ordered `RqsValue` vector in a bind test. A length-only assertion cannot detect reordered or
+replaced values. Cover list expansion between scalar filters and before a scalar filter, including unsorted and
+repeated list values. Keep each expected sequence in its test and setup helpers free of assertions.
+
 Use concrete input. Prefer `age>=18` over synthetic placeholders. Prefer a real catalog entry such as `users.age` over a
 vague `table.column` example.
 
