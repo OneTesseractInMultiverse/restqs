@@ -25,6 +25,9 @@ construction. Bare, descending, and percent-encoded ascending sort terms retain 
 SQL placeholder formatting is now a pure computation over the dialect and explicit bind position, separate from bind
 insertion. PostgreSQL numbering, MySQL and SQLite anonymous placeholders, SQL fragments, and bind order are unchanged.
 
+Bind-order tests and the integration example now compare complete typed value sequences. Focused mixed scalar/list
+tests cover input order and repeated list values instead of relying on bind counts.
+
 ### Fixed
 
 The SQLx repository examples now apply parsed limits and offsets before execution and bind pagination after filter

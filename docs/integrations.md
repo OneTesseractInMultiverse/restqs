@@ -34,7 +34,7 @@ The adapter accepts a parsed plan and returns SQLx-ready parts:
 
 ```rust
 use restqs::{
-    FieldCatalog, parse,
+    FieldCatalog, RqsValue, parse,
     adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
 };
 
@@ -47,7 +47,10 @@ let columns = SqlxColumnMap::new()
     .map("status", "users.status")?;
 let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build( & query) ?;
 
-assert_eq!(parts.binds.len(), 2);
+assert_eq!(
+    parts.binds,
+    vec![RqsValue::Integer(18), RqsValue::Text("active".to_owned())]
+);
 # Ok::<(), restqs::RqsError>(())
 ```
 

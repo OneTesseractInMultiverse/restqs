@@ -94,7 +94,44 @@ fn sqlx_adapter_preserves_bind_order() -> restqs::RqsResult<()> {
     let query = parse("age>=18&status=active", &catalog()?)?;
     let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
 
-    assert_eq!(parts.binds.len(), 2);
+    assert_eq!(
+        parts.binds,
+        vec![RqsValue::Integer(18), RqsValue::Text("active".to_owned())]
+    );
+    Ok(())
+}
+
+#[test]
+fn sqlx_adapter_preserves_list_order_between_scalar_binds() -> restqs::RqsResult<()> {
+    let query = parse("age>=18&status=in(pending,active)&age<65", &catalog()?)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
+
+    assert_eq!(
+        parts.binds,
+        vec![
+            RqsValue::Integer(18),
+            RqsValue::Text("pending".to_owned()),
+            RqsValue::Text("active".to_owned()),
+            RqsValue::Integer(65),
+        ]
+    );
+    Ok(())
+}
+
+#[test]
+fn sqlx_adapter_preserves_list_duplicates_before_a_scalar_bind() -> restqs::RqsResult<()> {
+    let query = parse("age=in(65,18,65)&status=active", &catalog()?)?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns()?).build(&query)?;
+
+    assert_eq!(
+        parts.binds,
+        vec![
+            RqsValue::Integer(65),
+            RqsValue::Integer(18),
+            RqsValue::Integer(65),
+            RqsValue::Text("active".to_owned()),
+        ]
+    );
     Ok(())
 }
 
