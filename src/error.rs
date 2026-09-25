@@ -34,6 +34,11 @@ pub enum RqsError {
         /// Invalid field name.
         field: String,
     },
+    /// A public field name is reserved for a query control.
+    ReservedFieldName {
+        /// Conflicting logical field name.
+        field: String,
+    },
     /// A database column name is not valid.
     InvalidColumnName {
         /// Invalid column name.
@@ -134,6 +139,7 @@ impl RqsError {
             Self::TooManyParameters { .. } => "too_many_parameters",
             Self::InvalidEncoding => "invalid_encoding",
             Self::InvalidFieldName { .. } => "invalid_field_name",
+            Self::ReservedFieldName { .. } => "reserved_field_name",
             Self::InvalidColumnName { .. } => "invalid_column_name",
             Self::MissingColumnMapping { .. } => "missing_column_mapping",
             Self::DuplicateColumnMapping { .. } => "duplicate_column_mapping",
@@ -176,6 +182,11 @@ impl Display for RqsError {
                 formatter,
                 "column {} is invalid",
                 diagnostic_identifier(column)
+            ),
+            Self::ReservedFieldName { field } => write!(
+                formatter,
+                "field {} is reserved for query controls",
+                diagnostic_identifier(field)
             ),
             Self::UnknownField { field } => write!(
                 formatter,

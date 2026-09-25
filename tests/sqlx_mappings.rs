@@ -274,6 +274,29 @@ fn mapping_rejects_invalid_logical_name() {
 }
 
 #[test]
+fn mapping_rejects_a_reserved_logical_name() {
+    let result = SqlxColumnMap::new()
+        .map("limit", "users.limit")
+        .map_err(|error| error.error_code());
+
+    assert_eq!(result, Err("reserved_field_name"));
+}
+
+#[test]
+fn alias_can_map_to_a_physical_column_named_like_a_control() -> RqsResult<()> {
+    let catalog = FieldCatalog::new().allow_integer("row_limit")?;
+    let query = parse("row_limit=5&limit=10", &catalog)?;
+    let columns = SqlxColumnMap::new().map("row_limit", "users.limit")?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build(&query)?;
+
+    assert_eq!(
+        parts.where_clause.as_deref(),
+        Some("\"users\".\"limit\" = $1")
+    );
+    Ok(())
+}
+
+#[test]
 fn mapping_rejects_sql_in_column_name() {
     let result = SqlxColumnMap::new()
         .map("status", "users.status;drop")

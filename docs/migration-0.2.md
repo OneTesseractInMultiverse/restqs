@@ -27,9 +27,35 @@ let email = Field::new("email", ValueKind::Text)?.allow_regex();
 ```
 
 Every `allow_*` convenience method drops its column argument. `Field::column_name()` and `FieldRef::column_name()`
-are removed. Use `public_name()` for logical identity. Value kinds, endpoint allowlisting, public query-name grammar,
+are removed. Use `public_name()` for logical identity. Value kinds, endpoint allowlisting,
 and per-field regex permission keep their existing meanings. Filters, sort terms, and projections contain logical
 field references with no SQL metadata.
+
+## Reserved Query-Control Names
+
+The exact lowercase public names `sort`, `fields`, `limit`, and `skip` now return `RqsError::ReservedFieldName`
+(`reserved_field_name`) from `Field::new`, every catalog builder, and logical keys in `SqlxColumnMap`. Previously,
+registration succeeded but equality syntax such as `limit=5` silently selected a query control instead of a filter.
+Rename these public fields and update clients to use an unambiguous alias:
+
+```rust
+use restqs::{FieldCatalog, RqsValue, parse};
+
+let catalog = FieldCatalog::new().allow_integer("row_limit")?;
+let query = parse("row_limit=5&limit=10", &catalog)?;
+
+assert_eq!(query.filters()[0].value(), Some(&RqsValue::Integer(5)));
+# Ok::<(), restqs::RqsError>(())
+```
+
+Here `row_limit=5` filters the field, while `limit=10` caps results. SQL repositories can map the alias with
+`SqlxColumnMap::new().map("row_limit", "users.limit")?`; physical column names need no change.
+
+The policy is exact and case-sensitive. Names such as `Limit`, `profile.limit`, and `limit_value` remain valid.
+Control syntax, including percent-encoded names, keeps its existing behavior. Reserved names used as field references
+in sorting, projection, non-equality comparisons, or existence filters now return `reserved_field_name` before catalog
+lookup. Malformed names still return `invalid_field_name`, including `$text`; the unsupported `$text=` control still
+returns `text_search_unsupported`. Update exhaustive matches on `RqsError` for the new variant.
 
 ## SQL Repository Configuration
 
@@ -55,9 +81,10 @@ sort, and projection field through that mapping. Only referenced fields need map
 treats a logical name as a SQL identifier, even if it looks like `users.status`.
 
 Missing mappings return `missing_column_mapping`. Duplicate mapping keys return `duplicate_column_mapping` instead
-of replacing a column. Invalid physical identifiers still return `invalid_column_name`; invalid logical names still
-return `invalid_field_name`. Mapping a field does not authorize it: the parser continues to reject fields absent from
-the endpoint catalog. Keep both regex permission gates enabled where needed.
+of replacing a column. Invalid physical identifiers still return `invalid_column_name`; malformed logical names still
+return `invalid_field_name`, while reserved control names return `reserved_field_name`. Mapping a field does not authorize
+it: the parser continues to reject fields absent from the endpoint catalog. Keep both regex permission gates enabled
+where needed.
 
 Different repositories can translate the same parsed plan using different column maps. Non-SQL consumers can use
 its logical names and typed values directly; see [the in-memory example](../examples/in_memory.rs). SQL pagination

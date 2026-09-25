@@ -3,6 +3,18 @@
 use restqs::{FieldCatalog, RqsError, parse};
 
 #[test]
+fn reserved_field_message_redacts_malformed_identifiers() {
+    let error = RqsError::ReservedFieldName {
+        field: "limit\nsecret".to_owned(),
+    };
+
+    assert_eq!(
+        error.to_string(),
+        "field [redacted] is reserved for query controls"
+    );
+}
+
+#[test]
 fn filter_error_redacts_line_feed() {
     let result =
         parse("bad%0AINJECTED=value", &FieldCatalog::new()).map_err(|error| error.to_string());

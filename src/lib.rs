@@ -7,6 +7,8 @@
 //! A service starts with a [`FieldCatalog`]. The catalog authorizes logical query
 //! fields and defines their value kinds and capabilities. The parser checks every
 //! requested field against that catalog and returns [`RqsQuery`].
+//! The exact public names `sort`, `fields`, `limit`, and `skip` are reserved for
+//! query controls and rejected with [`RqsError::ReservedFieldName`].
 //!
 //! # Basic Parsing
 //!
@@ -57,6 +59,7 @@
 
 pub mod adapters;
 mod catalog;
+mod control;
 mod error;
 mod filter;
 mod identifier;

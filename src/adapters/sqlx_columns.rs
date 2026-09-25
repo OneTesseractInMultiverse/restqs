@@ -25,8 +25,9 @@ impl SqlxColumnMap {
 
     /// Register one logical field's physical column and return the updated map.
     ///
-    /// Logical names follow the public query grammar. Columns must be dotted
-    /// ASCII identifiers; expressions, quotes, and empty segments are rejected.
+    /// Logical names follow the public query grammar; reserved query-control names
+    /// return [`RqsError::ReservedFieldName`]. Columns must be dotted ASCII
+    /// identifiers; expressions, quotes, and empty segments are rejected.
     /// Registering a logical name twice returns [`RqsError::DuplicateColumnMapping`].
     pub fn map(
         mut self,

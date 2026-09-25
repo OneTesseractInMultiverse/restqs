@@ -1,6 +1,6 @@
 //! Pure classification and size policy for decoded parameters.
 
-use crate::{RqsError, RqsResult, limits::validate_value_size};
+use crate::{RqsError, RqsResult, control::Control, limits::validate_value_size};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Parameter<'a> {
@@ -12,22 +12,17 @@ pub(super) enum Parameter<'a> {
 }
 
 pub(super) fn classify_parameter(parameter: &str) -> RqsResult<Parameter<'_>> {
-    if parameter.starts_with("$text=") {
-        return Err(RqsError::TextSearchUnsupported);
+    let Some((name, value)) = parameter.split_once('=') else {
+        return Ok(Parameter::Filter(parameter));
+    };
+    match Control::from_name(name) {
+        Some(Control::Sort) => Ok(Parameter::Sort(value)),
+        Some(Control::Projection) => Ok(Parameter::Projection(value)),
+        Some(Control::Limit) => Ok(Parameter::Limit(value)),
+        Some(Control::Offset) => Ok(Parameter::Offset(value)),
+        Some(Control::TextSearch) => Err(RqsError::TextSearchUnsupported),
+        None => Ok(Parameter::Filter(parameter)),
     }
-    if let Some(value) = parameter.strip_prefix("sort=") {
-        return Ok(Parameter::Sort(value));
-    }
-    if let Some(value) = parameter.strip_prefix("fields=") {
-        return Ok(Parameter::Projection(value));
-    }
-    if let Some(value) = parameter.strip_prefix("limit=") {
-        return Ok(Parameter::Limit(value));
-    }
-    if let Some(value) = parameter.strip_prefix("skip=") {
-        return Ok(Parameter::Offset(value));
-    }
-    Ok(Parameter::Filter(parameter))
 }
 
 pub(super) fn validate_control_size(parameter: Parameter<'_>, max_bytes: usize) -> RqsResult<()> {
@@ -50,6 +45,14 @@ mod tests {
         assert_eq!(
             classify_parameter("sort=+age,-status"),
             Ok(Parameter::Sort("+age,-status"))
+        );
+    }
+
+    #[test]
+    fn control_classification_preserves_equals_in_the_value() {
+        assert_eq!(
+            classify_parameter("sort=age=status"),
+            Ok(Parameter::Sort("age=status"))
         );
     }
 

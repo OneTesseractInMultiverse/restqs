@@ -49,6 +49,11 @@ flowchart TD
 A function either coordinates work or computes a value. A coordinator calls smaller functions and assembles state. A
 computation receives input and returns one result. It does not perform unrelated orchestration.
 
+The internal `control` module owns the authoritative query-control name recognition shared by parameter classification
+and reserved field-name validation. Public-name validation coordinates syntax checking followed by reserved-name
+checking before catalog construction or lookup. SQL mappings apply this policy to logical keys only; physical column
+syntax stays at the adapter boundary.
+
 The parser's internal `parameter_policy` module classifies decoded text into an explicit parameter kind and validates
 control value sizes without changing the plan. `apply_parameter` coordinates classification, validation, and dispatch.
 The internal `filter_policy` module computes duplicate identities from logical field names and normalized operator
@@ -152,7 +157,7 @@ sequenceDiagram
 `RqsError` gives stable error codes. Services can map those codes to HTTP responses, metrics, or tests. Display text
 uses a pure identifier-redaction computation: valid dotted ASCII names up to 128 bytes remain visible, and other names
 become `[redacted]`. The internal `identifier` module supplies the syntax computation shared by catalog validation and
-error formatting. The parser coordinates syntax validation and catalog lookup. Error fields and Debug output retain
+error formatting. The parser coordinates public-name validation and catalog lookup. Error fields and Debug output retain
 the original input and are outside the Display redaction contract.
 
 Parser errors represent invalid RQS input. Adapter errors represent unsupported translation for a valid plan.
