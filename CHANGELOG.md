@@ -33,6 +33,12 @@ messages. Stable error-code checks remain separate from display formatting and s
 
 ### Fixed
 
+Logical field names `sort`, `fields`, `limit`, and `skip` now fail registration with `reserved_field_name` instead of
+silently becoming query controls in equality expressions. The catalog and parser share one control-name policy, and
+logical SQL mapping keys follow it too. Reserved names in field references also return this error. Matching is exact
+and case-sensitive; existing control syntax and physical SQL identifiers are unchanged. Use a public alias for affected
+fields; see [the migration guide](docs/migration-0.2.md#reserved-query-control-names).
+
 The SQLx repository examples now apply parsed limits and offsets before execution and bind pagination after filter
 values. A shared, tested example module handles PostgreSQL placeholder numbering, SQLite's `LIMIT -1 OFFSET ?` form
 for offset-only requests, and checked signed-integer conversion. Values above `i64::MAX` fail before SQLx query

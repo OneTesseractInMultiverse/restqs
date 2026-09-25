@@ -42,8 +42,16 @@ assert_eq!(query.filters().len(), 3);
 ```
 
 The public query grammar accepts dotted names such as `profile.status`. This is logical identity, not a database path.
-It rejects spaces, quotes, comments, and other punctuation. The parser validates field syntax before catalog lookup. Malformed names return `invalid_field_name`;
-syntactically valid names that do not exist in the catalog return `unknown_field`.
+It rejects spaces, quotes, comments, and other punctuation. The parser validates field syntax and reserved names before
+catalog lookup. Malformed names return `invalid_field_name`; other valid names absent from the catalog return `unknown_field`.
+
+The exact lowercase names `sort`, `fields`, `limit`, and `skip` are reserved for query controls. `Field::new`, all
+catalog builders, and logical keys in `SqlxColumnMap` reject them with `reserved_field_name`. The same error applies to
+field references such as `sort=limit`, `fields=skip`, or `limit!=5`. Control syntax such as `limit=5` remains unchanged.
+Matching is exact and case-sensitive: `Limit`, `profile.limit`, and `limit_value` remain valid logical names. In requests,
+matching happens after URL decoding. Physical SQL columns may still use these names through a distinct public alias; see
+[the migration guide](migration-0.2.md#reserved-query-control-names). `$text` is already invalid field syntax, and
+`$text=` retains its `text_search_unsupported` error.
 
 Use a different catalog for each resource shape or authorization context. A public search endpoint can expose a small
 set of fields. An internal endpoint can expose a larger set. Both paths use the same parser.
@@ -313,12 +321,13 @@ enter the message. This display limit does not restrict accepted catalog identif
 Use Display (`{}`) or error codes for ordinary logs and public error responses. Error fields and Debug (`{:?}`) retain
 the original input and are outside this redaction contract.
 
-Malformed nonempty field names now return `invalid_field_name` instead of `unknown_field`. Existing error-code strings
-are unchanged; valid unknown names still return `unknown_field`.
+Malformed nonempty field names return `invalid_field_name`. Reserved control names in field positions return
+`reserved_field_name`; other valid unknown names return `unknown_field`. Existing error-code strings are unchanged.
 
 | Code                      | Meaning                                         |
 |---------------------------|-------------------------------------------------|
 | `invalid_field_name`      | Field syntax was empty or invalid               |
+| `reserved_field_name`     | Logical field name collides with a query control |
 | `unknown_field`           | Public field was not in the catalog             |
 | `missing_column_mapping` | SQL adapter has no mapping for a referenced logical field |
 | `duplicate_column_mapping` | SQL configuration registered the same logical field twice |

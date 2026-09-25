@@ -3,6 +3,18 @@
 use restqs::RqsError;
 
 #[test]
+fn reserved_field_message_identifies_the_control_collision() {
+    let error = RqsError::ReservedFieldName {
+        field: "limit".to_owned(),
+    };
+
+    assert_eq!(
+        error.to_string(),
+        "field limit is reserved for query controls"
+    );
+}
+
+#[test]
 fn query_size_message_reports_the_byte_limit() {
     let error = RqsError::QueryTooLarge { max_bytes: 8192 };
 

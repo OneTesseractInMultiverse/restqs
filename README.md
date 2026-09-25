@@ -54,6 +54,9 @@ placeholder numbering, SQLite offset-only requests, and checked integer conversi
 
 Start with a catalog. The catalog authorizes logical query fields and defines
 their value types and capabilities. It contains no storage column metadata.
+The exact lowercase names `sort`, `fields`, `limit`, and `skip` are reserved for
+query controls; registering one returns `reserved_field_name`. Use a public alias
+such as `row_limit`; see [the 0.2 migration guide](docs/migration-0.2.md#reserved-query-control-names).
 
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};

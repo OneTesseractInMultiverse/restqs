@@ -2,7 +2,9 @@
 
 use std::collections::BTreeMap;
 
-use crate::{RqsError, RqsResult, identifier::is_dotted_identifier};
+use crate::{
+    RqsError, RqsResult, control::validate_unreserved_name, identifier::is_dotted_identifier,
+};
 
 /// Value type expected by an allowlisted field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,6 +51,9 @@ pub struct Field {
 
 impl Field {
     /// Create one allowlisted logical field.
+    ///
+    /// Exact lowercase names `sort`, `fields`, `limit`, and `skip` return
+    /// [`RqsError::ReservedFieldName`]. Use a distinct public alias instead.
     pub fn new(public_name: impl Into<String>, value_kind: ValueKind) -> RqsResult<Self> {
         let public_name = public_name.into();
         validate_public_name(&public_name)?;
@@ -216,6 +221,11 @@ impl FieldRef {
 }
 
 pub(crate) fn validate_public_name(name: &str) -> RqsResult<()> {
+    validate_name_syntax(name)?;
+    validate_unreserved_name(name)
+}
+
+fn validate_name_syntax(name: &str) -> RqsResult<()> {
     if is_dotted_identifier(name) {
         Ok(())
     } else {
