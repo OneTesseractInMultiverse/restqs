@@ -33,6 +33,30 @@ jobs:
         toolchain:
           - "1.85.0"
           - stable
+    services:
+      postgres:
+        image: ${{ matrix.toolchain == 'stable' && 'postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929' || '' }}
+        env:
+          POSTGRES_USER: restqs
+          POSTGRES_PASSWORD: restqs-test
+          POSTGRES_DB: restqs
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U restqs -d restqs"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+      mysql:
+        image: ${{ matrix.toolchain == 'stable' && 'mysql:8.4.6@sha256:869218921e61d6c3c89820955d63cca42971f0e3e6c1e2792247bbd944ebc6e9' || '' }}
+        env:
+          MYSQL_ROOT_PASSWORD: restqs-root-test
+          MYSQL_USER: restqs
+          MYSQL_PASSWORD: restqs-test
+          MYSQL_DATABASE: restqs
+        ports:
+          - 3306/tcp
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -prestqs-root-test --silent"
+          --health-interval 10s --health-timeout 5s --health-retries 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -63,6 +87,13 @@ jobs:
 
       - name: Verify SQLite repository
         run: make verify-sqlite
+
+      - name: Verify PostgreSQL and MySQL repositories
+        if: matrix.toolchain == 'stable'
+        env:
+          RESTQS_POSTGRES_URL: postgres://restqs:restqs-test@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/restqs
+          RESTQS_MYSQL_URL: mysql://restqs:restqs-test@127.0.0.1:${{ job.services.mysql.ports['3306'] }}/restqs?ssl-mode=required
+        run: make verify-services
 
       - name: Build docs
         run: make doc
@@ -101,4 +132,5 @@ jobs:
           cargo generate-lockfile
           cargo audit
           cargo audit --file integration-tests/sqlite/Cargo.lock
+          cargo audit --file integration-tests/services/Cargo.lock
           rm -f Cargo.lock

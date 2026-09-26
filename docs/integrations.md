@@ -269,13 +269,20 @@ binds every value through SQLx.
 
 ### PostgreSQL
 
-An application that uses PostgreSQL can depend on SQLx in its own manifest:
+This example is compiled and executed with SQLx 0.9.0 and PostgreSQL 17.6 by
+[the service fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/services).
+SQLx 0.9 requires Rust 1.94 or newer; RestQS itself retains Rust 1.85 support. An application can depend on SQLx in its own manifest:
 
 ```toml
 [dependencies]
 restqs = { path = "../restqs", features = ["sqlx"] }
-sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio"] }
+sqlx = { version = "0.9", default-features = false, features = ["postgres", "runtime-tokio"] }
 ```
+
+SQLx 0.9's `AssertSqlSafe` marks the reviewed dynamic statement: fixed repository syntax plus authorized mapped
+identifiers and placeholders, with all values bound separately. It does not sanitize arbitrary SQL. The executable
+[source](https://github.com/OneTesseractInMultiverse/restqs/blob/main/integration-tests/services/src/postgres.rs) keeps this
+operation in a private executor. SQLx 0.8 uses `sqlx::query(&statement.sql)` without this marker.
 
 Repository code can then translate a parsed plan into a SQLx query. The example below binds text, integer, boolean, and
 float values. Date, date-time, and UUID values stay as text here. A repository can bind those variants to richer database
@@ -293,7 +300,7 @@ use sqlx::{PgPool, Row};
 async fn list_users(pool: &PgPool, raw: &str) -> Result<Vec<(i64, String)>, Box<dyn std::error::Error>> {
     let query = parse(raw, &users_catalog()?)?;
     let statement = postgres_users_statement(&query)?;
-    let mut query = sqlx::query(&statement.sql);
+    let mut query = sqlx::query(sqlx::AssertSqlSafe(statement.sql.as_str()));
 
     for value in &statement.binds {
         query = bind_postgres_value(query, value)?;
@@ -411,6 +418,18 @@ compiles this binding and row-decoding flow and includes the same users and pagi
 `make verify-sqlite` from a repository checkout. It executes SQLx 0.8.6 with bundled SQLite 3.46.0 in memory, checking
 returned rows for both sort directions, multiple terms, and pagination. No server or credentials are needed. This
 separate test crate is excluded from the published package and ordinary unit suite; both Rust CI jobs run it explicitly.
+
+### Database Conformance Suites
+
+The SQLite fixture covers scalar and null filters, list membership/exclusion, projection, ordering, pagination, and
+actual default caps. The [service fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/services)
+compiles PostgreSQL and MySQL binding/decoding and executes equivalent contracts plus supported regex against PostgreSQL
+17.6 and MySQL 8.4.6. MySQL's bounded policy always supplies a limit, so offset-only input uses `LIMIT ? OFFSET ?`.
+Regex is enabled only in the separate fixture catalog. These test repositories use a fixed `id,name` response.
+
+Run `make verify-sqlite` without services, or configure the two test URLs documented in the fixture README and run
+`make verify-services`. Stable CI supplies isolated services and executes the suite as part of the required Rust check.
+The core unit suite and published crate remain independent of database drivers and connection configuration.
 
 ### Security Boundary In The Examples
 

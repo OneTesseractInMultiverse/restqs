@@ -29,6 +29,10 @@ make coverage
 When changing SQLite repository examples, also run `make verify-sqlite`. This separate, locked fixture uses SQLx and
 an in-memory database without external services. See [the testing guide](docs/testing-guide.md#sqlite-execution-checks).
 
+For PostgreSQL/MySQL integration changes, provision disposable services and run `make verify-services` as described in
+[the testing guide](docs/testing-guide.md#postgresql-and-mysql-execution-checks). Service tests are intentionally outside
+`make verify`; stable CI runs them explicitly, and `make audit` checks every fixture lockfile.
+
 ## Contribution Rules
 
 Keep changes focused and small. Preserve the coordinator-versus-computation split described in `docs/architecture.md`.

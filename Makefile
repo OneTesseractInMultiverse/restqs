@@ -1,8 +1,10 @@
 CARGO ?= cargo
 SQLITE_MANIFEST := integration-tests/sqlite/Cargo.toml
 SQLITE_CARGO = CARGO_TARGET_DIR=target/sqlite-integration $(CARGO)
+SERVICE_MANIFEST := integration-tests/services/Cargo.toml
+SERVICE_CARGO = CARGO_TARGET_DIR=target/service-integration $(CARGO)
 
-.PHONY: all audit build check clippy coverage doc fmt fmt-check help lint package package-list publish-dry-run setup test test-doc test-sqlite verify verify-sqlite
+.PHONY: all audit build check clippy coverage doc fmt fmt-check help lint package package-list publish-dry-run setup test test-doc test-sqlite test-services verify verify-sqlite verify-services
 
 all: verify
 
@@ -24,6 +26,8 @@ help:
 		'test-doc        Run rustdoc examples' \
 		'test-sqlite     Execute the isolated SQLite repository tests' \
 		'verify-sqlite   Format-check, lint, and test the SQLite fixture' \
+		'test-services   Execute opt-in PostgreSQL and MySQL tests (URLs required)' \
+		'verify-services Format-check, lint, and execute the service fixture' \
 		'verify          Run the local quality gate'
 
 setup:
@@ -81,10 +85,19 @@ verify-sqlite:
 	$(SQLITE_CARGO) clippy --manifest-path $(SQLITE_MANIFEST) --all-targets --locked -- -D warnings
 	$(MAKE) test-sqlite
 
+test-services:
+	$(SERVICE_CARGO) test --manifest-path $(SERVICE_MANIFEST) --locked -- --ignored
+
+verify-services:
+	$(CARGO) fmt --manifest-path $(SERVICE_MANIFEST) --all -- --check
+	$(SERVICE_CARGO) clippy --manifest-path $(SERVICE_MANIFEST) --all-targets --locked -- -D warnings
+	$(MAKE) test-services
+
 audit:
 	$(CARGO) generate-lockfile
 	$(CARGO) audit
 	$(CARGO) audit --file integration-tests/sqlite/Cargo.lock
+	$(CARGO) audit --file integration-tests/services/Cargo.lock
 	@rm -f Cargo.lock
 
 verify: fmt-check check lint test test-doc doc

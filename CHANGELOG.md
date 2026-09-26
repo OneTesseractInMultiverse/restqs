@@ -8,6 +8,12 @@ The project uses semantic versioning.
 
 ### Added
 
+Database conformance fixtures now execute scalar, null, list, projection, ordering, pagination, and supported regex
+contracts through SQLx. SQLite remains service-free; PostgreSQL 17.6 and MySQL 8.4.6 run in an opt-in suite and required
+stable CI. The service fixture tests SQLx 0.9.0 on Rust 1.94+, while core and SQLite retain Rust 1.85 support. Driver
+dependencies and lockfiles remain isolated from the published crate and ordinary unit suite.
+
+
 The fixed-response repository examples now enforce application-owned result budgets: a 25-row default, a maximum
 explicit limit of 100, and an inclusive offset cap of 10,000. Custom budgets and an explicit internal unbounded policy
 are available in example code; checked database integer conversion always applies. Parser behavior is unchanged.
