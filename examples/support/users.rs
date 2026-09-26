@@ -27,7 +27,7 @@ pub fn users_catalog() -> RqsResult<FieldCatalog> {
 pub fn postgres_users_statement(query: &RqsQuery) -> RepositoryResult {
     validate_users_projection(query.projection())?;
     let parts = SqlxAdapter::new(SqlDialect::Postgres, users_columns()?).build(query)?;
-    let sql = postgres_users_sql(&parts);
+    let sql = users_select_sql(&parts);
     Ok(append_postgres_pagination(&sql, &parts)?)
 }
 
@@ -35,7 +35,7 @@ pub fn postgres_users_statement(query: &RqsQuery) -> RepositoryResult {
 pub fn sqlite_users_statement(query: &RqsQuery) -> RepositoryResult {
     validate_users_projection(query.projection())?;
     let parts = SqlxAdapter::new(SqlDialect::Sqlite, users_columns()?).build(query)?;
-    let sql = sqlite_users_sql(&parts);
+    let sql = users_select_sql(&parts);
     Ok(append_sqlite_pagination(&sql, &parts)?)
 }
 
@@ -63,7 +63,7 @@ fn users_columns() -> RqsResult<SqlxColumnMap> {
         .map("active", "users.active")
 }
 
-fn postgres_users_sql(parts: &SqlxQueryParts) -> String {
+fn users_select_sql(parts: &SqlxQueryParts) -> String {
     let mut sql = r#"SELECT "users"."id", "users"."name" FROM users"#.to_owned();
     if let Some(where_clause) = &parts.where_clause {
         sql.push_str(" WHERE ");
@@ -74,9 +74,4 @@ fn postgres_users_sql(parts: &SqlxQueryParts) -> String {
         sql.push_str(order_by);
     }
     sql
-}
-
-fn sqlite_users_sql(parts: &SqlxQueryParts) -> String {
-    let where_clause = parts.where_clause.as_deref().unwrap_or("1 = 1");
-    format!(r#"SELECT "users"."id", "users"."name" FROM users WHERE {where_clause}"#)
 }

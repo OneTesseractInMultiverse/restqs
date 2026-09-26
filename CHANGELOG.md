@@ -40,6 +40,11 @@ messages. Stable error-code checks remain separate from display formatting and s
 
 ### Fixed
 
+The SQLite user repository now preserves authorized sorting before pagination, sharing SQL assembly with PostgreSQL.
+An isolated SQLx fixture checks actual SQLite row order for ascending, descending, multiple-term, filtered, and paginated
+queries. The fixture runs in both Rust CI jobs and has a separately audited lockfile; the published crate remains dependency-free.
+
+
 The PostgreSQL and SQLite user repository examples now validate projection before execution for their fixed `(id, name)`
 response. Omitted or empty fields and exactly `id,name` in either order are accepted. Partial or additional selections
 return an explicit adapter error rather than failing during row decoding or being silently ignored. Both examples use

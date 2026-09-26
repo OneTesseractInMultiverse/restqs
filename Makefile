@@ -1,6 +1,8 @@
 CARGO ?= cargo
+SQLITE_MANIFEST := integration-tests/sqlite/Cargo.toml
+SQLITE_CARGO = CARGO_TARGET_DIR=target/sqlite-integration $(CARGO)
 
-.PHONY: all audit build check clippy coverage doc fmt fmt-check help lint package package-list publish-dry-run setup test test-doc verify
+.PHONY: all audit build check clippy coverage doc fmt fmt-check help lint package package-list publish-dry-run setup test test-doc test-sqlite verify verify-sqlite
 
 all: verify
 
@@ -20,6 +22,8 @@ help:
 		'setup           Install local developer tools' \
 		'test            Run all tests' \
 		'test-doc        Run rustdoc examples' \
+		'test-sqlite     Execute the isolated SQLite repository tests' \
+		'verify-sqlite   Format-check, lint, and test the SQLite fixture' \
 		'verify          Run the local quality gate'
 
 setup:
@@ -69,9 +73,18 @@ test-doc:
 	$(CARGO) test --doc --no-default-features
 	$(CARGO) test --doc --all-features
 
+test-sqlite:
+	$(SQLITE_CARGO) test --manifest-path $(SQLITE_MANIFEST) --locked
+
+verify-sqlite:
+	$(CARGO) fmt --manifest-path $(SQLITE_MANIFEST) --all -- --check
+	$(SQLITE_CARGO) clippy --manifest-path $(SQLITE_MANIFEST) --all-targets --locked -- -D warnings
+	$(MAKE) test-sqlite
+
 audit:
 	$(CARGO) generate-lockfile
 	$(CARGO) audit
+	$(CARGO) audit --file integration-tests/sqlite/Cargo.lock
 	@rm -f Cargo.lock
 
 verify: fmt-check check lint test test-doc doc

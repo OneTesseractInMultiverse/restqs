@@ -61,6 +61,9 @@ jobs:
       - name: Test docs
         run: make test-doc
 
+      - name: Verify SQLite repository
+        run: make verify-sqlite
+
       - name: Build docs
         run: make doc
 
@@ -97,4 +100,5 @@ jobs:
         run: |
           cargo generate-lockfile
           cargo audit
+          cargo audit --file integration-tests/sqlite/Cargo.lock
           rm -f Cargo.lock

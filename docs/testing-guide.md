@@ -3,8 +3,8 @@
 RestQS tests mirror the library boundary. Parser tests check RQS input and returned plans. Catalog tests check
 identifier validation. Value tests check type parsing. Adapter tests check generated fragments and bind order.
 
-Every test runs in memory. Tests do not need databases, web servers, credentials, environment variables, or special
-setup. A contributor can clone the repository, install local tools with `make setup`, and run `make test`.
+The ordinary unit suite runs in memory without database libraries. It needs no web servers, credentials, environment
+variables, or special setup. A contributor can clone the repository, install local tools with `make setup`, and run `make test`.
 
 ```mermaid
 flowchart LR
@@ -85,6 +85,17 @@ or a SQLx dependency. Run them with `cargo test --all-features --test repository
 The [user repository tests](../tests/repository_users.rs) compile the documented fixed-response builders. They check
 that accepted projections select both decoder columns and that partial, extra, and unauthorized selections fail before
 execution. Run `cargo test --all-features --test repository_users` or `make test`.
+
+## SQLite Execution Checks
+
+Run `make verify-sqlite` for the isolated SQLx fixture, or `make test-sqlite` to run only its tests. A separate manifest
+and committed lockfile keep these dependencies outside the published library and `make verify`. The fixture uses a
+fresh in-memory SQLite database per test and closes its pool even when the query returns an error. It checks actual
+returned ordering against explicit values, including tie-breaking and sorting before pagination.
+
+See [the fixture README](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/sqlite) for tested
+versions and dependency rationale. Both Rust CI jobs verify this fixture, including dependency compatibility
+with Rust 1.85, and the security job audits its lockfile. No database service setup is required. PostgreSQL and MySQL execution suites are tracked separately.
 
 ## Coverage Command
 
