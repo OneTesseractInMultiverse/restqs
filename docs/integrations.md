@@ -220,6 +220,17 @@ flowchart LR
   sqlx --> db["PostgreSQL or SQLite"]
 ```
 
+Both repositories return a fixed `(i64, String)` response containing `id` and `name`. They accept omitted/empty
+`fields`, `fields=id,name`, or `fields=name,id`. SQL column order is normalized because decoding uses column names.
+Other projections, including `fields=status`, `fields=id`, and `fields=name`, return `adapter_unsupported` with feature
+`users projection other than id and name` before query execution. Filter and sort access to other catalog fields is
+unchanged. Dynamic projection needs a different response type and decoder; these endpoints do not silently ignore it.
+
+Copy [the users module](../examples/support/users.rs) alongside `pagination.rs` as `users.rs`, and declare both modules.
+The module owns the endpoint catalog, trusted column mappings, projection validation, and SQL assembly. Its fixed
+response columns are always authorized by `users_catalog`. The [repository tests](../tests/repository_users.rs) compile
+this exact module and check both dialects' projection behavior with one assertion per test.
+
 The snippets use `sqlx::query` instead of SQLx macros. That keeps query text assembled at runtime. The application still
 binds every value through SQLx.
 
@@ -239,31 +250,15 @@ types after it owns the schema rules.
 
 ```rust
 mod pagination;
+mod users;
 
-use pagination::{SqlStatement, append_postgres_pagination};
-use restqs::{
-    FieldCatalog, RqsValue, parse,
-    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap, SqlxQueryParts},
-};
+use restqs::{RqsValue, parse};
+use users::{postgres_users_statement, users_catalog};
 use sqlx::{PgPool, Row};
 
 async fn list_users(pool: &PgPool, raw: &str) -> Result<Vec<(i64, String)>, Box<dyn std::error::Error>> {
-    let catalog = FieldCatalog::new()
-        .allow_integer("id")?
-        .allow_text("name")?
-        .allow_text("status")?
-        .allow_integer("age")?
-        .allow_boolean("active")?;
-
-    let query = parse(raw, &catalog)?;
-    let columns = SqlxColumnMap::new()
-        .map("id", "users.id")?
-        .map("name", "users.name")?
-        .map("status", "users.status")?
-        .map("age", "users.age")?
-        .map("active", "users.active")?;
-    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build(&query)?;
-    let statement = postgres_users_sql(&parts)?;
+    let query = parse(raw, &users_catalog()?)?;
+    let statement = postgres_users_statement(&query)?;
     let mut query = sqlx::query(&statement.sql);
 
     for value in &statement.binds {
@@ -279,25 +274,6 @@ fn decode_postgres_users(rows: Vec<sqlx::postgres::PgRow>) -> Result<Vec<(i64, S
         .into_iter()
         .map(|row| Ok((row.try_get("id")?, row.try_get("name")?)))
         .collect()
-}
-
-fn postgres_users_sql(parts: &SqlxQueryParts) -> Result<SqlStatement, std::num::TryFromIntError> {
-    let projection = if parts.projection.is_empty() {
-        r#""users"."id", "users"."name""#.to_owned()
-    } else {
-        parts.projection.join(", ")
-    };
-
-    let mut sql = format!("SELECT {projection} FROM users");
-    if let Some(where_clause) = &parts.where_clause {
-        sql.push_str(" WHERE ");
-        sql.push_str(where_clause);
-    }
-    if let Some(order_by) = &parts.order_by {
-        sql.push_str(" ORDER BY ");
-        sql.push_str(order_by);
-    }
-    append_postgres_pagination(&sql, parts)
 }
 
 fn bind_postgres_value<'query>(
@@ -337,29 +313,15 @@ SQLite uses `?` placeholders. The repository can reuse the same catalog and bind
 
 ```rust
 mod pagination;
+mod users;
 
-use pagination::{SqlStatement, append_sqlite_pagination};
-use restqs::{
-    FieldCatalog, RqsValue, parse,
-    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap, SqlxQueryParts},
-};
+use restqs::{RqsValue, parse};
+use users::{sqlite_users_statement, users_catalog};
 use sqlx::{Row, SqlitePool};
 
 async fn list_sqlite_users(pool: &SqlitePool, raw: &str) -> Result<Vec<(i64, String)>, Box<dyn std::error::Error>> {
-    let catalog = FieldCatalog::new()
-        .allow_integer("id")?
-        .allow_text("name")?
-        .allow_text("status")?
-        .allow_integer("age")?;
-
-    let query = parse(raw, &catalog)?;
-    let columns = SqlxColumnMap::new()
-        .map("id", "users.id")?
-        .map("name", "users.name")?
-        .map("status", "users.status")?
-        .map("age", "users.age")?;
-    let parts = SqlxAdapter::new(SqlDialect::Sqlite, columns).build(&query)?;
-    let statement = sqlite_users_sql(&parts)?;
+    let query = parse(raw, &users_catalog()?)?;
+    let statement = sqlite_users_statement(&query)?;
     let mut query = sqlx::query(&statement.sql);
 
     for value in &statement.binds {
@@ -375,12 +337,6 @@ fn decode_sqlite_users(rows: Vec<sqlx::sqlite::SqliteRow>) -> Result<Vec<(i64, S
         .into_iter()
         .map(|row| Ok((row.try_get("id")?, row.try_get("name")?)))
         .collect()
-}
-
-fn sqlite_users_sql(parts: &SqlxQueryParts) -> Result<SqlStatement, std::num::TryFromIntError> {
-    let where_clause = parts.where_clause.as_deref().unwrap_or("1 = 1");
-    let sql = format!("SELECT \"users\".\"id\", \"users\".\"name\" FROM users WHERE {where_clause}");
-    append_sqlite_pagination(&sql, parts)
 }
 
 fn bind_sqlite_value<'query>(

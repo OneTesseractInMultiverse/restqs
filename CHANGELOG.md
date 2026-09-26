@@ -40,6 +40,12 @@ messages. Stable error-code checks remain separate from display formatting and s
 
 ### Fixed
 
+The PostgreSQL and SQLite user repository examples now validate projection before execution for their fixed `(id, name)`
+response. Omitted or empty fields and exactly `id,name` in either order are accepted. Partial or additional selections
+return an explicit adapter error rather than failing during row decoding or being silently ignored. Both examples use
+shared, compiled repository helpers with catalog-authorized fields and trusted column mappings.
+
+
 Repeated `sort`, `fields`, `limit`, and `skip` controls now return `duplicate_control` instead of silently using the
 last value. Identical and empty values and percent-encoded equivalent names follow the same rule. Control value-size
 checks precede duplicate detection, which precedes interpreting the repeated value. Single empty controls and distinct
