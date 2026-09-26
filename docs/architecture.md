@@ -89,6 +89,10 @@ policies stay in the core, so every adapter receives the same equality-only cont
 Dialect support stays in the adapter: a pure computation selects the regex operator or returns an unsupported error.
 The regex clause coordinator calls that computation before adding the pattern bind, then delegates SQL formatting.
 
+After parsing a typed value, the filter coordinator calls a pure list-operator computation. It maps list equality and
+inequality to `In` and `NotIn`, rejects other operators with lists, and preserves scalar operators. This compatibility
+rule belongs to the core; adapters expand membership lists into individual binds without receiving ordered list plans.
+
 This rule keeps changes local. A new scalar type belongs in `catalog` and
 `value`. A new RQS operator belongs in `filter` and the parser split logic. A new database integration belongs in
 `adapters`.
