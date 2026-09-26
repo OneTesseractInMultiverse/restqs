@@ -59,6 +59,11 @@ The SQLx adapter accepts no flags or `i` for PostgreSQL, and no flags for MySQL;
 `adapter_unsupported`. SQLite still rejects all regex. Previously accepted requests with invalid or unsupported flags
 now fail explicitly. Both permission gates and bound patterns are preserved.
 
+Float parsing now rejects NaN, positive and negative infinity, and overflow to infinity with `invalid_value` across
+raw scalars, `float(...)` wrappers, and list items. Finite extremes, subnormal values, signed zero, and underflow rounded
+to zero remain accepted. SQL adapters preserve accepted float bind values. See
+[the float migration policy](docs/migration-0.2.md#finite-float-values) for previously accepted special values.
+
 ## 0.1.1 - 2026-09-24
 
 ### Fixed

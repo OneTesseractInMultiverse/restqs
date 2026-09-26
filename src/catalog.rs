@@ -13,7 +13,7 @@ pub enum ValueKind {
     Text,
     /// Signed 64-bit integer.
     Integer,
-    /// 64-bit floating point number.
+    /// Finite 64-bit floating point number.
     Float,
     /// Boolean value.
     Boolean,
@@ -165,6 +165,9 @@ impl FieldCatalog {
     }
 
     /// Insert a float field.
+    ///
+    /// Numeric values must parse to finite `f64` results. NaN, infinities, and
+    /// overflow return [`RqsError::InvalidValue`] during parsing.
     pub fn allow_float(self, public_name: impl Into<String>) -> RqsResult<Self> {
         self.allow_kind(public_name, ValueKind::Float)
     }

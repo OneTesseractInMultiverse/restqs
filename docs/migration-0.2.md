@@ -81,6 +81,18 @@ in sorting, projection, non-equality comparisons, or existence filters now retur
 lookup. Malformed names still return `invalid_field_name`, including `$text`; the unsupported `$text=` control still
 returns `text_search_unsupported`. Update exhaustive matches on `RqsError` for the new variant.
 
+## Finite Float Values
+
+Float parsing now rejects NaN, positive and negative infinity, and overflow to infinity with `invalid_value`
+(`RqsError::InvalidValue`, expected type `float`). Previously, inputs such as `score=NaN`, `score=float(-inf)`,
+`score=1e999`, and `score=in(NaN,1)` produced plans containing special `f64` values. Raw scalars, typed wrappers, and
+list items now share the same finite-result policy before any adapter receives the plan.
+
+Update clients that send special float values to use finite numbers or an explicit application-level representation.
+Use `null` only when null is the intended query meaning; rejection does not automatically convert special floats to
+null. Finite extremes, subnormal values, signed zero, and underflow rounded to zero keep their behavior. Text fields
+can still contain strings such as `NaN`. See [float values](api-guide.md#float-values) for the complete policy.
+
 ## SQL Repository Configuration
 
 SQL applications configure a `SqlxColumnMap` from trusted application code, then pass it to `SqlxAdapter::new`:
