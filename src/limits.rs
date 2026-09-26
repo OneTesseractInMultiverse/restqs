@@ -16,7 +16,10 @@ pub struct ParserLimits {
     pub max_value_bytes: usize,
     /// Maximum list item count.
     pub max_list_items: usize,
-    /// Maximum accepted limit value.
+    /// Maximum explicitly requested limit value.
+    ///
+    /// Does not supply a default row cap or constrain offsets. Repositories own
+    /// result defaults, offset budgets, and database execution deadlines.
     pub max_limit: u64,
 }
 

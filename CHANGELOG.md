@@ -8,6 +8,11 @@ The project uses semantic versioning.
 
 ### Added
 
+The fixed-response repository examples now enforce application-owned result budgets: a 25-row default, a maximum
+explicit limit of 100, and an inclusive offset cap of 10,000. Custom budgets and an explicit internal unbounded policy
+are available in example code; checked database integer conversion always applies. Parser behavior is unchanged.
+
+
 `SqlxAdapter::build_with_bind_start` accepts an explicit one-based first bind position for composing PostgreSQL
 fragments after caller-owned parameters. Standalone `build` still starts at `$1`; MySQL and SQLite keep anonymous
 placeholders. Zero positions and arithmetic overflow return `invalid_bind_position` and `bind_position_overflow`.

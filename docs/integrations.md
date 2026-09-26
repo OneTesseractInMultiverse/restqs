@@ -186,7 +186,8 @@ Both values use `i64::try_from`, matching the signed integer binds used by these
 return `TryFromIntError` before a SQLx query is created. They are never narrowed with `as`, clamped, or turned into an
 unlimited sentinel. `limit=0` is preserved and returns no rows.
 
-These examples preserve an omitted limit as **no row cap**, including offset-only requests. The parser's `max_limit`
+The low-level pagination and tenant assembly helpers preserve an omitted limit as **no row cap**, including offset-only requests.
+The fixed-response user repositories below enforce a default result budget. The parser's `max_limit`
 only bounds an explicitly supplied limit; it does not add a default. Applications using `fetch_all` should enforce
 their own default or required limit before calling these repositories. For repeatable pages, repository ordering must
 include a unique key; pagination does not invent an ordering or protect against changes between requests.
@@ -200,6 +201,37 @@ cargo test --all-features --test repository_pagination
 These tests compile the same pagination module linked above and cover both dialects, limit-only and offset-only
 requests, null and list filter binds, zero values, omitted limits, and signed-integer boundaries. They also run in
 `make test`. Database execution remains the application's responsibility.
+
+### Production Result Budgets
+
+`ParserLimits::max_limit` only checks an explicit request limit. Empty queries keep `limit=None`, and the parser accepts
+any `u64` offset. Those input limits do not establish an execution budget. The example user repositories apply the pure,
+application-owned [QueryBudget](../examples/support/budget.rs) before pagination assembly:
+
+| Policy | Omitted limit | Explicit limit | Maximum offset (inclusive) |
+| --- | --- | --- | --- |
+| `QueryBudget::default()` | 25 | 0 through 100 | 10,000 |
+| `QueryBudget::bounded(default, max, offset)` | Configured positive default | 0 through configured maximum | Configured maximum |
+| `QueryBudget::unbounded_internal()` | Uncapped | Preserved | No policy cap |
+
+`postgres_users_statement` and `sqlite_users_statement` use the default policy. Call their `_with_budget` variants for
+custom policy. Configuration requires a positive default within the maximum and signed database integer range.
+Excessive request limits and offsets return repository errors before execution; values are rejected, never clamped.
+`limit=0` still means zero rows. Filter values precede the effective limit and offset in the bind vector.
+
+Only trusted application code may select `unbounded_internal()` for a deliberate internal job. It is not an RQS control
+and does not bypass parser limits or `i64::try_from` during SQL pagination. Even this policy rejects numeric values the
+database cannot represent. The low-level assembly helpers remain available for repositories with their own policy.
+
+Row counts and offset budgets do not bound execution time. Set a repository-owned database statement timeout and an
+application deadline covering acquisition, execution, and row collection. Configure cancellation/connection cleanup for
+the chosen driver; an expired request deadline alone does not prove that the server stopped work. Keep regex disabled
+on public routes by default. If enabled, use a separately authorized catalog, supported flags, a database execution
+budget, and bounded concurrency; pattern length and output limits alone do not bound regex execution cost. None of these
+connection and scheduling decisions belong in the parser.
+
+Run `cargo test --all-features --test repository_budget` for default caps, inclusive offset boundaries, custom policies,
+and checked integer conversion under the explicit internal opt-in.
 
 ## SQLx Repository Examples
 
@@ -226,7 +258,8 @@ Other projections, including `fields=status`, `fields=id`, and `fields=name`, re
 `users projection other than id and name` before query execution. Filter and sort access to other catalog fields is
 unchanged. Dynamic projection needs a different response type and decoder; these endpoints do not silently ignore it.
 
-Copy [the users module](../examples/support/users.rs) alongside `pagination.rs` as `users.rs`, and declare both modules.
+Copy [the users module](../examples/support/users.rs), [the budget module](../examples/support/budget.rs), and
+`pagination.rs` as sibling modules, and declare all three.
 The module owns the endpoint catalog, trusted column mappings, projection validation, and SQL assembly. Its fixed
 response columns are always authorized by `users_catalog`. The [repository tests](../tests/repository_users.rs) compile
 this exact module and check both dialects' projection behavior with one assertion per test.
@@ -249,6 +282,7 @@ float values. Date, date-time, and UUID values stay as text here. A repository c
 types after it owns the schema rules.
 
 ```rust
+mod budget;
 mod pagination;
 mod users;
 
@@ -324,6 +358,7 @@ repeatable pagination should include a unique tie-breaker such as `sort=age,id`.
 The repository can reuse the same catalog and bind mapping style:
 
 ```rust
+mod budget;
 mod pagination;
 mod users;
 

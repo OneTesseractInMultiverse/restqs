@@ -1,5 +1,7 @@
 //! Executable SQLite repository used by the integration guide.
 
+#[path = "../../../examples/support/budget.rs"]
+pub mod budget;
 #[path = "../../../examples/support/pagination.rs"]
 pub mod pagination;
 #[path = "../../../examples/support/users.rs"]
