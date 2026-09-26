@@ -82,6 +82,10 @@ The [repository pagination tests](../tests/repository_pagination.rs) compile the
 integration examples. They verify SQL and complete bind sequences for PostgreSQL and SQLite without database services
 or a SQLx dependency. Run them with `cargo test --all-features --test repository_pagination`; `make test` includes them.
 
+The [user repository tests](../tests/repository_users.rs) compile the documented fixed-response builders. They check
+that accepted projections select both decoder columns and that partial, extra, and unauthorized selections fail before
+execution. Run `cargo test --all-features --test repository_users` or `make test`.
+
 ## Coverage Command
 
 Run coverage after installing local tools:
