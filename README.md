@@ -113,6 +113,10 @@ Comparison operators are recognized at the field boundary after URL decoding.
 Later operator characters belong to the value: `name=a%3Eb` and
 `name=str(a%3Eb)` both produce the text `a>b`.
 
+Each of `sort`, `fields`, `limit`, and `skip` may appear once per query. Repeats,
+including identical or empty values and encoded equivalent names, return
+`duplicate_control`. See [repeated query controls](docs/api-guide.md#repeated-query-controls).
+
 The parser supports text, integer, float, boolean, date, date-time, UUID, null,
 and list values. Typed cast wrappers clarify intent for ambiguous values:
 `str(value)`, `int(18)`, `float(1.5)`, `bool(true)`, `date(2026-06-06)`,

@@ -2,7 +2,7 @@
 
 use restqs::{
     Field, FieldCatalog, Filter, FilterOp, Parser, ParserConfig, ParserLimits, RqsError, RqsResult,
-    RqsValue, SortDirection, ValueKind, parse,
+    RqsValue, ValueKind, parse,
 };
 
 fn catalog() -> RqsResult<FieldCatalog> {
@@ -13,77 +13,94 @@ fn catalog() -> RqsResult<FieldCatalog> {
 }
 
 #[test]
-fn repeated_sort_replaces_the_previous_terms() -> RqsResult<()> {
-    let query = parse("sort=status&sort=-age", &catalog()?)?;
-    let terms = query
-        .sort()
-        .iter()
-        .map(|term| (term.field().public_name(), term.direction()))
-        .collect::<Vec<_>>();
+fn repeated_sort_is_rejected() -> RqsResult<()> {
+    let result = parse("sort=status&sort=-age", &catalog()?);
 
-    assert_eq!(terms, vec![("age", SortDirection::Desc)]);
+    assert_eq!(
+        result,
+        Err(RqsError::DuplicateControl { parameter: "sort" })
+    );
     Ok(())
 }
 
 #[test]
-fn repeated_empty_sort_clears_the_previous_terms() -> RqsResult<()> {
-    let query = parse("sort=status&sort=", &catalog()?)?;
+fn repeated_empty_sort_is_rejected() -> RqsResult<()> {
+    let result = parse("sort=status&sort=", &catalog()?);
 
-    assert!(query.sort().is_empty());
+    assert_eq!(
+        result,
+        Err(RqsError::DuplicateControl { parameter: "sort" })
+    );
     Ok(())
 }
 
 #[test]
-fn repeated_projection_replaces_the_previous_fields() -> RqsResult<()> {
-    let query = parse("fields=status&fields=age", &catalog()?)?;
-    let fields = query
-        .projection()
-        .fields()
-        .iter()
-        .map(|field| field.public_name())
-        .collect::<Vec<_>>();
+fn repeated_projection_is_rejected() -> RqsResult<()> {
+    let result = parse("fields=status&fields=age", &catalog()?);
 
-    assert_eq!(fields, vec!["age"]);
+    assert_eq!(
+        result,
+        Err(RqsError::DuplicateControl {
+            parameter: "fields"
+        })
+    );
     Ok(())
 }
 
 #[test]
-fn repeated_empty_projection_clears_the_previous_fields() -> RqsResult<()> {
-    let query = parse("fields=status&fields=", &catalog()?)?;
+fn repeated_empty_projection_is_rejected() -> RqsResult<()> {
+    let result = parse("fields=status&fields=", &catalog()?);
 
-    assert!(query.projection().is_empty());
+    assert_eq!(
+        result,
+        Err(RqsError::DuplicateControl {
+            parameter: "fields"
+        })
+    );
     Ok(())
 }
 
 #[test]
-fn repeated_limit_uses_the_last_value() -> RqsResult<()> {
-    let query = parse("limit=20&limit=5", &catalog()?)?;
+fn repeated_limit_is_rejected() -> RqsResult<()> {
+    let result = parse("limit=20&limit=5", &catalog()?);
 
-    assert_eq!(query.pagination().limit(), Some(5));
+    assert_eq!(
+        result,
+        Err(RqsError::DuplicateControl { parameter: "limit" })
+    );
     Ok(())
 }
 
 #[test]
-fn repeated_empty_limit_replaces_the_previous_value_with_zero() -> RqsResult<()> {
-    let query = parse("limit=20&limit=", &catalog()?)?;
+fn repeated_empty_limit_is_rejected() -> RqsResult<()> {
+    let result = parse("limit=20&limit=", &catalog()?);
 
-    assert_eq!(query.pagination().limit(), Some(0));
+    assert_eq!(
+        result,
+        Err(RqsError::DuplicateControl { parameter: "limit" })
+    );
     Ok(())
 }
 
 #[test]
-fn repeated_skip_uses_the_last_value() -> RqsResult<()> {
-    let query = parse("skip=20&skip=5", &catalog()?)?;
+fn repeated_skip_is_rejected() -> RqsResult<()> {
+    let result = parse("skip=20&skip=5", &catalog()?);
 
-    assert_eq!(query.pagination().offset(), Some(5));
+    assert_eq!(
+        result,
+        Err(RqsError::DuplicateControl { parameter: "skip" })
+    );
     Ok(())
 }
 
 #[test]
-fn repeated_empty_skip_replaces_the_previous_value_with_zero() -> RqsResult<()> {
-    let query = parse("skip=20&skip=", &catalog()?)?;
+fn repeated_empty_skip_is_rejected() -> RqsResult<()> {
+    let result = parse("skip=20&skip=", &catalog()?);
 
-    assert_eq!(query.pagination().offset(), Some(0));
+    assert_eq!(
+        result,
+        Err(RqsError::DuplicateControl { parameter: "skip" })
+    );
     Ok(())
 }
 

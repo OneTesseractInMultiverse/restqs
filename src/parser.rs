@@ -7,7 +7,9 @@ use std::collections::BTreeSet;
 
 use self::{
     filter_policy::{FilterKey, filter_key, validate_new_filter},
-    parameter_policy::{Parameter, classify_parameter, validate_control_size},
+    parameter_policy::{
+        Parameter, classify_parameter, control_key, validate_control_size, validate_new_control,
+    },
 };
 use crate::{
     FieldCatalog, FieldRef, Filter, FilterOp, ParserLimits, Projection, RqsError, RqsQuery,
@@ -66,12 +68,21 @@ impl<'a> Parser<'a> {
     ///
     /// Filter operators are recognized at the field boundary after decoding.
     /// Later comparison characters remain part of the value.
+    /// Each of `sort`, `fields`, `limit`, and `skip` may appear only once after
+    /// decoding, including empty values. Repeats return [`RqsError::DuplicateControl`]
+    /// after the value-size check and before interpreting the repeated value.
     pub fn parse(&self, query: &str) -> RqsResult<RqsQuery> {
         let parameters = decode_parameters(query, self.config.limits())?;
         let mut output = RqsQuery::new();
         let mut seen_filters = BTreeSet::new();
+        let mut seen_controls = BTreeSet::new();
         for parameter in parameters {
-            self.apply_parameter(&parameter, &mut output, &mut seen_filters)?;
+            self.apply_parameter(
+                &parameter,
+                &mut output,
+                &mut seen_filters,
+                &mut seen_controls,
+            )?;
         }
         Ok(output)
     }
@@ -81,16 +92,21 @@ impl<'a> Parser<'a> {
         parameter: &str,
         output: &mut RqsQuery,
         seen_filters: &mut BTreeSet<FilterKey>,
+        seen_controls: &mut BTreeSet<&'static str>,
     ) -> RqsResult<()> {
         let parameter = classify_parameter(parameter)?;
         validate_control_size(parameter, self.config.limits().max_value_bytes)?;
+        let key = control_key(parameter);
+        validate_new_control(key, seen_controls)?;
         match parameter {
             Parameter::Sort(value) => self.apply_sort(value, output),
             Parameter::Projection(value) => self.apply_projection(value, output),
             Parameter::Limit(value) => self.apply_limit(value, output),
             Parameter::Offset(value) => self.apply_offset(value, output),
             Parameter::Filter(value) => self.apply_filter(value, output, seen_filters),
-        }
+        }?;
+        seen_controls.extend(key);
+        Ok(())
     }
 
     fn apply_filter(

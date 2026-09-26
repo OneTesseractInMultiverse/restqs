@@ -53,6 +53,7 @@ fn all_error_codes_are_stable() {
         },
         RqsError::InvalidRegexFlags,
         RqsError::TextSearchUnsupported,
+        RqsError::DuplicateControl { parameter: "sort" },
         RqsError::DuplicateFilter {
             field: "age".to_owned(),
             operator: ">",
@@ -84,6 +85,7 @@ fn all_error_codes_are_stable() {
             "regex_disabled",
             "invalid_regex_flags",
             "text_search_unsupported",
+            "duplicate_control",
             "duplicate_filter",
             "adapter_unsupported"
         ]
