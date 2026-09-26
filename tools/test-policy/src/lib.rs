@@ -5,13 +5,19 @@ use syn::visit::{self, Visit};
 use syn::{Attribute, Block, ItemFn, Macro, Meta, parse::Parser, punctuated::Punctuated};
 
 #[derive(Debug, PartialEq, Eq)]
+/// One policy violation with one-based source coordinates.
 pub struct Diagnostic {
+    /// One-based source line.
     pub line: usize,
+    /// One-based source column.
     pub column: usize,
+    /// Actionable description of the unsupported syntax or assertion count.
     pub message: String,
 }
 
 impl Diagnostic {
+    /// Convert a token span to one-based diagnostic coordinates and attach the policy
+    /// explanation.
     fn new(span: Span, message: String) -> Self {
         Self {
             line: span.start().line,
@@ -22,8 +28,11 @@ impl Diagnostic {
 }
 
 #[derive(Debug, Default)]
+/// Aggregate policy result for one parsed source file.
 pub struct Report {
+    /// Number of explicit test functions across all source configurations.
     pub tests: usize,
+    /// Policy violations; an empty vector means the source passed.
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -36,11 +45,15 @@ pub fn analyze(source: &str) -> Result<Report, syn::Error> {
 }
 
 #[derive(Default)]
+/// Syntax visitor that checks function boundaries and rejects opaque item expansion.
 struct Checker {
+    /// Accumulated test count and violations for the current file.
     report: Report,
 }
 
 impl Checker {
+    /// Audit one explicit function's attributes and body, counting test assertions independently
+    /// of nested functions.
     fn function(&mut self, attrs: &[Attribute], name: &syn::Ident, body: &Block) {
         let test = attrs.iter().any(|attr| test_meta(&attr.meta));
         let body = inspect_body(body);
@@ -56,16 +69,22 @@ impl Checker {
 }
 
 impl<'ast> Visit<'ast> for Checker {
+    /// Visit a free function according to this visitor's scope; nested functions are audited
+    /// separately by Checker.
     fn visit_item_fn(&mut self, node: &'ast ItemFn) {
         self.function(&node.attrs, &node.sig.ident, &node.block);
         visit::visit_item_fn(self, node);
     }
 
+    /// Visit an implementation method according to this visitor's scope, keeping its assertions
+    /// separate from enclosing functions.
     fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
         self.function(&node.attrs, &node.sig.ident, &node.block);
         visit::visit_impl_item_fn(self, node);
     }
 
+    /// Visit a default trait method according to this visitor's scope; declarations without
+    /// bodies need no assertion audit.
     fn visit_trait_item_fn(&mut self, node: &'ast syn::TraitItemFn) {
         if let Some(body) = &node.default {
             self.function(&node.attrs, &node.sig.ident, body);
@@ -73,6 +92,8 @@ impl<'ast> Visit<'ast> for Checker {
         visit::visit_trait_item_fn(self, node);
     }
 
+    /// Audit the supported fuzz entry point or reject opaque item macros that could hide
+    /// generated tests.
     fn visit_item_macro(&mut self, node: &'ast syn::ItemMacro) {
         // Fuzz targets are separate executables, not generated unit tests.
         if node
@@ -96,6 +117,8 @@ impl<'ast> Visit<'ast> for Checker {
     }
 }
 
+/// Require one assertion in tests and zero in helpers; return a diagnostic only when the count
+/// differs.
 fn assertion_error(name: &str, test: bool, assertions: usize) -> Option<String> {
     match (test, assertions) {
         (true, 1) | (false, 0) => None,
@@ -108,6 +131,8 @@ fn assertion_error(name: &str, test: bool, assertions: usize) -> Option<String> 
     }
 }
 
+/// Detect test attributes, including those nested inside cfg_attr, without evaluating feature
+/// configuration.
 fn test_meta(meta: &Meta) -> bool {
     if meta
         .path()
@@ -120,6 +145,8 @@ fn test_meta(meta: &Meta) -> bool {
     nested_attributes(meta).iter().any(test_meta)
 }
 
+/// Extract cfg_attr payload attributes after its condition; malformed payloads yield an empty
+/// list.
 fn nested_attributes(meta: &Meta) -> Vec<Meta> {
     match meta {
         Meta::List(list) if list.path.is_ident("cfg_attr") => {
@@ -132,6 +159,7 @@ fn nested_attributes(meta: &Meta) -> Vec<Meta> {
     }
 }
 
+/// Allow known non-generating function attributes and recursively check cfg_attr payloads.
 fn supported_attribute(meta: &Meta) -> bool {
     let Some(segment) = meta.path().segments.last() else {
         return false;
@@ -144,6 +172,8 @@ fn supported_attribute(meta: &Meta) -> bool {
     }
 }
 
+/// Report function attributes that could generate tests or assertions outside the checker's
+/// supported syntax.
 fn attribute_diagnostics(attrs: &[Attribute]) -> Vec<Diagnostic> {
     attrs.iter().filter(|attr| !supported_attribute(&attr.meta)).map(|attr|
         Diagnostic::new(attr.pound_token.span,
@@ -152,12 +182,16 @@ fn attribute_diagnostics(attrs: &[Attribute]) -> Vec<Diagnostic> {
 }
 
 #[derive(Default)]
+/// Assertion count and unsupported macros inside one function body.
 struct BodyAudit {
+    /// Number of supported assertion macro calls in this body.
     assertions: usize,
+    /// Unsupported macros encountered while walking this body.
     diagnostics: Vec<Diagnostic>,
 }
 
 impl BodyAudit {
+    /// Accumulate an independent body audit's assertion count and diagnostics.
     fn extend(&mut self, other: Self) {
         self.assertions += other.assertions;
         self.diagnostics.extend(other.diagnostics);
@@ -166,9 +200,13 @@ impl BodyAudit {
 
 impl<'ast> Visit<'ast> for BodyAudit {
     // A nested function is checked separately, never counted as its parent's assertion.
+    /// Skip nested functions here; Checker audits their own assertion scope separately.
     fn visit_item_fn(&mut self, _: &'ast ItemFn) {}
+    /// Skip nested implementation methods so their assertions are not counted in the enclosing body.
     fn visit_impl_item_fn(&mut self, _: &'ast syn::ImplItemFn) {}
+    /// Skip nested trait methods; the outer syntax visitor audits their default bodies separately.
     fn visit_trait_item_fn(&mut self, _: &'ast syn::TraitItemFn) {}
+    /// Audit a body macro and its nested arguments when a terminal macro name is available.
     fn visit_macro(&mut self, node: &'ast Macro) {
         if let Some(segment) = node.path.segments.last() {
             self.extend(inspect_macro(
@@ -180,12 +218,14 @@ impl<'ast> Visit<'ast> for BodyAudit {
     }
 }
 
+/// Traverse a function body with the nested-function boundary enforced by BodyAudit.
 fn inspect_body(body: &Block) -> BodyAudit {
     let mut audit = BodyAudit::default();
     audit.visit_block(body);
     audit
 }
 
+/// Recognize standard, debug, and proptest assertion macros by terminal name.
 fn assertion_macro(name: &str) -> bool {
     matches!(
         name,
@@ -201,6 +241,7 @@ fn assertion_macro(name: &str) -> bool {
     )
 }
 
+/// Recognize supported macros whose arguments can be inspected without expansion.
 fn transparent_macro(name: &str) -> bool {
     matches!(
         name,
@@ -233,6 +274,8 @@ fn transparent_macro(name: &str) -> bool {
     )
 }
 
+/// Audit nested macro arguments, count assertions, and reject unsupported macros;
+/// included/stringified contents remain data.
 fn inspect_macro(name: &str, span: Span, tokens: TokenStream) -> BodyAudit {
     let mut audit = if matches!(name, "stringify" | "include_str" | "include_bytes") {
         BodyAudit::default()
@@ -252,6 +295,8 @@ fn inspect_macro(name: &str, span: Span, tokens: TokenStream) -> BodyAudit {
 
 // Token trees preserve groups and discard comments; literals are never parsed as source.
 // Walk nested macro arguments so vec![{ assert!(...); ... }] cannot hide a second check.
+/// Walk nested token groups for macro calls, ignoring comments and literal contents so strings
+/// cannot add or hide assertions.
 fn inspect_tokens(tokens: TokenStream) -> BodyAudit {
     let tokens: Vec<_> = tokens.into_iter().collect();
     let mut audit = BodyAudit::default();

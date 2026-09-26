@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Repository budget checks using explicit, single-assertion cases.
 #![cfg(feature = "sqlx")]
 
 #[path = "../examples/support/budget.rs"]
@@ -14,6 +14,7 @@ use restqs::{Parser, ParserConfig, ParserLimits, RqsValue};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+/// Build a repository statement with the supplied request and application result budget.
 fn statement(raw: &str, policy: QueryBudget, postgres: bool) -> TestResult<SqlStatement> {
     let catalog = users::users_catalog()?;
     let parser = Parser::with_config(

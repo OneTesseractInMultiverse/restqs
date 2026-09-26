@@ -1,8 +1,12 @@
+//! Ordering contract checks; each test owns one assertion and helpers return setup/results.
+
 use restqs_sqlite_tests::list_sqlite_users;
 use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+/// Return deterministic user rows whose ages, names, statuses, and activity distinguish query
+/// behavior.
 fn users(raw: &str) -> TestResult<Vec<(i64, String)>> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -10,6 +14,8 @@ fn users(raw: &str) -> TestResult<Vec<(i64, String)>> {
         .block_on(query_fixture(raw))
 }
 
+/// Create an isolated runtime and database connection, then execute one query against seeded
+/// fixture data.
 async fn query_fixture(raw: &str) -> TestResult<Vec<(i64, String)>> {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
@@ -20,11 +26,13 @@ async fn query_fixture(raw: &str) -> TestResult<Vec<(i64, String)>> {
     result
 }
 
+/// Seed the isolated users table and invoke the repository path selected by the test.
 async fn seed_and_query(pool: &SqlitePool, raw: &str) -> TestResult<Vec<(i64, String)>> {
     seed(pool).await?;
     list_sqlite_users(pool, raw).await
 }
 
+/// Create and populate a fixture users table using trusted test data and bound values.
 async fn seed(pool: &SqlitePool) -> TestResult {
     sqlx::query("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, status TEXT, age INTEGER, active BOOLEAN)")
         .execute(pool).await?;

@@ -23,23 +23,25 @@ flowchart LR
 
 ## Install
 
-This development branch targets the **unreleased 0.2.0 API**. The examples below
-use a local checkout at `../restqs`. Published 0.1.x users should consult the
-[0.1.1 API documentation](https://docs.rs/restqs/0.1.1/restqs/) and the
+This documentation describes **RestQS 0.2.0**, which requires Rust 1.85 or newer.
+Version 0.2 introduces breaking changes from 0.1.x; read the
 [0.2 migration guide](docs/migration-0.2.md) before upgrading.
+The dependency snippets below apply once 0.2.0 is published. To test the release
+candidate beforehand, use `restqs = { path = "../restqs" }` from a sibling checkout,
+adding `features = ["sqlx"]` when needed.
 
 Use the core parser with no runtime dependencies:
 
 ```toml
 [dependencies]
-restqs = { path = "../restqs" }
+restqs = "0.2"
 ```
 
 Turn on the SQLx-oriented adapter contract with the `sqlx` feature:
 
 ```toml
 [dependencies]
-restqs = { path = "../restqs", features = ["sqlx"] }
+restqs = { version = "0.2", features = ["sqlx"] }
 ```
 
 The `sqlx` feature exposes fragment generation for SQLx-style repositories.
@@ -189,6 +191,8 @@ The SQLx adapter turns a parsed plan into query fragments. The caller owns the
 base SQL, bind calls, connection, transaction, and result mapping.
 
 ```rust
+# #[cfg(feature = "sqlx")]
+# {
 use restqs::{
     FieldCatalog, parse,
     adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
@@ -207,6 +211,7 @@ assert_eq!(
     parts.where_clause,
     Some("\"users\".\"age\" >= $1 AND \"users\".\"status\" = $2".to_owned())
 );
+# }
 # Ok::<(), restqs::RqsError>(())
 ```
 
@@ -236,24 +241,24 @@ before execution. Zero positions return `invalid_bind_position`, and position ar
 ## Documented SQLx Examples
 
 The crate does not depend on SQLx, Tokio, PostgreSQL, or SQLite. Application
-code adds those crates in its own manifest. The integration guide shows
-documentation-only PostgreSQL and SQLite snippets that use dynamic SQL through
-`sqlx::query`.
+code adds those crates in its own manifest. The integration guide links the
+compiled PostgreSQL, MySQL, and SQLite repository examples and their execution
+tests. All request values remain separate binds in dynamic SQL.
 
-For PostgreSQL applications:
+For the PostgreSQL example (SQLx 0.9.0, Rust 1.94 or newer):
 
 ```toml
 [dependencies]
-restqs = { path = "../restqs", features = ["sqlx"] }
-sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio"] }
+restqs = { version = "0.2", features = ["sqlx"] }
+sqlx = { version = "0.9.0", default-features = false, features = ["postgres", "runtime-tokio"] }
 ```
 
-For SQLite applications:
+For the SQLite example (SQLx 0.8.6, Rust 1.85 or newer):
 
 ```toml
 [dependencies]
-restqs = { path = "../restqs", features = ["sqlx"] }
-sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
+restqs = { version = "0.2", features = ["sqlx"] }
+sqlx = { version = "0.8.6", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
 The documented examples keep the security boundary visible. SQL text contains
@@ -316,7 +321,9 @@ make package
 
 `make test` runs all in-memory tests. `make coverage` fails on any uncovered
 source line. `make verify` checks formatting, type checking, Clippy, tests,
-doc tests, and docs.rs-style docs with and without the `sqlx` feature.
+doctests (including this README and the API guide), and rustdoc with and without
+the `sqlx` feature. It also verifies the Rust/Python assertion-policy tools.
+Those isolated developer tools have dependencies; the published library has none.
 
 ## License
 

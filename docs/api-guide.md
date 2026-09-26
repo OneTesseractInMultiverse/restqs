@@ -1,6 +1,6 @@
 # API Guide
 
-This guide describes the unreleased 0.2 API. See the [migration guide](migration-0.2.md) for changes from 0.1.x.
+This guide describes the 0.2 API. See the [migration guide](migration-0.2.md) for changes from 0.1.x.
 
 RestQS starts with one explicit catalog and ends with one typed plan. The catalog names the public fields accepted by an
 endpoint. The plan describes filters, sort terms, projection fields, and pagination values.
@@ -38,11 +38,11 @@ overwriting entries.
 use restqs::{FieldCatalog, parse};
 
 let catalog = FieldCatalog::new()
-.allow_integer("age") ?
-.allow_text("status") ?
-.allow_boolean("active") ?;
+    .allow_integer("age")?
+    .allow_text("status")?
+    .allow_boolean("active")?;
 
-let query = parse("age>=18&status=active&active=true", & catalog) ?;
+let query = parse("age>=18&status=active&active=true", &catalog)?;
 
 assert_eq!(query.filters().len(), 3);
 # Ok::<(), restqs::RqsError>(())
@@ -92,8 +92,8 @@ Use `str(null)` on a text field to compare against the literal text `null` with 
 ```rust
 use restqs::{FieldCatalog, RqsValue, parse};
 
-let catalog = FieldCatalog::new().allow_integer("age") ?;
-let query = parse("age=in(18,21)", & catalog) ?;
+let catalog = FieldCatalog::new().allow_integer("age")?;
+let query = parse("age=in(18,21)", &catalog)?;
 let value = query.filters()[0].value();
 
 assert_eq!(
@@ -128,10 +128,13 @@ use restqs::{FieldCatalog, RqsError, parse};
 let catalog = FieldCatalog::new().allow_float("score")?;
 let result = parse("score=float(-inf)", &catalog);
 
-assert_eq!(result, Err(RqsError::InvalidValue {
-    field: "score".to_owned(),
-    expected: "float",
-}));
+assert_eq!(
+    result,
+    Err(RqsError::InvalidValue {
+        field: "score".to_owned(),
+        expected: "float",
+    })
+);
 # Ok::<(), restqs::RqsError>(())
 ```
 
@@ -208,8 +211,8 @@ Comparison filters map to typed plan nodes:
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};
 
-let catalog = FieldCatalog::new().allow_integer("age") ?;
-let query = parse("age>=18", & catalog) ?;
+let catalog = FieldCatalog::new().allow_integer("age")?;
+let query = parse("age>=18", &catalog)?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::Gte);
 # Ok::<(), restqs::RqsError>(())
@@ -220,8 +223,8 @@ Existence filters use field presence. They do not carry a value.
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};
 
-let catalog = FieldCatalog::new().allow_text("deleted_at") ?;
-let query = parse("!deleted_at", & catalog) ?;
+let catalog = FieldCatalog::new().allow_text("deleted_at")?;
+let query = parse("!deleted_at", &catalog)?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::NotExists);
 # Ok::<(), restqs::RqsError>(())
@@ -239,8 +242,8 @@ order. A bare field name means ascending order too.
 ```rust
 use restqs::{FieldCatalog, SortDirection, parse};
 
-let catalog = FieldCatalog::new().allow_datetime("created_at") ?;
-let query = parse("sort=-created_at", & catalog) ?;
+let catalog = FieldCatalog::new().allow_datetime("created_at")?;
+let query = parse("sort=-created_at", &catalog)?;
 
 assert_eq!(query.sort()[0].direction(), SortDirection::Desc);
 # Ok::<(), restqs::RqsError>(())
@@ -257,9 +260,9 @@ Projection uses `fields=` and comma-separated field names. The plan stores the r
 use restqs::{FieldCatalog, parse};
 
 let catalog = FieldCatalog::new()
-.allow_text("name") ?
-.allow_text("email") ?;
-let query = parse("fields=name,email", & catalog) ?;
+    .allow_text("name")?
+    .allow_text("email")?;
+let query = parse("fields=name,email", &catalog)?;
 
 assert_eq!(query.projection().fields().len(), 2);
 # Ok::<(), restqs::RqsError>(())
@@ -274,8 +277,8 @@ An empty `fields=` value produces an empty projection. Application code can inte
 ```rust
 use restqs::{FieldCatalog, parse};
 
-let catalog = FieldCatalog::new().allow_text("status") ?;
-let query = parse("limit=25&skip=50", & catalog) ?;
+let catalog = FieldCatalog::new().allow_text("status")?;
+let query = parse("limit=25&skip=50", &catalog)?;
 
 assert_eq!(query.pagination().limit(), Some(25));
 # Ok::<(), restqs::RqsError>(())
@@ -286,13 +289,13 @@ The default maximum `limit` is 100. Use `ParserConfig` for a resource-specific c
 ```rust
 use restqs::{FieldCatalog, Parser, ParserConfig, ParserLimits};
 
-let catalog = FieldCatalog::new().allow_text("status") ?;
+let catalog = FieldCatalog::new().allow_text("status")?;
 let limits = ParserLimits {
-max_limit: 250,
-..ParserLimits::default ()
+    max_limit: 250,
+    ..ParserLimits::default()
 };
-let parser = Parser::with_config( & catalog, ParserConfig::with_limits(limits));
-let query = parser.parse("limit=200") ?;
+let parser = Parser::with_config(&catalog, ParserConfig::with_limits(limits));
+let query = parser.parse("limit=200")?;
 
 assert_eq!(query.pagination().limit(), Some(200));
 # Ok::<(), restqs::RqsError>(())
@@ -318,7 +321,10 @@ use restqs::{FieldCatalog, RqsError, parse};
 
 let result = parse("limit=1&limit=100", &FieldCatalog::new());
 
-assert_eq!(result, Err(RqsError::DuplicateControl { parameter: "limit" }));
+assert_eq!(
+    result,
+    Err(RqsError::DuplicateControl { parameter: "limit" })
+);
 ```
 
 Parameters are processed in order after query-size, parameter-count, and decoding checks. For each control, decoded
@@ -377,9 +383,9 @@ guarantee case sensitivity. See [MySQL regular expressions](https://dev.mysql.co
 ```rust
 use restqs::{Field, FieldCatalog, FilterOp, ValueKind, parse};
 
-let email = Field::new("email", ValueKind::Text) ?.allow_regex();
-let catalog = FieldCatalog::new().allow(email) ?;
-let query = parse("email=/@example.com$/i", & catalog) ?;
+let email = Field::new("email", ValueKind::Text)?.allow_regex();
+let catalog = FieldCatalog::new().allow(email)?;
+let query = parse("email=/@example.com$/i", &catalog)?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::Regex);
 # Ok::<(), restqs::RqsError>(())

@@ -6,6 +6,7 @@ use restqs::{
     adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap, SqlxQueryParts},
 };
 
+/// Authorize all supported value kinds plus one opt-in regex field for generated contract checks.
 pub fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow_integer("id")?
@@ -19,6 +20,7 @@ pub fn catalog() -> RqsResult<FieldCatalog> {
         .allow(Field::new("name", ValueKind::Text)?.allow_regex())
 }
 
+/// Provide bounded input budgets large enough for generated encoded values and mixed plans.
 pub fn generous_limits() -> ParserLimits {
     ParserLimits {
         max_query_bytes: 65536,
@@ -29,6 +31,8 @@ pub fn generous_limits() -> ParserLimits {
     }
 }
 
+/// Derive small deterministic budgets from up to five bytes, using zero for absent bytes to
+/// exercise boundaries.
 pub fn limits_from_seed(seed: &[u8]) -> ParserLimits {
     ParserLimits {
         max_query_bytes: usize::from(seed.first().copied().unwrap_or(0)) * 16,
@@ -39,11 +43,15 @@ pub fn limits_from_seed(seed: &[u8]) -> ParserLimits {
     }
 }
 
+/// Parse generated input with the shared catalog and an explicit budget, preserving all parser
+/// errors.
 pub fn parse(raw: &str, limits: ParserLimits) -> RqsResult<RqsQuery> {
     let catalog = catalog()?;
     Parser::with_config(&catalog, ParserConfig::with_limits(limits)).parse(raw)
 }
 
+/// Percent-encode every UTF-8 byte so arbitrary Unicode and delimiters can be supplied as one
+/// value.
 pub fn encode(value: &str) -> String {
     const HEX: &[u8; 16] = b"0123456789ABCDEF";
     value
@@ -58,10 +66,13 @@ pub fn encode(value: &str) -> String {
         .collect()
 }
 
+/// Wrap arbitrary text in str(...) before encoding, preventing null, list, or regex
+/// reinterpretation.
 pub fn text_query(value: &str) -> String {
     format!("text={}", encode(&format!("str({value})")))
 }
 
+/// Check that encoded, wrapped text parses to the exact original string under the fixture budget.
 pub fn decoded_text_matches(value: &str) -> bool {
     let Ok(query) = parse(&text_query(value), generous_limits()) else {
         return false;
@@ -69,6 +80,8 @@ pub fn decoded_text_matches(value: &str) -> bool {
     query.filters().first().and_then(Filter::value) == Some(&RqsValue::Text(value.to_owned()))
 }
 
+/// Compare a plan field's name, type, and regex permission with the original authorized
+/// definition.
 fn resolved_field(field: &FieldRef, catalog: &FieldCatalog) -> bool {
     catalog.get(field.public_name()).is_some_and(|allowed| {
         allowed.value_kind() == field.value_kind()
@@ -76,6 +89,7 @@ fn resolved_field(field: &FieldRef, catalog: &FieldCatalog) -> bool {
     })
 }
 
+/// Check that every filter, sort, and projection field preserves authorized catalog metadata.
 pub fn fields_are_resolved(query: &RqsQuery) -> bool {
     let Ok(catalog) = catalog() else {
         return false;
@@ -89,6 +103,7 @@ pub fn fields_are_resolved(query: &RqsQuery) -> bool {
         .all(|field| resolved_field(field, &catalog))
 }
 
+/// Check the operand variant against the catalog kind, allowing null and requiring finite floats.
 fn scalar_matches(value: &RqsValue, kind: ValueKind) -> bool {
     match (value, kind) {
         (RqsValue::Null, _) => true,
@@ -103,6 +118,8 @@ fn scalar_matches(value: &RqsValue, kind: ValueKind) -> bool {
     }
 }
 
+/// Check operator/operand invariants, including regex permissions, unique flags, and homogeneous
+/// membership lists.
 fn valid_filter(filter: &Filter) -> bool {
     match filter.op() {
         FilterOp::Exists | FilterOp::NotExists => {
@@ -132,10 +149,14 @@ fn valid_filter(filter: &Filter) -> bool {
     }
 }
 
+/// Check that every successfully parsed filter satisfies the normalized operator/operand
+/// contract.
 pub fn operators_are_valid(query: &RqsQuery) -> bool {
     query.filters().iter().all(valid_filter)
 }
 
+/// Translate a generated plan with explicit records-table mappings and regex opt-in for the
+/// selected dialect.
 pub fn build(query: &RqsQuery, dialect: SqlDialect, first: usize) -> RqsResult<SqlxQueryParts> {
     let columns = SqlxColumnMap::new()
         .map("id", "records.id")?
@@ -152,6 +173,8 @@ pub fn build(query: &RqsQuery, dialect: SqlDialect, first: usize) -> RqsResult<S
         .build_with_bind_start(query, first)
 }
 
+/// Compute the bind oracle in input order, flattening lists, binding regex patterns, and skipping
+/// null/existence predicates.
 pub fn expected_binds(query: &RqsQuery) -> Vec<RqsValue> {
     query
         .filters()
@@ -169,6 +192,8 @@ pub fn expected_binds(query: &RqsQuery) -> Vec<RqsValue> {
         .collect()
 }
 
+/// Compare SQL placeholder order with generated binds; callers supply bounded positions that
+/// cannot overflow usize.
 pub fn placeholders_match(parts: &SqlxQueryParts, dialect: SqlDialect, first: usize) -> bool {
     let sql = parts.where_clause.as_deref().unwrap_or("");
     match dialect {
@@ -192,6 +217,8 @@ pub fn placeholders_match(parts: &SqlxQueryParts, dialect: SqlDialect, first: us
     }
 }
 
+/// Check all dialects for ordered binds and matching placeholders, accepting explicit
+/// unsupported-feature errors.
 pub fn adapter_contract(query: &RqsQuery, first: usize) -> bool {
     [SqlDialect::Postgres, SqlDialect::MySql, SqlDialect::Sqlite]
         .into_iter()
@@ -204,6 +231,8 @@ pub fn adapter_contract(query: &RqsQuery, first: usize) -> bool {
         })
 }
 
+/// Compare each dialect's predicate SQL with a fixed reference while changing only the bound text
+/// value.
 pub fn value_cannot_change_sql(value: &str) -> bool {
     let Ok(query) = parse(&text_query(value), generous_limits()) else {
         return false;
@@ -221,6 +250,8 @@ pub fn value_cannot_change_sql(value: &str) -> bool {
         )
 }
 
+/// Construct a mixed text, list, scalar, null, ordering, and projection query for cross-feature
+/// properties.
 pub fn mixed_query(value: &str, values: &[i64], age: i64) -> String {
     let list = values
         .iter()

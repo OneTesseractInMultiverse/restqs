@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Sqlx mappings checks using explicit, single-assertion cases.
 #![cfg(feature = "sqlx")]
 
 #[path = "../examples/support/in_memory.rs"]
@@ -10,6 +10,8 @@ use restqs::{
     parse,
 };
 
+/// Parse the suite's logical query so mapping behavior is tested independently of field
+/// authorization.
 fn plan(raw: &str) -> RqsResult<RqsQuery> {
     let catalog = FieldCatalog::new()
         .allow_integer("age")?
@@ -18,6 +20,7 @@ fn plan(raw: &str) -> RqsResult<RqsQuery> {
     parse(raw, &catalog)
 }
 
+/// Build a plan using an empty physical mapping to expose missing-column errors.
 fn unmapped(raw: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
     SqlxAdapter::new(dialect, SqlxColumnMap::new())
         .allow_regex()

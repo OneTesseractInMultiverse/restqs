@@ -25,7 +25,9 @@ pub(crate) fn split_sort_token(token: &str) -> (&str, SortDirection) {
 /// One sort term.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SortTerm {
+    /// Owned logical field metadata resolved from the catalog.
     field: FieldRef,
+    /// Ascending or descending order requested for this resolved field.
     direction: SortDirection,
 }
 

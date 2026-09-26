@@ -1,10 +1,11 @@
-#![allow(missing_docs)]
+//! Operator boundary checks using explicit, single-assertion cases.
 
 use restqs::{
     Field, FieldCatalog, Filter, FilterOp, Parser, ParserConfig, ParserLimits, RqsError, RqsQuery,
     RqsResult, RqsValue, ValueKind, parse,
 };
 
+/// Build the minimal authorized field catalog used by this suite.
 fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow(Field::new("name", ValueKind::Text)?.allow_regex())?
@@ -12,6 +13,7 @@ fn catalog() -> RqsResult<FieldCatalog> {
         .allow_integer("age")
 }
 
+/// Parse the suite query with its authorized field catalog.
 fn parse_query(input: &str) -> RqsResult<RqsQuery> {
     parse(input, &catalog()?)
 }

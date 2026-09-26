@@ -1,8 +1,12 @@
+//! Postgres contract checks; each test owns one assertion and helpers return setup/results.
+
 use restqs_service_tests::postgres;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+/// Return deterministic user rows whose ages, names, statuses, and activity distinguish query
+/// behavior.
 fn users(raw: &str, regex: bool) -> TestResult<Vec<i64>> {
     let rows = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -11,6 +15,8 @@ fn users(raw: &str, regex: bool) -> TestResult<Vec<i64>> {
     Ok(rows.into_iter().map(|row| row.0).collect())
 }
 
+/// Create an isolated runtime and database connection, then execute one query against seeded
+/// fixture data.
 async fn query_fixture(raw: &str, regex: bool) -> TestResult<Vec<(i64, String)>> {
     let url = std::env::var("RESTQS_POSTGRES_URL")?;
     let pool = PgPoolOptions::new()
@@ -22,6 +28,7 @@ async fn query_fixture(raw: &str, regex: bool) -> TestResult<Vec<(i64, String)>>
     result
 }
 
+/// Seed the isolated users table and invoke the repository path selected by the test.
 async fn seed_and_query(pool: &PgPool, raw: &str, regex: bool) -> TestResult<Vec<(i64, String)>> {
     seed(pool).await?;
     if regex {
@@ -31,6 +38,7 @@ async fn seed_and_query(pool: &PgPool, raw: &str, regex: bool) -> TestResult<Vec
     }
 }
 
+/// Create and populate a fixture users table using trusted test data and bound values.
 async fn seed(pool: &PgPool) -> TestResult {
     sqlx::query("CREATE TEMPORARY TABLE users (id BIGINT PRIMARY KEY, name VARCHAR(80) NOT NULL, status VARCHAR(20), age BIGINT, active BOOLEAN)")
         .execute(pool).await?;

@@ -32,8 +32,11 @@ pub enum SqlDialect {
 /// SQLx adapter options.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SqlxAdapter {
+    /// Dialect governing identifier quoting, placeholder syntax, and supported operators.
     dialect: SqlDialect,
+    /// Trusted logical-to-physical identifier mappings; never populated from request data.
     columns: SqlxColumnMap,
+    /// Adapter-level opt-in, independent of each catalog field's regex permission.
     regex_enabled: bool,
 }
 
@@ -63,7 +66,16 @@ impl SqlxAdapter {
     ///
     /// Every filter, sort, and projection field must have a configured mapping.
     /// Missing mappings return [`RqsError::MissingColumnMapping`].
-    /// PostgreSQL placeholders start at `$1`.
+    /// PostgreSQL placeholders start at `$1`. Filters become AND predicates;
+    /// list items are flattened into consecutive binds and null/existence predicates
+    /// consume no binds. Pagination is copied as metadata and is not added to SQL.
+    ///
+    /// # Errors
+    ///
+    /// Returns mapping errors, bind-position overflow, or [`RqsError::AdapterUnsupported`]
+    /// for unsupported dialect/operand combinations (including empty lists, ordered
+    /// null comparisons, disabled regex, and unsupported regex flags). No partial
+    /// fragments are returned on failure.
     pub fn build(&self, query: &RqsQuery) -> RqsResult<SqlxQueryParts> {
         self.build_with_bind_start(query, 1)
     }
@@ -97,7 +109,12 @@ impl SqlxAdapter {
     }
 }
 
-/// SQL fragments and bind values ready for caller-owned SQLx code.
+/// SQL fragments and bind values ready for caller-owned repository code.
+///
+/// These public fields are data, not an execution or sanitization API. Preserve
+/// the generated SQL/bind correspondence when composing a statement. Add trusted
+/// authorization predicates, result budgets, pagination binds, and schema-aware
+/// decoding in the repository before passing SQL to a driver.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SqlxQueryParts {
     /// Optional `WHERE` clause without the `WHERE` keyword.
@@ -114,20 +131,34 @@ pub struct SqlxQueryParts {
     pub binds: Vec<RqsValue>,
 }
 
+/// Mutable translation state for one plan; discarded if any field or operand cannot be
+/// translated.
 struct FragmentBuilder<'a> {
+    /// Dialect governing identifier quoting, placeholder syntax, and supported operators.
     dialect: SqlDialect,
+    /// One-based offset reserved for the first generated filter bind.
     first_bind_position: usize,
+    /// Trusted logical-to-physical identifier mappings; never populated from request data.
     columns: &'a SqlxColumnMap,
+    /// Adapter-level opt-in, independent of each catalog field's regex permission.
     regex_enabled: bool,
+    /// Translated filter predicates accumulated in request order, without WHERE.
     clauses: Vec<String>,
+    /// Requested selection; empty means the repository chooses its default response.
     projection: Vec<String>,
+    /// Quoted ordering clause without ORDER BY, or None for no requested ordering.
     order_by: Option<String>,
+    /// Explicit unsigned row cap, or None when the request omitted a limit.
     limit: Option<u64>,
+    /// Explicit unsigned skip count, or None when the request omitted an offset.
     offset: Option<u64>,
+    /// Generated filter values in placeholder order, excluding caller-owned prefix values.
     binds: Vec<RqsValue>,
 }
 
 impl<'a> FragmentBuilder<'a> {
+    /// Initialize empty fragment state with trusted mappings and an already validated one-based
+    /// bind start.
     fn new(
         dialect: SqlDialect,
         regex_enabled: bool,
@@ -148,6 +179,8 @@ impl<'a> FragmentBuilder<'a> {
         }
     }
 
+    /// Translate predicates in request order and accumulate clauses and their corresponding bind
+    /// values.
     fn add_filters(&mut self, filters: &[Filter]) -> RqsResult<()> {
         for filter in filters {
             let clause = self.filter_clause(filter)?;
@@ -156,22 +189,28 @@ impl<'a> FragmentBuilder<'a> {
         Ok(())
     }
 
+    /// Resolve every sort field and store its dialect-quoted ordering clause.
     fn add_sort(&mut self, sort: &[SortTerm]) -> RqsResult<()> {
         self.order_by = sort_clause(self.dialect, self.columns, sort)?;
         Ok(())
     }
 
+    /// Resolve every selected field and store quoted columns in requested order.
     fn add_projection(&mut self, query: &RqsQuery) -> RqsResult<()> {
         self.projection =
             projection_columns(self.dialect, self.columns, query.projection().fields())?;
         Ok(())
     }
 
+    /// Copy unsigned pagination metadata; the repository owns limits, conversion, and SQL
+    /// pagination syntax.
     fn add_pagination(&mut self, query: &RqsQuery) {
         self.limit = query.pagination().limit();
         self.offset = query.pagination().offset();
     }
 
+    /// Consume builder state, joining predicates with AND and preserving bind and projection
+    /// order.
     fn finish(self) -> SqlxQueryParts {
         SqlxQueryParts {
             where_clause: if self.clauses.is_empty() {
@@ -187,6 +226,8 @@ impl<'a> FragmentBuilder<'a> {
         }
     }
 
+    /// Resolve the physical column before dispatching the normalized operator to its translation
+    /// path.
     fn filter_clause(&mut self, filter: &Filter) -> RqsResult<String> {
         let column = quoted_field(self.dialect, self.columns, filter.field())?;
         match filter.op() {
@@ -203,6 +244,8 @@ impl<'a> FragmentBuilder<'a> {
         }
     }
 
+    /// Produce a null predicate without binding, or bind a scalar and format its comparison;
+    /// reject missing operands.
     fn comparison_clause(
         &mut self,
         filter: &Filter,
@@ -221,6 +264,8 @@ impl<'a> FragmentBuilder<'a> {
         Ok(format_comparison(column, operator, &placeholder))
     }
 
+    /// Expand nonempty membership operands into individual placeholders; reject missing lists and
+    /// incompatible operators.
     fn list_clause(&mut self, filter: &Filter, column: &str) -> RqsResult<String> {
         let Some(RqsValue::List(values)) = filter.value() else {
             return Err(RqsError::AdapterUnsupported {
@@ -249,6 +294,8 @@ impl<'a> FragmentBuilder<'a> {
         Ok(format!("{column} {operator} ({placeholders})"))
     }
 
+    /// Check adapter opt-in, literal presence, and dialect flag support before binding the raw
+    /// pattern.
     fn regex_clause(&mut self, filter: &Filter, column: &str) -> RqsResult<String> {
         if !self.regex_enabled {
             return Err(RqsError::AdapterUnsupported { feature: "regex" });
@@ -263,6 +310,8 @@ impl<'a> FragmentBuilder<'a> {
         Ok(format_comparison(column, operator, &placeholder))
     }
 
+    /// Check position arithmetic and format the placeholder before appending the value, leaving
+    /// bind state unchanged on overflow.
     fn push_bind(&mut self, value: RqsValue) -> RqsResult<String> {
         let position = bind_position(self.first_bind_position, self.binds.len())?;
         let placeholder = format_placeholder(self.dialect, position);
@@ -271,6 +320,7 @@ impl<'a> FragmentBuilder<'a> {
     }
 }
 
+/// Reject zero because every numbered placeholder position is one-based.
 fn validate_bind_start(position: usize) -> RqsResult<()> {
     if position == 0 {
         Err(RqsError::InvalidBindPosition)
@@ -279,6 +329,7 @@ fn validate_bind_start(position: usize) -> RqsResult<()> {
     }
 }
 
+/// Compute the next position using checked addition, reporting overflow instead of wrapping.
 fn bind_position(first: usize, preceding_binds: usize) -> RqsResult<usize> {
     first
         .checked_add(preceding_binds)
@@ -293,6 +344,8 @@ fn format_placeholder(dialect: SqlDialect, position: usize) -> String {
     }
 }
 
+/// Select only dialect-supported regex semantics; reject unsupported flags instead of silently
+/// dropping them.
 fn regex_operator(dialect: SqlDialect, flags: &str) -> RqsResult<&'static str> {
     match (dialect, flags) {
         (SqlDialect::Postgres, "") => Ok("~"),
@@ -310,6 +363,8 @@ fn regex_operator(dialect: SqlDialect, flags: &str) -> RqsResult<&'static str> {
     }
 }
 
+/// Translate null equality/inequality without binds, reject ordered null comparisons, and return
+/// None for non-null values.
 fn null_comparison_clause(
     column: &str,
     operator: &str,
@@ -325,10 +380,13 @@ fn null_comparison_clause(
     }
 }
 
+/// Join a trusted column, operator, and SQL operand with spaces; values must already be
+/// placeholders or fixed literals.
 fn format_comparison(column: &str, operator: &str, operand: &str) -> String {
     format!("{column} {operator} {operand}")
 }
 
+/// Return no clause for empty sorting; otherwise resolve and join all terms in priority order.
 fn sort_clause(
     dialect: SqlDialect,
     columns: &SqlxColumnMap,
@@ -344,6 +402,7 @@ fn sort_clause(
     Ok(Some(terms.join(", ")))
 }
 
+/// Resolve a field and append its fixed ASC/DESC direction using dialect identifier quoting.
 fn sort_term(dialect: SqlDialect, columns: &SqlxColumnMap, term: &SortTerm) -> RqsResult<String> {
     let column = quoted_field(dialect, columns, term.field())?;
     let direction = match term.direction() {
@@ -353,6 +412,8 @@ fn sort_term(dialect: SqlDialect, columns: &SqlxColumnMap, term: &SortTerm) -> R
     Ok(format!("{column} {direction}"))
 }
 
+/// Resolve and quote every projection field in input order; fail if any explicit mapping is
+/// missing.
 fn projection_columns(
     dialect: SqlDialect,
     columns: &SqlxColumnMap,
@@ -364,6 +425,8 @@ fn projection_columns(
         .collect()
 }
 
+/// Resolve trusted column metadata before quoting; never derive SQL identifiers from request
+/// field names.
 fn quoted_field(
     dialect: SqlDialect,
     columns: &SqlxColumnMap,
@@ -373,6 +436,7 @@ fn quoted_field(
     Ok(quote_column(dialect, column))
 }
 
+/// Quote each segment of a previously validated dotted column identifier independently.
 fn quote_column(dialect: SqlDialect, column: &str) -> String {
     column
         .split('.')
@@ -381,6 +445,8 @@ fn quote_column(dialect: SqlDialect, column: &str) -> String {
         .join(".")
 }
 
+/// Quote an already validated ASCII identifier segment for the dialect; this is not an
+/// arbitrary-string escaping API.
 fn quote_identifier(dialect: SqlDialect, value: &str) -> String {
     match dialect {
         SqlDialect::Postgres | SqlDialect::Sqlite => format!("\"{value}\""),
@@ -413,6 +479,8 @@ mod tests {
         assert_eq!(format_placeholder(SqlDialect::Sqlite, 12), "?");
     }
 
+    /// Build the trusted status, age, timestamp, and email mapping used by adapter invariant
+    /// tests.
     fn columns() -> RqsResult<SqlxColumnMap> {
         SqlxColumnMap::new()
             .map("status", "users.status")?
@@ -421,22 +489,28 @@ mod tests {
             .map("email", "users.email")
     }
 
+    /// Create an authorized text field for directly constructed adapter test plans.
     fn text_field() -> FieldRef {
         FieldRef::new_for_test("status", ValueKind::Text, false)
     }
 
+    /// Create an authorized integer field for directly constructed adapter test plans.
     fn integer_field() -> FieldRef {
         FieldRef::new_for_test("age", ValueKind::Integer, false)
     }
 
+    /// Create an authorized timestamp field for directly constructed adapter test plans.
     fn datetime_field() -> FieldRef {
         FieldRef::new_for_test("created_at", ValueKind::DateTime, false)
     }
 
+    /// Create an opt-in email field for direct adapter regex policy tests.
     fn regex_field() -> FieldRef {
         FieldRef::new_for_test("email", ValueKind::Text, true)
     }
 
+    /// Wrap a directly constructed filter in a plan so adapter guards can be tested independently
+    /// of parsing.
     fn query_with_filter(filter: Filter) -> RqsQuery {
         let mut query = RqsQuery::new();
         query.push_filter(filter);

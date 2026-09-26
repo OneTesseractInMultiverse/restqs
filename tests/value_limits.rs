@@ -1,10 +1,11 @@
-#![allow(missing_docs)]
+//! Value limits checks using explicit, single-assertion cases.
 
 use restqs::{
     Field, FieldCatalog, Filter, FilterOp, Parser, ParserConfig, ParserLimits, RqsError, RqsQuery,
     RqsResult, RqsValue, SortDirection, SortTerm, ValueKind,
 };
 
+/// Parse fixture input using explicit input budgets, returning the original parser result.
 fn parse_with_limits(input: &str, limits: ParserLimits) -> RqsResult<RqsQuery> {
     let catalog = FieldCatalog::new()
         .allow_integer("id")?
@@ -13,6 +14,7 @@ fn parse_with_limits(input: &str, limits: ParserLimits) -> RqsResult<RqsQuery> {
     Parser::with_config(&catalog, ParserConfig::with_limits(limits)).parse(input)
 }
 
+/// Parse fixture input with an explicit decoded-value byte cap and otherwise default budgets.
 fn parse_with_value_limit(input: &str, max_value_bytes: usize) -> RqsResult<RqsQuery> {
     parse_with_limits(
         input,

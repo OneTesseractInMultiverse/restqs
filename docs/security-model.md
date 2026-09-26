@@ -39,8 +39,8 @@ RestQS separates logical authorization from trusted SQL configuration:
 use restqs::{FieldCatalog, adapters::sqlx::SqlxColumnMap};
 
 let catalog = FieldCatalog::new()
-.allow_text("status") ?
-.allow_integer("amount") ?;
+    .allow_text("status")?
+    .allow_integer("amount")?;
 let columns = SqlxColumnMap::new()
     .map("status", "orders.status")?
     .map("amount", "orders.amount_cents")?;
@@ -80,17 +80,20 @@ Accepted strings retain their original precision and offset and remain subject t
 
 ```rust
 use restqs::{
-    FieldCatalog, parse,
+    FieldCatalog,
     adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
+    parse,
 };
 
-let catalog = FieldCatalog::new().allow_text("status") ?;
-let query = parse("status=active", & catalog) ?;
-let columns = SqlxColumnMap::new()
-    .map("status", "orders.status")?;
-let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build( & query) ?;
+let catalog = FieldCatalog::new().allow_text("status")?;
+let query = parse("status=active", &catalog)?;
+let columns = SqlxColumnMap::new().map("status", "orders.status")?;
+let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build(&query)?;
 
-assert_eq!(parts.where_clause, Some("\"orders\".\"status\" = $1".to_owned()));
+assert_eq!(
+    parts.where_clause,
+    Some("\"orders\".\"status\" = $1".to_owned())
+);
 # Ok::<(), restqs::RqsError>(())
 ```
 
@@ -122,18 +125,18 @@ flags, not the regex language inside a pattern; the database still interprets na
 
 ```rust
 use restqs::{
-    Field, FieldCatalog, FilterOp, ValueKind, parse,
+    Field, FieldCatalog, FilterOp, ValueKind,
     adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
+    parse,
 };
 
-let email = Field::new("email", ValueKind::Text) ?.allow_regex();
-let catalog = FieldCatalog::new().allow(email) ?;
-let query = parse("email=/@example.com$/i", & catalog) ?;
-let columns = SqlxColumnMap::new()
-    .map("email", "users.email")?;
+let email = Field::new("email", ValueKind::Text)?.allow_regex();
+let catalog = FieldCatalog::new().allow(email)?;
+let query = parse("email=/@example.com$/i", &catalog)?;
+let columns = SqlxColumnMap::new().map("email", "users.email")?;
 let parts = SqlxAdapter::new(SqlDialect::Postgres, columns)
-.allow_regex()
-.build( & query) ?;
+    .allow_regex()
+    .build(&query)?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::Regex);
 # Ok::<(), restqs::RqsError>(())
@@ -149,8 +152,7 @@ Text search is not part of this release. A `$text=` parameter returns
 `text_search_unsupported`.
 
 This choice avoids a false sense of portability. Full-text search differs by database, schema, language, tokenizer,
-ranking model, and index type. A future adapter can add a dialect-specific text search path without changing the core
-plan contract.
+ranking model, and index type. Applications requiring full-text search must implement their own explicit request and repository contract.
 
 ## Resource Limits
 
@@ -179,18 +181,18 @@ Applications can set tighter limits per endpoint:
 ```rust
 use restqs::{FieldCatalog, Parser, ParserConfig, ParserLimits};
 
-let catalog = FieldCatalog::new().allow_text("status") ?;
+let catalog = FieldCatalog::new().allow_text("status")?;
 let parser = Parser::with_config(
-& catalog,
-ParserConfig::with_limits(ParserLimits {
-max_query_bytes: 1024,
-max_parameters: 16,
-max_list_items: 20,
-max_limit: 50,
-..ParserLimits::default ()
-}),
+    &catalog,
+    ParserConfig::with_limits(ParserLimits {
+        max_query_bytes: 1024,
+        max_parameters: 16,
+        max_list_items: 20,
+        max_limit: 50,
+        ..ParserLimits::default()
+    }),
 );
-let query = parser.parse("status=active&limit=25") ?;
+let query = parser.parse("status=active&limit=25")?;
 
 assert_eq!(query.pagination().limit(), Some(25));
 # Ok::<(), restqs::RqsError>(())

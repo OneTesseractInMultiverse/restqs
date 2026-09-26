@@ -24,6 +24,8 @@ pub struct ParserLimits {
 }
 
 impl Default for ParserLimits {
+    /// Set raw/value byte, parameter, list-item, and explicit-limit budgets; no default result
+    /// cap is introduced.
     fn default() -> Self {
         Self {
             max_query_bytes: 8 * 1024,
@@ -35,6 +37,8 @@ impl Default for ParserLimits {
     }
 }
 
+/// Compare decoded UTF-8 byte length with the inclusive budget and report the affected
+/// field/control.
 pub(crate) fn validate_value_size(field: &str, value: &str, max_bytes: usize) -> RqsResult<()> {
     if value.len() > max_bytes {
         Err(RqsError::ValueTooLarge {

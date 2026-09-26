@@ -23,8 +23,8 @@ verification checks one fact.
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};
 
-let catalog = FieldCatalog::new().allow_integer("age") ?;
-let query = parse("age>=18", & catalog) ?;
+let catalog = FieldCatalog::new().allow_integer("age")?;
+let query = parse("age>=18", &catalog)?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::Gte);
 # Ok::<(), restqs::RqsError>(())
@@ -186,3 +186,20 @@ merge protection: inspect `gh api repos/OneTesseractInMultiverse/restqs/rulesets
 
 Review tests with the same care as source code. A good test has a clear name, one assertion, no external service, and a
 direct link to required behavior. A test that only increases coverage without proving behavior needs revision.
+
+## Documentation Checks
+
+`make test-doc` compiles and runs Rust examples from crate rustdoc, the README, and the API guide with both feature
+selections; adapter, security, and migration-guide examples run with `sqlx`. The historical 0.1 constructor snippet is
+intentionally marked `ignore`; its 0.2 replacements are compiled. Driver execution code lives in the isolated conformance fixtures
+linked by the integration guide. Change those sources and run the appropriate fixture instead of maintaining a
+second driver implementation in Markdown.
+
+`make doc` denies rustdoc warnings and broken intra-doc links. `make doc-internal` includes private implementation
+items for maintainer review. Clippy denies missing private-item docs across the library, fixtures, and Rust policy tool; public API docs already fail compilation
+when missing. Document contracts, failure conditions, ordering, and trust boundaries rather than paraphrasing syntax.
+Test function names describe their one expected fact; module docs explain suite scope and helper docs explain setup.
+
+Before a release, inspect `cargo package --list` for obsolete or unintended files and run Clippy across the core and
+isolated crates. Delete unused implementation only when compiler/reference checks establish it has no supported role;
+preserve migration notes, historical changelog entries, and deliberately defensive adapter checks.

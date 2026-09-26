@@ -1,6 +1,6 @@
 # Migrating to 0.2
 
-Version 0.2 is an unreleased breaking API change. Published 0.1.x applications keep their existing API until they
+Version 0.2 introduces a breaking API change. Published 0.1.x applications keep their existing API until they
 upgrade. Cargo requirements such as `restqs = "0.1"` stay on that line; moving to `0.2` is an explicit upgrade.
 See the [compatibility policy and 0.1.1 API baseline](compatibility.md). This migration separates the endpoint's logical field allowlist from each SQL repository's physical schema.
 
@@ -141,9 +141,15 @@ and deliberate precedence changes are called out above and in the changelog.
 SQL applications configure a `SqlxColumnMap` from trusted application code, then pass it to `SqlxAdapter::new`:
 
 ```rust
-use restqs::{FieldCatalog, parse, adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap}};
+use restqs::{
+    FieldCatalog,
+    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
+    parse,
+};
 
-let catalog = FieldCatalog::new().allow_integer("age")?.allow_text("status")?;
+let catalog = FieldCatalog::new()
+    .allow_integer("age")?
+    .allow_text("status")?;
 let query = parse("age>=18&status=active&sort=-age&fields=status", &catalog)?;
 let columns = SqlxColumnMap::new()
     .map("age", "users.age")?

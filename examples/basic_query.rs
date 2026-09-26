@@ -1,7 +1,9 @@
-#![allow(missing_docs)]
+//! Executable basic query example; failures are returned to the caller.
 
 use restqs::{FieldCatalog, RqsError, parse};
 
+/// Parse a bounded catalog-authorized query and print its typed plan; propagate configuration and
+/// input errors.
 fn main() -> Result<(), RqsError> {
     let catalog = FieldCatalog::new()
         .allow_integer("age")?

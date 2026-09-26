@@ -1,10 +1,11 @@
-#![allow(missing_docs)]
+//! Duplicate controls checks using explicit, single-assertion cases.
 
 use restqs::{
     FieldCatalog, Filter, FilterOp, Parser, ParserConfig, ParserLimits, RqsError, RqsQuery,
     RqsResult, RqsValue, parse,
 };
 
+/// Parse controls with the suite catalog and supplied decoded-value byte budget.
 fn parse_controls(raw: &str) -> RqsResult<RqsQuery> {
     let catalog = FieldCatalog::new()
         .allow_integer("age")?

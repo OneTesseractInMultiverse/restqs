@@ -1,3 +1,5 @@
+//! Bounded decoding fuzz entry point: exercise hostile raw text and exact encoded Unicode round trips.
+
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use restqs_robustness::{decoded_text_matches, generous_limits, parse};

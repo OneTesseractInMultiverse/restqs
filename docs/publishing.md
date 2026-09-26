@@ -11,11 +11,11 @@ and its Python tests stay in `.github/` and are excluded from the crate.
 
 Choose the version using the [compatibility policy](compatibility.md). Before 1.0, an intentional API, query-behavior,
 or library-MSRV break requires the next `0.x` line; a compatible `0.1.x` patch must preserve that line's contract, except
-for the documented security-fix allowance. The unreleased 0.2.0 field-mapping and validation changes require
+for the documented security-fix allowance. The 0.2.0 field-mapping and validation changes require
 [the migration guide](migration-0.2.md). Compare both feature surfaces against the recorded published baseline before
 merging the release-preparation PR; the API review complements CI and is not inferred from a version bump.
 
-Merge the reviewed version and changelog changes into `main`, then create a tag matching `Cargo.toml`, such as `v0.1.1`.
+Merge the reviewed version and changelog changes into `main`, then create a tag matching `Cargo.toml`, such as `v0.2.0`.
 Publishing a GitHub release starts `.github/workflows/publish.yml`.
 
 ```mermaid
@@ -96,19 +96,19 @@ four settings above and the GitHub environment rules before rerunning the workfl
 
 1. Update `Cargo.toml` to an unpublished version and update `CHANGELOG.md`. Complete the API/behavior comparison and
    migration-note steps in [the release checklist](release-checklist.md#prepare-the-version), then merge the PR.
-2. Create and push the matching tag on the reviewed `main` commit. For example, after changing the manifest to `0.1.1`:
+2. Create and push the matching tag on the reviewed `main` commit. For example, after changing the manifest to `0.2.0`:
 
    ```sh
    git switch main
    git pull --ff-only
-   git tag -a v0.1.1 -m 'Release v0.1.1'
-   git push origin v0.1.1
+   git tag -a v0.2.0 -m 'Release v0.2.0'
+   git push origin v0.2.0
    ```
 
 3. Validate without publishing or creating a GitHub release:
 
    ```sh
-   gh workflow run publish.yml --ref main -f tag=v0.1.1 -f publish=false
+   gh workflow run publish.yml --ref main -f tag=v0.2.0 -f publish=false
    gh run list --workflow publish.yml
    ```
 
@@ -116,10 +116,18 @@ four settings above and the GitHub environment rules before rerunning the workfl
    an OpenID Connect token. They can also run from a branch when testing changes to the workflow, but the target tag
    still has to resolve to a commit merged into `main`.
 
-4. Publish a GitHub release for the existing tag:
+4. Prepare a draft GitHub release for the validated tag using the reviewed changelog notes:
 
    ```sh
-   gh release create v0.1.1 --verify-tag --title v0.1.1 --generate-notes
+   gh release create v0.2.0 --verify-tag --draft --title v0.2.0 --notes-file release-notes.md
+   ```
+
+   Keep `release-notes.md` outside the package, or remove it after use. A draft does not publish to crates.io.
+   Review the draft and publish it when ready:
+
+
+   ```sh
+   gh release edit v0.2.0 --draft=false
    ```
 
 5. Wait for the release checks, then approve the `crates-io` deployment from the Actions run. Check the published version
@@ -128,7 +136,7 @@ four settings above and the GitHub environment rules before rerunning the workfl
 Use manual publication to retry a failed run for an unpublished version:
 
 ```sh
-gh workflow run publish.yml --ref main -f tag=v0.1.1 -f publish=true
+gh workflow run publish.yml --ref main -f tag=v0.2.0 -f publish=true
 ```
 
 Retries run all gates again and still require approval. If an upload timed out, check crates.io before retrying: a
@@ -153,5 +161,6 @@ network, or repository files. `make verify` covers linting, tests, doctests, and
 
 ## docs.rs
 
+docs.rs builds with all features, exposing the optional adapter alongside the core API.
 `make doc` builds documentation with `RUSTDOCFLAGS="--cfg docsrs -D warnings"`, with and without `sqlx`. Broken links
 and rustdoc warnings fail the build. GitHub Actions publication does not need a separate docs.rs credential.

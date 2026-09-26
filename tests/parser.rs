@@ -1,10 +1,11 @@
-#![allow(missing_docs)]
+//! Parser checks using explicit, single-assertion cases.
 
 use restqs::{
     Field, FieldCatalog, Filter, FilterOp, Parser, ParserConfig, ParserLimits, RqsValue,
     SortDirection, parse,
 };
 
+/// Build the minimal authorized field catalog used by this suite.
 fn catalog() -> restqs::RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow_integer("age")?
@@ -14,6 +15,7 @@ fn catalog() -> restqs::RqsResult<FieldCatalog> {
         .allow_uuid("id")
 }
 
+/// Build the suite catalog with explicit field-level regex permission.
 fn regex_catalog() -> restqs::RqsResult<FieldCatalog> {
     let field = Field::new("email", restqs::ValueKind::Text)?.allow_regex();
     FieldCatalog::new().allow(field)

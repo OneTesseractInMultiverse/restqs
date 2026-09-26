@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Sqlx null checks using explicit, single-assertion cases.
 #![cfg(feature = "sqlx")]
 
 use restqs::{
@@ -7,6 +7,7 @@ use restqs::{
     parse,
 };
 
+/// Build trusted column mappings for this suite, independently of catalog authorization.
 fn columns() -> RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
     restqs::adapters::sqlx::SqlxColumnMap::new()
         .map("name", "users.name")?
@@ -15,6 +16,7 @@ fn columns() -> RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
         .map("active", "users.active")
 }
 
+/// Translate the suite query with trusted columns for the selected dialect.
 fn build(query: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
     let catalog = FieldCatalog::new()
         .allow_text("name")?

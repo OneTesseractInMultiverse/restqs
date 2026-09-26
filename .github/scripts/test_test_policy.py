@@ -5,6 +5,8 @@ from test_policy import diagnostics
 
 
 class AssertionPolicyTests(unittest.TestCase):
+    """Check one Python assertion-policy behavior per source fixture without executing that source."""
+
     def test_accepts_unittest_assertion(self):
         self.assertEqual(diagnostics("def test_ok(self): self.assertEqual(1, 1)"), [])
 

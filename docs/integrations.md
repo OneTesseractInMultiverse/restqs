@@ -1,7 +1,7 @@
 # Integration Guide
 
-These examples target the unreleased 0.2 API and use a local checkout at `../restqs` in dependency snippets.
-See [Migrating to 0.2](migration-0.2.md) for the released 0.1.x constructor changes.
+These examples target RestQS 0.2.0. See [Migrating to 0.2](migration-0.2.md) when upgrading from 0.1.x.
+Registry dependency snippets apply after publication; release-candidate users can substitute a local path dependency.
 
 RestQS keeps framework and database code outside the core parser. A REST handler extracts the raw query string, selects
 a field catalog, and parses RQS. A repository receives the `RqsQuery` plan and translates it for the database layer.
@@ -27,25 +27,26 @@ Turn on the `sqlx` feature to use the built-in SQL fragment adapter:
 
 ```toml
 [dependencies]
-restqs = { path = "../restqs", features = ["sqlx"] }
+restqs = { version = "0.2", features = ["sqlx"] }
 ```
 
 The adapter accepts a parsed plan and returns SQLx-ready parts:
 
 ```rust
 use restqs::{
-    FieldCatalog, RqsValue, parse,
+    FieldCatalog, RqsValue,
     adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
+    parse,
 };
 
 let catalog = FieldCatalog::new()
-.allow_integer("age") ?
-.allow_text("status") ?;
-let query = parse("age>=18&status=active&sort=-age&limit=25", & catalog) ?;
+    .allow_integer("age")?
+    .allow_text("status")?;
+let query = parse("age>=18&status=active&sort=-age&limit=25", &catalog)?;
 let columns = SqlxColumnMap::new()
     .map("age", "users.age")?
     .map("status", "users.status")?;
-let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build( & query) ?;
+let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build(&query)?;
 
 assert_eq!(
     parts.binds,
@@ -72,57 +73,14 @@ positions. Ordered comparisons with null fail at adapter build time with `adapte
 The repository owns the base SQL and the bind calls. RestQS provides the parts. The final assembly lives beside result
 mapping and transaction code.
 
-The examples below share [the pagination module](../examples/support/pagination.rs). For a standalone example, copy that
-file beside `main.rs` as `pagination.rs` and declare `mod pagination;` at crate scope. Adjust the module path for your
-application's layout. This is application-owned example code, not an exported RestQS API. Its `SqlStatement` keeps
-completed SQL and the full bind sequence together.
+The compiled [users repository](../examples/support/users.rs) owns the catalog, trusted column map, projection
+validation, and final SELECT assembly. It shares [pagination](../examples/support/pagination.rs) and
+[result budgets](../examples/support/budget.rs) with the driver fixtures. These are application-owned examples,
+not exported library APIs. To adapt them, copy those three files as sibling modules in your application.
 
-```rust
-mod pagination;
-
-use pagination::{SqlStatement, append_postgres_pagination};
-use restqs::{RqsValue, adapters::sqlx::SqlxQueryParts};
-
-fn users_select_sql(parts: &SqlxQueryParts) -> Result<SqlStatement, std::num::TryFromIntError> {
-    let projection = if parts.projection.is_empty() {
-        "\"users\".\"id\", \"users\".\"status\"".to_owned()
-    } else {
-        parts.projection.join(", ")
-    };
-
-    let mut sql = format!("SELECT {projection} FROM \"users\"");
-    if let Some(where_clause) = &parts.where_clause {
-        sql.push_str(" WHERE ");
-        sql.push_str(where_clause);
-    }
-    if let Some(order_by) = &parts.order_by {
-        sql.push_str(" ORDER BY ");
-        sql.push_str(order_by);
-    }
-    append_postgres_pagination(&sql, parts)
-}
-
-let parts = SqlxQueryParts {
-where_clause: Some("\"users\".\"status\" = $1".to_owned()),
-projection: Vec::new(),
-order_by: None,
-limit: Some(25),
-offset: None,
-binds: vec![RqsValue::Text("active".to_owned())],
-};
-
-let statement = users_select_sql(&parts)?;
-
-assert_eq!(
-    statement.sql,
-    "SELECT \"users\".\"id\", \"users\".\"status\" FROM \"users\" WHERE \"users\".\"status\" = $1 LIMIT $2"
-);
-# Ok::<(), std::num::TryFromIntError>(())
-```
-
-Real SQLx code then binds each `RqsValue` with the matching database type. Keep that mapping inside the repository. That
-location has the schema knowledge needed for precise binding. Bind `statement.binds`, which includes pagination, rather
-than only `parts.binds`. The example above binds `Text("active")` followed by `Integer(25)`.
+`SqlStatement` keeps completed SQL and its full bind sequence together. Bind `statement.binds`, including pagination,
+in order. A filter such as `status=active&limit=25` binds text `active`, then integer `25`.
+The repository owns schema-specific conversion, connection management, transactions, and row decoding.
 
 ### Composing With Caller-Owned Predicates
 
@@ -142,22 +100,10 @@ application context, adds generated filters in parentheses with `AND`, and prese
 prepends the tenant value before calling the pagination helper, so that helper sees the complete base bind sequence.
 The tenant field is absent from the public catalog; a query cannot choose or replace the authorized tenant.
 
-```rust
-mod pagination;
-mod tenant;
-
-use restqs::{FieldCatalog, parse, adapters::sqlx::SqlxColumnMap};
-
-let catalog = FieldCatalog::new().allow_integer("id")?.allow_text("status")?;
-let columns = SqlxColumnMap::new().map("id", "users.id")?.map("status", "users.status")?;
-let query = parse("status=active&limit=25", &catalog)?;
-let authenticated_tenant_id = 42; // Supplied by the application's authorization context.
-let statement = tenant::tenant_users_statement(&query, columns, authenticated_tenant_id)?;
-// SQL: SELECT "users"."id", "users"."status" FROM users
-//      WHERE "users"."tenant_id" = $1 AND ("users"."status" = $2) LIMIT $3
-// Bind in order: Integer(42), Text("active"), Integer(25).
-# Ok::<(), Box<dyn std::error::Error>>(())
-```
+The executable source is covered by [tenant composition tests](../tests/repository_pagination.rs). For
+`status=active&limit=25` with authenticated tenant `42`, its SQL includes
+`WHERE "users"."tenant_id" = $1 AND ("users"."status" = $2) LIMIT $3`, binding
+`Integer(42)`, `Text("active")`, then `Integer(25)`.
 
 Bind `statement.binds` in order using the repository's schema-aware SQLx binder. This assembly example has a dynamic
 projection and no row decoder; applications using it must decode the selected columns. The fixed response repositories
@@ -236,7 +182,7 @@ and checked integer conversion under the explicit internal opt-in.
 ## SQLx Repository Examples
 
 The crate does not depend on SQLx, Tokio, PostgreSQL, or SQLite. Application code chooses those crates and versions in
-its own manifest. The following snippets show the path from raw RQS text to database rows. They keep request extraction,
+its own manifest. The linked executable examples show the path from raw RQS text to database rows. They keep request extraction,
 parsing, SQL assembly, bind mapping, and row decoding in distinct functions.
 
 ```mermaid
@@ -264,7 +210,7 @@ The module owns the endpoint catalog, trusted column mappings, projection valida
 response columns are always authorized by `users_catalog`. The [repository tests](../tests/repository_users.rs) compile
 this exact module and check both dialects' projection behavior with one assertion per test.
 
-The snippets use `sqlx::query` instead of SQLx macros. That keeps query text assembled at runtime. The application still
+The driver examples use `sqlx::query` instead of SQLx macros. That keeps query text assembled at runtime. The application still
 binds every value through SQLx.
 
 ### PostgreSQL
@@ -275,8 +221,8 @@ SQLx 0.9 requires Rust 1.94 or newer; RestQS itself retains Rust 1.85 support. A
 
 ```toml
 [dependencies]
-restqs = { path = "../restqs", features = ["sqlx"] }
-sqlx = { version = "0.9", default-features = false, features = ["postgres", "runtime-tokio"] }
+restqs = { version = "0.2", features = ["sqlx"] }
+sqlx = { version = "0.9.0", default-features = false, features = ["postgres", "runtime-tokio"] }
 ```
 
 SQLx 0.9's `AssertSqlSafe` marks the reviewed dynamic statement: fixed repository syntax plus authorized mapped
@@ -284,58 +230,14 @@ identifiers and placeholders, with all values bound separately. It does not sani
 [source](https://github.com/OneTesseractInMultiverse/restqs/blob/main/integration-tests/services/src/postgres.rs) keeps this
 operation in a private executor. SQLx 0.8 uses `sqlx::query(&statement.sql)` without this marker.
 
-Repository code can then translate a parsed plan into a SQLx query. The example below binds text, integer, boolean, and
-float values. Date, date-time, and UUID values stay as text here. A repository can bind those variants to richer database
-types after it owns the schema rules.
+Use the fixture's [PostgreSQL repository source](https://github.com/OneTesseractInMultiverse/restqs/blob/main/integration-tests/services/src/postgres.rs)
+as the canonical binding example. `list_users` parses and assembles a bounded statement; its private executor binds
+values and fetches rows; `decode_users` maps the fixed response. The source is compiled and executed in CI so driver
+API changes cannot silently invalidate a copied documentation snippet.
 
-```rust
-mod budget;
-mod pagination;
-mod users;
-
-use restqs::{RqsValue, parse};
-use users::{postgres_users_statement, users_catalog};
-use sqlx::{PgPool, Row};
-
-async fn list_users(pool: &PgPool, raw: &str) -> Result<Vec<(i64, String)>, Box<dyn std::error::Error>> {
-    let query = parse(raw, &users_catalog()?)?;
-    let statement = postgres_users_statement(&query)?;
-    let mut query = sqlx::query(sqlx::AssertSqlSafe(statement.sql.as_str()));
-
-    for value in &statement.binds {
-        query = bind_postgres_value(query, value)?;
-    }
-
-    let rows = query.fetch_all(pool).await?;
-    Ok(decode_postgres_users(rows)?)
-}
-
-fn decode_postgres_users(rows: Vec<sqlx::postgres::PgRow>) -> Result<Vec<(i64, String)>, sqlx::Error> {
-    rows
-        .into_iter()
-        .map(|row| Ok((row.try_get("id")?, row.try_get("name")?)))
-        .collect()
-}
-
-fn bind_postgres_value<'query>(
-    query: sqlx::query::Query<'query, sqlx::Postgres, sqlx::postgres::PgArguments>,
-    value: &'query RqsValue,
-) -> Result<sqlx::query::Query<'query, sqlx::Postgres, sqlx::postgres::PgArguments>, restqs::RqsError> {
-    match value {
-        RqsValue::Null => Ok(query.bind(Option::<String>::None)),
-        RqsValue::Boolean(value) => Ok(query.bind(*value)),
-        RqsValue::Integer(value) => Ok(query.bind(*value)),
-        RqsValue::Float(value) => Ok(query.bind(*value)),
-        RqsValue::Text(value)
-        | RqsValue::Date(value)
-        | RqsValue::DateTime(value)
-        | RqsValue::Uuid(value) => Ok(query.bind(value.as_str())),
-        RqsValue::List(_) => Err(restqs::RqsError::AdapterUnsupported {
-            feature: "nested list bind",
-        }),
-    }
-}
-```
+The scalar binder handles booleans, integers, floats, and text. Dates, timestamps, and UUIDs use text storage in these
+examples. Applications with native typed columns must supply schema-appropriate conversions and SQLx features.
+Nested list binds are rejected because membership lists must already be flattened by the adapter.
 
 The shared pagination module appends numbered placeholders after `parts.binds.len()` and supplies the corresponding
 integer values in `statement.binds`. For `status=active&limit=1&skip=1`, the last two placeholders are `$2` and `$3`.
@@ -346,8 +248,8 @@ An application that uses SQLite can depend on SQLx in its own manifest:
 
 ```toml
 [dependencies]
-restqs = { path = "../restqs", features = ["sqlx"] }
-sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
+restqs = { version = "0.2", features = ["sqlx"] }
+sqlx = { version = "0.8.6", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
 SQLite uses `?` placeholders. The shared users builder appends authorized `ORDER BY` terms after filters and before
@@ -362,56 +264,10 @@ ORDER BY "users"."age" ASC, "users"."name" DESC LIMIT ? OFFSET ?
 The binds are `Text("active"), Integer(2), Integer(1)`. Omitted sorting adds no ordering clause; applications needing
 repeatable pagination should include a unique tie-breaker such as `sort=age,id`.
 
-The repository can reuse the same catalog and bind mapping style:
-
-```rust
-mod budget;
-mod pagination;
-mod users;
-
-use restqs::{RqsValue, parse};
-use users::{sqlite_users_statement, users_catalog};
-use sqlx::{Row, SqlitePool};
-
-async fn list_sqlite_users(pool: &SqlitePool, raw: &str) -> Result<Vec<(i64, String)>, Box<dyn std::error::Error>> {
-    let query = parse(raw, &users_catalog()?)?;
-    let statement = sqlite_users_statement(&query)?;
-    let mut query = sqlx::query(&statement.sql);
-
-    for value in &statement.binds {
-        query = bind_sqlite_value(query, value)?;
-    }
-
-    let rows = query.fetch_all(pool).await?;
-    Ok(decode_sqlite_users(rows)?)
-}
-
-fn decode_sqlite_users(rows: Vec<sqlx::sqlite::SqliteRow>) -> Result<Vec<(i64, String)>, sqlx::Error> {
-    rows
-        .into_iter()
-        .map(|row| Ok((row.try_get("id")?, row.try_get("name")?)))
-        .collect()
-}
-
-fn bind_sqlite_value<'query>(
-    query: sqlx::query::Query<'query, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'query>>,
-    value: &'query RqsValue,
-) -> Result<sqlx::query::Query<'query, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'query>>, restqs::RqsError> {
-    match value {
-        RqsValue::Null => Ok(query.bind(Option::<String>::None)),
-        RqsValue::Boolean(value) => Ok(query.bind(*value)),
-        RqsValue::Integer(value) => Ok(query.bind(*value)),
-        RqsValue::Float(value) => Ok(query.bind(*value)),
-        RqsValue::Text(value)
-        | RqsValue::Date(value)
-        | RqsValue::DateTime(value)
-        | RqsValue::Uuid(value) => Ok(query.bind(value.as_str())),
-        RqsValue::List(_) => Err(restqs::RqsError::AdapterUnsupported {
-            feature: "nested list bind",
-        }),
-    }
-}
-```
+The [SQLite repository source](https://github.com/OneTesseractInMultiverse/restqs/blob/main/integration-tests/sqlite/src/lib.rs)
+contains the complete parse, assembly, bind, execute, and decode flow. It uses the same shared users, budget, and
+pagination modules as the PostgreSQL example, with SQLite-specific scalar binding. Its SQLx 0.8.6 dependency preserves
+the fixture's Rust 1.85 minimum; this is an intentional tested version, not a claim that it is the latest SQLx release.
 
 The [isolated SQLite fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/sqlite)
 compiles this binding and row-decoding flow and includes the same users and pagination modules by path. Run
@@ -437,17 +293,18 @@ The examples do not concatenate raw query values into SQL. Logical fields are au
 SQL identifiers come from the separately configured `SqlxColumnMap`. Missing mappings fail before execution. Fixed SQL
 keywords come from repository code. User values enter the database through `.bind(...)`.
 
-The snippets treat regex as disabled. Text search remains unsupported. Date, date-time, and UUID values stay as text in
+The normal users entry points leave regex disabled; the service fixture has a separate opt-in regex entry point. Text search remains unsupported. Date, date-time, and UUID values stay as text in
 the example bind functions, which mirrors the parser contract.
 
-## Axum And Serde
+## Web Handlers
 
-RestQS does not depend on Axum or Serde. In Axum, read the raw query string from the request URI. Then select a catalog
-and call `parse`.
+Read the raw query component from the request URI, without a leading `?` or prior form decoding. Select an authorized
+catalog and call `parse`. The library is independent of the web framework and response serialization format.
 
 ```rust
 use restqs::{FieldCatalog, RqsQuery, parse};
 
+/// Parse an endpoint query against its application-owned field authorization.
 fn parse_users_query(raw_query: &str) -> restqs::RqsResult<RqsQuery> {
     let catalog = FieldCatalog::new()
         .allow_text("status")?
@@ -458,37 +315,7 @@ fn parse_users_query(raw_query: &str) -> restqs::RqsResult<RqsQuery> {
 }
 ```
 
-Serde can still parse route bodies and response data. RestQS focuses only on query syntax. That split avoids a hard
-dependency on one web framework.
-
-## SeaORM And SeaQuery
-
-SeaORM uses SeaQuery for many query builder tasks. RestQS can feed that path through the neutral `RqsQuery` plan. The
-current release does not ship a SeaQuery adapter, but the plan already carries the needed data:
-
-| RestQS item               | SeaQuery concept                 |
-|---------------------------|----------------------------------|
-| `Filter`                  | Condition expression             |
-| `FilterOp`                | Comparison or existence operator |
-| `FieldRef::public_name()` | Logical key resolved by the repository's trusted storage mapping |
-| `SortTerm`                | Ordered expression               |
-| `Projection`              | Select expression list           |
-| `Pagination`              | Limit and offset                 |
-
-A SeaQuery adapter can translate these items without changing the parser. It must still bind values, reject unsupported
-operators, and gate regex per dialect.
-
-```mermaid
-flowchart LR
-  plan["RqsQuery"] --> condition["SeaQuery conditions"]
-  plan --> order["SeaQuery order clauses"]
-  plan --> select["SeaQuery select columns"]
-  plan --> paging["Limit and offset"]
-  condition --> query["SeaQuery statement"]
-  order --> query
-  select --> query
-  paging --> query
-```
+Keep authentication, HTTP status mapping, request deadlines, and response serialization in application code.
 
 ## Custom Repository Adapters
 
@@ -498,11 +325,17 @@ plan into query builder data. It does not parse request text and does not decide
 ```rust
 use restqs::{FilterOp, RqsQuery};
 
+/// Count ordered predicates without changing the immutable query plan.
 fn count_range_filters(query: &RqsQuery) -> usize {
     query
         .filters()
         .iter()
-        .filter(|filter| matches!(filter.op(), FilterOp::Gt | FilterOp::Gte | FilterOp::Lt | FilterOp::Lte))
+        .filter(|filter| {
+            matches!(
+                filter.op(),
+                FilterOp::Gt | FilterOp::Gte | FilterOp::Lt | FilterOp::Lte
+            )
+        })
         .count()
 }
 

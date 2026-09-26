@@ -17,7 +17,8 @@ Use this checklist before publishing a new crate version. See [Publishing](publi
 - Keep the declared library MSRV within the release line; announce an intentional increase in a new incompatible line.
 - Add user-facing migration notes with before/after requests or APIs, resulting errors, and client changes for every
   incompatibility or stricter validation change. Explain any narrow security patch exception and disclosure plan.
-- Update README and `/docs` for changed behavior.
+- Update README, rustdoc, internal documentation, and `/docs` for changed behavior. Run `make doc-internal` and
+  review executable guide examples. Remove obsolete design material and duplicate snippets; retain migration/history.
 - Confirm package metadata points to the correct public repository and documentation.
 - Merge the reviewed changes into `main` before tagging.
 
@@ -54,7 +55,8 @@ It must exclude build output, editor metadata, credentials, local coverage repor
 - Dispatch Publish from `main` with the tag and `publish=false` for a validation-only run.
 - Check the resolved SHA in the run summary.
 - Confirm stable Rust, Rust 1.85.0, both feature configurations, RustSec, assertion policy, coverage, and package dry-run gates pass.
-- Publish the GitHub release for that tag, then approve its `crates-io` deployment after the checks succeed.
+- Prepare a draft GitHub release with reviewed notes. Publish the draft when ready, then approve its `crates-io`
+  deployment after the checks succeed. A draft is release preparation and does not upload the package.
 - Confirm the intended version appears on crates.io and docs.rs.
 - Record the published tag and full commit as the next API baseline, and update the supported-version policy when
   advancing the maintained minor line. Preserve old tags and migration notes.

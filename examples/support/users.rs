@@ -8,6 +8,7 @@ use restqs::{
 use super::budget::QueryBudget;
 use super::pagination::{SqlStatement, append_postgres_pagination, append_sqlite_pagination};
 
+/// Statement assembly result, preserving parser, budget, and integer-conversion errors.
 type RepositoryResult = Result<SqlStatement, Box<dyn std::error::Error>>;
 
 /// Authorize the fixed response fields and the endpoint's filter/sort fields.
@@ -59,6 +60,8 @@ pub fn sqlite_users_statement_with_budget(
     Ok(append_sqlite_pagination(&sql, &parts)?)
 }
 
+/// Accept default selection or exactly id and name in either order; reject projections
+/// incompatible with the fixed decoder.
 fn validate_users_projection(projection: &Projection) -> RqsResult<()> {
     let fields = projection.fields();
     if fields.is_empty()
@@ -74,6 +77,7 @@ fn validate_users_projection(projection: &Projection) -> RqsResult<()> {
     }
 }
 
+/// Build the application-owned physical mapping for the fixed users schema.
 fn users_columns() -> RqsResult<SqlxColumnMap> {
     SqlxColumnMap::new()
         .map("id", "users.id")?
@@ -83,6 +87,8 @@ fn users_columns() -> RqsResult<SqlxColumnMap> {
         .map("active", "users.active")
 }
 
+/// Assemble the fixed id/name SELECT with mapped filter and ordering fragments, leaving
+/// pagination to its helper.
 fn users_select_sql(parts: &SqlxQueryParts) -> String {
     let mut sql = r#"SELECT "users"."id", "users"."name" FROM users"#.to_owned();
     if let Some(where_clause) = &parts.where_clause {

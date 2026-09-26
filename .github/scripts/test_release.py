@@ -13,6 +13,8 @@ MANIFEST = '[package]\nname = "restqs"\nversion = "0.1.1"\n'
 
 
 class ReleasePolicyTests(unittest.TestCase):
+    """Exercise release identity and event policy with in-memory Git, manifest, and event fixtures."""
+
     def test_manual_validation_selects_tag(self):
         result = release.select_tag(
             "workflow_dispatch", {"inputs": {"tag": "v0.1.1"}}, "refs/heads/main", False

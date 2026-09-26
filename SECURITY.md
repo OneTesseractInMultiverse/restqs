@@ -2,11 +2,16 @@
 
 ## Supported Versions
 
-The latest published minor line receives vulnerability fixes.
+The latest published minor line receives vulnerability fixes. Check the
+[crate version history](https://crates.io/crates/restqs/versions) for the published version.
+When 0.2.0 is published, support moves from 0.1.x to 0.2.x; use the
+[migration guide](docs/migration-0.2.md) to upgrade.
 
 | Version | Status    |
 |---------|-----------|
-| `0.1.x` | Supported |
+| Latest published minor line | Supported |
+| Older published lines | Upgrade to the latest line |
+| Unpublished branches and release candidates | No release support guarantee |
 
 ## Reporting A Vulnerability
 

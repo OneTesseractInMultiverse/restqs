@@ -1,12 +1,15 @@
-#![allow(missing_docs)]
+//! Float values checks using explicit, single-assertion cases.
 
 use restqs::{FieldCatalog, Filter, RqsError, RqsQuery, RqsResult, RqsValue, parse};
 
+/// Parse one float score predicate using the normal catalog conversion path.
 fn parse_score(raw: &str) -> RqsResult<RqsQuery> {
     let catalog = FieldCatalog::new().allow_float("score")?;
     parse(raw, &catalog)
 }
 
+/// Extract the parsed float bit pattern so signed zero and subnormal behavior can be checked
+/// exactly.
 fn float_bits(query: &RqsQuery) -> Option<u64> {
     match query.filters().first()?.value()? {
         RqsValue::Float(value) => Some(value.to_bits()),

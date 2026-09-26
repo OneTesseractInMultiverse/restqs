@@ -5,14 +5,22 @@ use std::collections::BTreeSet;
 use crate::{RqsError, RqsResult, control::Control, limits::validate_value_size};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// A classified decoded component; control variants borrow only their value text.
 pub(super) enum Parameter<'a> {
+    /// The `sort` control for ordered logical fields.
     Sort(&'a str),
+    /// The `fields` control for requested logical output fields.
     Projection(&'a str),
+    /// The `limit` control for an explicit unsigned row cap.
     Limit(&'a str),
+    /// The `skip` control for an explicit unsigned offset.
     Offset(&'a str),
+    /// A complete decoded filter expression, including field, operator, and value.
     Filter(&'a str),
 }
 
+/// Recognize controls only before the first equals sign, preserving decoded value text; reject
+/// `$text` explicitly.
 pub(super) fn classify_parameter(parameter: &str) -> RqsResult<Parameter<'_>> {
     let Some((name, value)) = parameter.split_once('=') else {
         return Ok(Parameter::Filter(parameter));
@@ -27,6 +35,8 @@ pub(super) fn classify_parameter(parameter: &str) -> RqsResult<Parameter<'_>> {
     }
 }
 
+/// Apply the decoded-value byte budget to controls; filter values are checked after field
+/// resolution.
 pub(super) fn validate_control_size(parameter: Parameter<'_>, max_bytes: usize) -> RqsResult<()> {
     match parameter {
         Parameter::Sort(value) => validate_value_size("sort", value, max_bytes),
@@ -38,6 +48,7 @@ pub(super) fn validate_control_size(parameter: Parameter<'_>, max_bytes: usize) 
     }
 }
 
+/// Return the canonical control name used for duplicate detection, or None for a filter.
 pub(super) fn control_key(parameter: Parameter<'_>) -> Option<&'static str> {
     match parameter {
         Parameter::Sort(_) => Some("sort"),
@@ -48,6 +59,8 @@ pub(super) fn control_key(parameter: Parameter<'_>) -> Option<&'static str> {
     }
 }
 
+/// Reject a previously seen control without mutating the set; filter parameters have no control
+/// key.
 pub(super) fn validate_new_control(
     key: Option<&'static str>,
     seen: &BTreeSet<&'static str>,

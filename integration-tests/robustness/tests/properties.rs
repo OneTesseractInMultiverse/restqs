@@ -1,3 +1,5 @@
+//! Properties contract checks; each test owns one assertion and helpers return setup/results.
+
 use proptest::{
     prelude::*,
     test_runner::{Config, FileFailurePersistence, RngSeed, TestCaseError, TestError, TestRunner},
@@ -6,14 +8,20 @@ use restqs::adapters::sqlx::SqlDialect;
 use restqs::{ParserLimits, RqsError};
 use restqs_robustness::*;
 
+/// Generate up to 255 arbitrary Unicode scalar values, including query delimiters and non-ASCII
+/// input.
 fn text() -> impl Strategy<Value = String> {
     proptest::collection::vec(any::<char>(), 0..256).prop_map(|chars| chars.into_iter().collect())
 }
 
+/// Load proptest configuration, then apply reproducible defaults and the checked-in regression
+/// path.
 fn config() -> Config {
     deterministic_config(Config::default())
 }
 
+/// Preserve explicit seeds, replace random seeds with a fixed default, and cap shrinking at 4096
+/// iterations.
 fn deterministic_config(mut config: Config) -> Config {
     if matches!(config.rng_seed, RngSeed::Random) {
         config.rng_seed = RngSeed::Fixed(0x525153);
@@ -26,6 +34,8 @@ fn deterministic_config(mut config: Config) -> Config {
     config
 }
 
+/// Run one boolean contract across generated cases, returning proptest's minimized failure to the
+/// test assertion.
 fn check<S: Strategy>(
     strategy: S,
     property: impl Fn(S::Value) -> bool,
@@ -39,6 +49,7 @@ fn check<S: Strategy>(
     })
 }
 
+/// Generate nonempty integer lists and arbitrary text/age values in a valid mixed query shape.
 fn mixed() -> impl Strategy<Value = String> {
     (
         text(),
@@ -132,6 +143,8 @@ fn nonempty_parameter_count_is_bounded_before_interpretation() {
     assert!(result.is_ok(), "{result:?}");
 }
 
+/// Construct the selected scalar, matching cast, or list input for temporal conversion
+/// properties.
 fn value_path(kind: u8, count: usize) -> (&'static str, String) {
     match kind {
         0 => ("text", "é".repeat(count + 1)),

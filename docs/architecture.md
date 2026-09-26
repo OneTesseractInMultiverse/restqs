@@ -16,10 +16,8 @@ flowchart LR
   parser --> plan["RqsQuery"]
   plan --> sqlx["SQLx adapter"]
   columns["Trusted SQL column map"] --> sqlx
-  plan --> seaquery["SeaQuery adapter design"]
   plan --> custom["Custom repository adapter"]
   sqlx --> db["Relational database"]
-  seaquery --> db
   custom --> db
 ```
 
@@ -115,13 +113,13 @@ Each filter stores a logical `FieldRef` resolved through `FieldCatalog`, includi
 permission. Filters, sorting, and projections contain no physical column names. User input stays in typed `RqsValue`
 values. SQL repositories supply a separate trusted column map and bind values through the database library.
 
-The plan is database-neutral. SQLx, SeaQuery, and custom repositories can read the same plan. This keeps parsing tests
+The plan is database-neutral. SQLx-oriented and custom repositories can read the same plan. This keeps parsing tests
 independent from database tests.
 
 ## Adapter Boundary
 
-Adapters depend on the plan. The plan does not depend on adapters. Cargo feature flags keep heavier integrations outside
-the core parser.
+Adapters depend on the plan. The plan does not depend on adapters. The optional `sqlx` feature adds dependency-free SQL translation. Actual driver dependencies live in isolated
+integration-test crates and application repositories.
 
 `SqlxColumnMap` lives at the SQL adapter boundary and validates physical identifiers when configured. `SqlxAdapter`
 requires this mapping and resolves every referenced field explicitly, including fields used only for sorting or
@@ -152,7 +150,8 @@ without changing bind state, or allocates a scalar bind and delegates SQL format
 plan retains its comparison operator and typed null value.
 
 Placeholder formatting is a pure computation over the SQL dialect and an explicit one-based bind position. The bind
-coordinator appends the value, reads the resulting position, and calls that formatter. Comparisons, lists, and regex
+coordinator checks position arithmetic and formats the placeholder before appending the value. An overflow leaves
+bind state unchanged. Comparisons, lists, and regex
 share this path: PostgreSQL receives a continuous numbered sequence, while MySQL and SQLite receive anonymous `?`
 placeholders. Null comparisons and existence predicates do not consume positions.
 
@@ -188,3 +187,25 @@ Value tests prove type parsing. Adapter tests prove fragment text and bind order
 
 Each test has one assertion. A test can prepare data, parse input, and call a helper. The final verification checks one
 fact. This keeps failures precise and keeps test intent clear during review.
+
+## Source Ownership and Maintenance
+
+| Location | Responsibility |
+| --- | --- |
+| `src/` | Dependency-free core and optional SQL fragment translation |
+| `examples/support/` | Application-owned SQL assembly, result budgets, and tenant composition |
+| `integration-tests/` | Isolated SQLite, PostgreSQL/MySQL, and generated-property fixtures with locked dependencies |
+| `fuzz/` | Bounded sanitizer-backed entry points and regression corpus seeds |
+| `tools/test-policy/` | Pure Rust syntax analysis plus a filesystem/CLI adapter |
+| `.github/scripts/` | Release-ref validation and Python assertion-policy checks |
+
+Public plans are immutable to downstream consumers. Parser-only mutators assemble authorized nodes, while test-only
+constructors intentionally bypass those invariants to exercise adapter rejection paths. They are not dead production
+code. Preserve explicit unsupported-feature errors when a consumer cannot implement a valid plan.
+
+Parser budgets bound request shape. Repository result budgets supply omitted limits and reject excessive rows/offsets;
+connection timeouts, cancellation, tenant predicates, and row authorization remain application responsibilities.
+
+Public and private implementation documentation describes contracts, failure cases, and trust boundaries. Clippy denies
+missing private-item docs in the library, fixtures, and Rust policy tool. Test modules describe their scope; explicit test names state the single fact
+under test, and setup helpers document their inputs and purpose. `make doc-internal` renders the private API for review.

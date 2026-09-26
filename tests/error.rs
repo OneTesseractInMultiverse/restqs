@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Error checks using explicit, single-assertion cases.
 
 use restqs::RqsError;
 

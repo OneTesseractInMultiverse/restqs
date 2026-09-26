@@ -23,6 +23,8 @@ pub fn eligible_names(query: &RqsQuery, people: &[Person]) -> RqsResult<Vec<&'st
         .collect())
 }
 
+/// Require exactly one integer `age>=N` filter and no sort, projection, or pagination; reject
+/// other shapes.
 fn minimum_age(query: &RqsQuery) -> RqsResult<i64> {
     let unsupported = RqsError::AdapterUnsupported {
         feature: "in-memory example query shape",

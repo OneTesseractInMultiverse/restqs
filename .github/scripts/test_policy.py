@@ -39,6 +39,7 @@ def diagnostics(source):
 
 
 def source_paths():
+    """Discover tracked and unignored Python files using NUL-safe git output."""
     output = subprocess.check_output([
         "git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "*.py"
     ])
@@ -46,6 +47,7 @@ def source_paths():
 
 
 def main():
+    """Read discovered sources, print located policy violations, and return failure status."""
     failures = []
     paths = source_paths()
     for path in paths:

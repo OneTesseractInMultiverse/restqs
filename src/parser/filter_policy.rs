@@ -4,12 +4,15 @@ use std::collections::BTreeSet;
 
 use crate::{Filter, RqsError, RqsResult};
 
+/// Duplicate identity composed of a logical field name and normalized operator token.
 pub(super) type FilterKey = (String, &'static str);
 
+/// Identify a filter by logical field name and normalized operator, independently of its value.
 pub(super) fn filter_key(filter: &Filter) -> FilterKey {
     (filter.field().public_name().to_owned(), filter.op().token())
 }
 
+/// Reject a second predicate with the same normalized field/operator identity.
 pub(super) fn validate_new_filter(key: &FilterKey, seen: &BTreeSet<FilterKey>) -> RqsResult<()> {
     if seen.contains(key) {
         Err(RqsError::DuplicateFilter {
