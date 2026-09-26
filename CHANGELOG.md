@@ -33,6 +33,10 @@ messages. Stable error-code checks remain separate from display formatting and s
 
 ### Fixed
 
+Ordered comparisons (`>`, `>=`, `<`, `<=`) with `in(...)` or `list(...)` values now return `invalid_operator` during
+parsing, preventing list values from reaching SQLx as scalar binds. Equality and inequality still produce `In` and
+`NotIn` filters with one bind per item. Value-size, item-count, and item-type validation retain their precedence.
+
 Catalog builders now reject duplicate public names with `duplicate_field`, including identical definitions, instead
 of silently replacing the field's type or regex permission. Validation runs before insertion. Names remain exact and
 case-sensitive, and distinct aliases may still share a physical SQL column. Configure each field before registering
