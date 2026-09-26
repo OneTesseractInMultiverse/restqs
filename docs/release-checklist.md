@@ -30,6 +30,9 @@ It must exclude build output, editor metadata, credentials, local coverage repor
 
 ## Check Publication Settings
 
+- Confirm private vulnerability reporting is enabled and maintainer security notifications are configured using
+  [the security policy](../SECURITY.md#maintainer-verification).
+
 - The `crates-io` environment allows only branch `main` and tags `v*`.
 - `OneTesseractInMultiverse` is the required reviewer; self-review is allowed for the solo maintainer.
 - Administrator bypass of environment protection is disabled.

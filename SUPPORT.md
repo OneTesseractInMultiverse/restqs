@@ -18,4 +18,5 @@ Good reports include the crate version, Rust version, enabled features, RQS inpu
 shape, and actual error code. Do not include secrets or production data in public reports.
 
 For adapter questions, include the target database dialect and the generated fragments. For security reports, use the
-private advisory link above.
+private advisory link above after signing in. GitHub is the sole private reporting channel; if it is unavailable,
+follow the retry guidance in [SECURITY.md](SECURITY.md#reporting-a-vulnerability) and keep details out of public threads.
