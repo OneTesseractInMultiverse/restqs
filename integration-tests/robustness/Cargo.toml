@@ -1,0 +1,15 @@
+[package]
+name = "restqs-robustness"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+publish = false
+
+[dependencies]
+restqs = { path = "../..", features = ["sqlx"] }
+
+[dev-dependencies]
+proptest = { version = "=1.11.0", default-features = false, features = ["std"] }
+
+[lints.rust]
+unsafe_code = "forbid"

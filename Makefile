@@ -3,8 +3,14 @@ SQLITE_MANIFEST := integration-tests/sqlite/Cargo.toml
 SQLITE_CARGO = CARGO_TARGET_DIR=target/sqlite-integration $(CARGO)
 SERVICE_MANIFEST := integration-tests/services/Cargo.toml
 SERVICE_CARGO = CARGO_TARGET_DIR=target/service-integration $(CARGO)
+PROPERTY_MANIFEST := integration-tests/robustness/Cargo.toml
+PROPERTY_CARGO = CARGO_TARGET_DIR=target/robustness $(CARGO)
+FUZZ_TOOLCHAIN ?= nightly-2026-09-24
+FUZZ_SECONDS ?= 15
+FUZZ_RUNS ?= 10000
+FUZZ_OPTIONS = -max_total_time=$(FUZZ_SECONDS) -runs=$(FUZZ_RUNS) -max_len=4096 -timeout=5 -rss_limit_mb=1024 -seed=5394771 -dict=fuzz/rqs.dict
 
-.PHONY: all audit build check clippy coverage doc fmt fmt-check help lint package package-list publish-dry-run setup test test-doc test-sqlite test-services verify verify-sqlite verify-services
+.PHONY: all audit build check clippy coverage doc fmt fmt-check help lint package package-list publish-dry-run setup test test-doc test-sqlite test-services test-properties verify verify-sqlite verify-services verify-properties fuzz-setup fuzz-smoke
 
 all: verify
 
@@ -28,6 +34,10 @@ help:
 		'verify-sqlite   Format-check, lint, and test the SQLite fixture' \
 		'test-services   Execute opt-in PostgreSQL and MySQL tests (URLs required)' \
 		'verify-services Format-check, lint, and execute the service fixture' \
+		'test-properties Run reproducible parser and adapter properties' \
+		'verify-properties Format-check, lint, and run the property fixture' \
+		'fuzz-setup      Install pinned fuzzing tools' \
+		'fuzz-smoke      Run bounded decoding, parsing, and adapter fuzz targets' \
 		'verify          Run the local quality gate'
 
 setup:
@@ -93,11 +103,33 @@ verify-services:
 	$(SERVICE_CARGO) clippy --manifest-path $(SERVICE_MANIFEST) --all-targets --locked -- -D warnings
 	$(MAKE) test-services
 
+test-properties:
+	$(PROPERTY_CARGO) test --manifest-path $(PROPERTY_MANIFEST) --locked
+
+verify-properties:
+	$(CARGO) fmt --manifest-path $(PROPERTY_MANIFEST) --all -- --check
+	$(PROPERTY_CARGO) clippy --manifest-path $(PROPERTY_MANIFEST) --all-targets --locked -- -D warnings
+	$(MAKE) test-properties
+
+fuzz-setup:
+	rustup toolchain install $(FUZZ_TOOLCHAIN) --profile minimal --component rust-src
+	$(CARGO) install cargo-fuzz --locked --version 0.13.2
+
+fuzz-smoke:
+	$(CARGO) fmt --manifest-path fuzz/Cargo.toml --all -- --check
+	$(CARGO) metadata --manifest-path fuzz/Cargo.toml --locked --no-deps --format-version 1 > /dev/null
+	mkdir -p fuzz/corpus/decoding fuzz/corpus/parsing fuzz/corpus/adapters
+	cargo +$(FUZZ_TOOLCHAIN) fuzz run decoding fuzz/corpus/decoding fuzz/seeds/decoding -- $(FUZZ_OPTIONS)
+	cargo +$(FUZZ_TOOLCHAIN) fuzz run parsing fuzz/corpus/parsing fuzz/seeds/parsing -- $(FUZZ_OPTIONS)
+	cargo +$(FUZZ_TOOLCHAIN) fuzz run adapters fuzz/corpus/adapters fuzz/seeds/adapters -- $(FUZZ_OPTIONS)
+
 audit:
 	$(CARGO) generate-lockfile
 	$(CARGO) audit
 	$(CARGO) audit --file integration-tests/sqlite/Cargo.lock
 	$(CARGO) audit --file integration-tests/services/Cargo.lock
+	$(CARGO) audit --file integration-tests/robustness/Cargo.lock
+	$(CARGO) audit --file fuzz/Cargo.lock
 	@rm -f Cargo.lock
 
 verify: fmt-check check lint test test-doc doc
