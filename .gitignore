@@ -2,6 +2,8 @@
 Cargo.lock
 !integration-tests/sqlite/Cargo.lock
 /integration-tests/sqlite/target/
+!integration-tests/services/Cargo.lock
+/integration-tests/services/target/
 *.swp
 *.swo
 .DS_Store

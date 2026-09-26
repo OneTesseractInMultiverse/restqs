@@ -95,7 +95,17 @@ returned ordering against explicit values, including tie-breaking and sorting be
 
 See [the fixture README](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/sqlite) for tested
 versions and dependency rationale. Both Rust CI jobs verify this fixture, including dependency compatibility
-with Rust 1.85, and the security job audits its lockfile. No database service setup is required. PostgreSQL and MySQL execution suites are tracked separately.
+with Rust 1.85, and the security job audits its lockfile. No database service setup is required. PostgreSQL and MySQL execution suites are opt-in locally and run in the required stable CI job.
+
+## PostgreSQL and MySQL Execution Checks
+
+See [the service fixture README](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/services)
+for versions, disposable Docker commands, and connection URLs. `make verify-services` checks formatting, lints, and runs
+all service tests explicitly. Each uses a fresh temporary table and single-connection pool with cleanup after errors.
+No URL means a failing setup, never a silently skipped success. Plain Cargo tests leave these service tests ignored.
+
+The service fixture uses SQLx 0.9.0 on Rust 1.94+; the core and SQLite suite still run on Rust 1.85. Stable CI gates merges
+on both database services as well as SQLite. Every fixture has a separate audited lockfile and no core dependencies.
 
 ## Coverage Command
 
