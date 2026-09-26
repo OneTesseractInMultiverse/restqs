@@ -30,6 +30,22 @@ assert_eq!(query.filters()[0].op(), FilterOp::Gte);
 # Ok::<(), restqs::RqsError>(())
 ```
 
+Run `make test-policy` to check every tracked or unignored Rust and Python source file, including the isolated fixtures
+and the checker itself. Rust syntax and token trees identify `#[test]`, namespaced `#[tokio::test]`-style attributes,
+`cfg_attr` tests, ignored tests, and disabled feature/platform branches. Comments and string contents do not count.
+Each explicit test must contain exactly one `assert!`, `assert_eq!`, `assert_ne!`, debug-assert, or proptest assertion;
+closures and nested macro arguments count toward that test. Nested functions are checked separately. Fuzz targets also
+require one assertion. Python uses its AST to count `assert` and unittest/mock assertion calls, including exception
+context managers. Files that cannot be parsed fail the check.
+
+Helpers return values or errors for the test to assert; assertions in non-test Rust/Python functions are rejected.
+Opaque item macros, custom assertion macros, and generated/parameterized test attributes are rejected until the checker
+has explicit support with regression tests. Use ordinary named tests and property runners that return a result, as in
+the robustness fixture. The allowlist covers standard value/format macros and `prop_oneof!`; it does not expand arbitrary
+macros or execute code. Rustdoc/Markdown snippets and externally generated code are reviewed separately, not counted as
+source test functions. Python tests use the `test_` naming convention and ordinary unittest functions, without generated
+tests or assertion aliases. This structural gate cannot prove that an assertion checks one meaningful fact; review must.
+
 This rule follows the library design. A function either coordinates work or computes a value. A test either proves one
 behavior or one failure mode.
 
@@ -133,6 +149,12 @@ make setup
 make coverage
 ```
 
+Coverage uses pinned Rust 1.97.1 with `llvm-tools-preview` and cargo-llvm-cov 0.9.1 (`make coverage-setup` installs both).
+The command checks every measured file under the library's `src/` with all features and all root test targets, requiring
+100% total line coverage and zero uncovered lines across the measured files. Example executables, external fixtures, checker tooling, doctests, and
+compiler-generated code are outside this source-line metric; their separate suites still run. No changed-line exemption
+or reduced threshold is used. A newly uncovered source line fails the gate.
+
 The coverage command fails on any uncovered source line. The numeric region summary can still show missed compiler
 subregions from error propagation. The gate uses source-line coverage, which matches the project goal for readable Rust
 code.
@@ -151,8 +173,14 @@ Run the full local gate:
 make verify
 ```
 
-`make verify` checks formatting, type checking, Clippy, tests, doc tests, and docs.rs-style documentation. Run it before
-sending a pull request.
+`make verify` checks formatting, type checking, Clippy, tests, doc tests, docs.rs-style documentation, and
+`make verify-test-policy` (checker format/lint/tests plus repository assertions). Run `make coverage` separately before
+sending a pull request; it requires the pinned coverage tools.
+
+The `Protect main` ruleset requires `Rust stable`, `Rust 1.85.0`, `Security audit`, and `Quality policies`, all from GitHub
+Actions. `Quality policies` runs `make verify-test-policy` and `make coverage` on every PR and main push, without path
+filters. The reusable release CI uses the same job at the resolved release commit. Workflow YAML alone does not enforce
+merge protection: inspect `gh api repos/OneTesseractInMultiverse/restqs/rulesets/17356771` when changing job names.
 
 ## Test Review
 

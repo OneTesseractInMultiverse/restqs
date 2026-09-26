@@ -40,7 +40,7 @@ It must exclude build output, editor metadata, credentials, local coverage repor
 - Create an actual `vMAJOR.MINOR.PATCH` tag whose version matches the manifest. Prerelease suffixes are also supported.
 - Dispatch Publish from `main` with the tag and `publish=false` for a validation-only run.
 - Check the resolved SHA in the run summary.
-- Confirm stable Rust, Rust 1.85.0, both feature configurations, RustSec, coverage, and package dry-run gates pass.
+- Confirm stable Rust, Rust 1.85.0, both feature configurations, RustSec, assertion policy, coverage, and package dry-run gates pass.
 - Publish the GitHub release for that tag, then approve its `crates-io` deployment after the checks succeed.
 - Confirm the intended version appears on crates.io and docs.rs.
 

@@ -15,8 +15,8 @@ Publishing a GitHub release starts `.github/workflows/publish.yml`.
 ```mermaid
 flowchart LR
   tag["Tag a merged commit"] --> resolve["Resolve tag to commit SHA"]
-  resolve --> checks["Stable, MSRV, both feature configurations, RustSec"]
-  checks --> package["Coverage and package dry run"]
+  resolve --> checks["Stable, MSRV, RustSec, quality policies"]
+  checks --> package["Package dry run"]
   package --> approval["Maintainer approves crates-io deployment"]
   approval --> auth["Short-lived Trusted Publishing token"]
   auth --> publish["Publish the validated commit"]
@@ -29,9 +29,10 @@ must run the workflow from `main`. A release event must reference its own tag an
 Every downstream checkout uses the resolved full commit SHA. Moving the tag while validation or approval is pending
 cannot change the source that is published. The resolved tag and commit appear in the Actions run summary.
 
-The release workflow reuses CI for stable Rust, Rust 1.85.0, and the RustSec audit. Both Rust jobs check, test, and build
-documentation with and without `sqlx`; stable also runs formatting, Clippy, release-policy tests, and packaging. A separate
-release job requires 100% source line coverage and `cargo publish --dry-run --locked --registry crates-io`. Publication
+The release workflow reuses CI for stable Rust, Rust 1.85.0, the RustSec audit, and the required quality policies. Both Rust jobs check, test, and build
+documentation with and without `sqlx`; stable also runs formatting, Clippy, release-policy tests, and packaging.
+The quality job requires the syntax-aware one-assertion policy and 100% source line coverage with pinned tooling.
+A separate release job requires `cargo publish --dry-run --locked --registry crates-io`. Publication
 requires all these jobs to succeed and the environment approval before requesting a crates.io token.
 
 ## GitHub Environment

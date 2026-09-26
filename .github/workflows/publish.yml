@@ -64,14 +64,10 @@ jobs:
           ref: ${{ needs.resolve.outputs.sha }}
           persist-credentials: false
 
-      - name: Install Rust and coverage tools
+      - name: Install Rust
         run: |
-          rustup toolchain install stable --profile minimal --component llvm-tools-preview
+          rustup toolchain install stable --profile minimal
           rustup default stable
-          cargo install cargo-llvm-cov --locked --version 0.9.1
-
-      - name: Check source line coverage
-        run: make coverage
 
       - name: Inspect package contents
         run: make package-list
