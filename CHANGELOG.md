@@ -8,6 +8,11 @@ The project uses semantic versioning.
 
 ### Added
 
+Pull requests now run a required quality-policy job with pinned 100% source-line coverage and syntax-aware assertion
+checks for Rust and Python tests. Helpers cannot hide assertions, and unsupported generated tests fail explicitly.
+The same gates run against the immutable release commit; the published library gains no dependencies.
+
+
 Reproducible bounded property tests and separate decoding, parsing, and adapter fuzz targets now exercise hostile input,
 limit boundaries, authorized plan fields, operator/value compatibility, bind correspondence, and SQL/value separation.
 Known regressions are replayed from committed inputs. Required CI runs the property suite on both Rust toolchains and

@@ -17,3 +17,5 @@ Cargo.lock
 .idea/
 .vscode/
 __pycache__/
+!tools/test-policy/Cargo.lock
+/tools/test-policy/target/

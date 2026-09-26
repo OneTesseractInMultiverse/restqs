@@ -45,7 +45,10 @@ security behavior changes.
 Unit tests stay free of external configuration. They do not require files, network access, local services, databases,
 credentials, or process-specific environment variables.
 
-Each test function uses one assertion. Helper functions can prepare data, but the final assertion checks one fact.
+Each test function uses one assertion. Helper functions return data or errors and contain no assertions. The final
+assertion checks one fact. `make test-policy` checks Rust/Python syntax, including feature-gated and ignored tests;
+`make verify` includes the checker and its regression tests. Generated test macros need explicit checker support.
+See [the precise policy and scope](docs/testing-guide.md#one-assertion-rule).
 
 Explain each new dependency. Include its purpose, maintenance cost, license, release activity, RustSec status, and role
 in parser or adapter behavior.
@@ -62,6 +65,8 @@ make fmt
 make lint
 make test
 make doc
+make verify-test-policy
+make coverage
 make package
 ```
 
