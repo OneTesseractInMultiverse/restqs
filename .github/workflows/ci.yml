@@ -88,12 +88,40 @@ jobs:
       - name: Verify SQLite repository
         run: make verify-sqlite
 
+      - name: Verify parser and adapter properties
+        timeout-minutes: 5
+        env:
+          PROPTEST_CASES: 256
+          PROPTEST_RNG_SEED: 5394771
+        run: make verify-properties
+
       - name: Verify PostgreSQL and MySQL repositories
         if: matrix.toolchain == 'stable'
         env:
           RESTQS_POSTGRES_URL: postgres://restqs:restqs-test@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/restqs
           RESTQS_MYSQL_URL: mysql://restqs:restqs-test@127.0.0.1:${{ job.services.mysql.ports['3306'] }}/restqs?ssl-mode=required
         run: make verify-services
+
+      - name: Install fuzzing tools
+        if: matrix.toolchain == 'stable'
+        run: make fuzz-setup
+
+      - name: Run bounded fuzz smoke tests
+        if: matrix.toolchain == 'stable'
+        timeout-minutes: 10
+        run: make fuzz-smoke
+
+      - name: Save robustness failure inputs
+        if: failure() && matrix.toolchain == 'stable'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: robustness-failures
+          path: |
+            fuzz/artifacts/
+            fuzz/corpus/
+            integration-tests/robustness/regressions/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Build docs
         run: make doc
@@ -133,4 +161,6 @@ jobs:
           cargo audit
           cargo audit --file integration-tests/sqlite/Cargo.lock
           cargo audit --file integration-tests/services/Cargo.lock
+          cargo audit --file integration-tests/robustness/Cargo.lock
+          cargo audit --file fuzz/Cargo.lock
           rm -f Cargo.lock

@@ -1,0 +1,33 @@
+[package]
+name = "restqs-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "=0.4.13"
+restqs-robustness = { path = "../integration-tests/robustness" }
+
+[[bin]]
+name = "decoding"
+path = "fuzz_targets/decoding.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parsing"
+path = "fuzz_targets/parsing.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "adapters"
+path = "fuzz_targets/adapters.rs"
+test = false
+doc = false
+bench = false

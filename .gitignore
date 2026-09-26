@@ -4,6 +4,13 @@ Cargo.lock
 /integration-tests/sqlite/target/
 !integration-tests/services/Cargo.lock
 /integration-tests/services/target/
+!integration-tests/robustness/Cargo.lock
+/integration-tests/robustness/target/
+!fuzz/Cargo.lock
+/fuzz/target/
+/fuzz/corpus/
+/fuzz/artifacts/
+/fuzz/coverage/
 *.swp
 *.swo
 .DS_Store

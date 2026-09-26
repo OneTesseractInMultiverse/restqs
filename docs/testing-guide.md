@@ -107,6 +107,23 @@ No URL means a failing setup, never a silently skipped success. Plain Cargo test
 The service fixture uses SQLx 0.9.0 on Rust 1.94+; the core and SQLite suite still run on Rust 1.85. Stable CI gates merges
 on both database services as well as SQLite. Every fixture has a separate audited lockfile and no core dependencies.
 
+## Generated Properties and Fuzzing
+
+`make verify-properties` runs the isolated proptest fixture: bounded Unicode and structured queries, configurable limit
+boundaries, resolved plan metadata, valid operator/value combinations, bind contents, placeholder numbering, and value/SQL
+separation. Default runs use 256 cases per property and seed 5394771 on stable and Rust 1.85. Each test has one assertion.
+For longer local runs use `PROPTEST_CASES=10000 PROPTEST_RNG_SEED=2026 make test-properties`.
+
+`make fuzz-setup` installs pinned tooling; `make fuzz-smoke` runs decoding, parsing, and adapter targets with committed
+regression seeds and a syntax dictionary. Each smoke target stops after 10,000 executions or 15 seconds, with 4 KiB
+inputs, per-input timeout, and memory limits. Stable CI runs the smoke suite in the required Rust job. The library and
+ordinary unit suite acquire no property-testing or fuzzing dependencies.
+
+See [the property fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/robustness) and
+[the fuzz guide](https://github.com/OneTesseractInMultiverse/restqs/tree/main/fuzz) for shrinking, artifact replay, longer
+runs, and adding minimized failures to the regression corpus. CI preserves failing inputs for 14 days. These bounded
+runs complement example tests and source coverage; they cannot establish exhaustive safety.
+
 ## Coverage Command
 
 Run coverage after installing local tools:

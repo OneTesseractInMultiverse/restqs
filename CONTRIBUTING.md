@@ -33,6 +33,9 @@ For PostgreSQL/MySQL integration changes, provision disposable services and run 
 [the testing guide](docs/testing-guide.md#postgresql-and-mysql-execution-checks). Service tests are intentionally outside
 `make verify`; stable CI runs them explicitly, and `make audit` checks every fixture lockfile.
 
+For parser or adapter changes, run `make verify-properties`. Use `make fuzz-setup` and `make fuzz-smoke` for bounded
+instrumented checks. Preserve minimized failures as described in [the testing guide](docs/testing-guide.md#generated-properties-and-fuzzing).
+
 ## Contribution Rules
 
 Keep changes focused and small. Preserve the coordinator-versus-computation split described in `docs/architecture.md`.

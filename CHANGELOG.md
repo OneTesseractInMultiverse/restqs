@@ -8,6 +8,12 @@ The project uses semantic versioning.
 
 ### Added
 
+Reproducible bounded property tests and separate decoding, parsing, and adapter fuzz targets now exercise hostile input,
+limit boundaries, authorized plan fields, operator/value compatibility, bind correspondence, and SQL/value separation.
+Known regressions are replayed from committed inputs. Required CI runs the property suite on both Rust toolchains and
+bounded sanitizer-backed fuzz smoke tests on pinned nightly, retaining failing inputs for reproduction.
+
+
 Database conformance fixtures now execute scalar, null, list, projection, ordering, pagination, and supported regex
 contracts through SQLx. SQLite remains service-free; PostgreSQL 17.6 and MySQL 8.4.6 run in an opt-in suite and required
 stable CI. The service fixture tests SQLx 0.9.0 on Rust 1.94+, while core and SQLite retain Rust 1.85 support. Driver
