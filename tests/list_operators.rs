@@ -7,8 +7,8 @@ use restqs::{
 
 fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
-        .allow_integer("age", "users.age")?
-        .allow_text("status", "users.status")
+        .allow_integer("age")?
+        .allow_text("status")
 }
 
 fn parse_with_limits(input: &str, limits: ParserLimits) -> RqsResult<RqsQuery> {

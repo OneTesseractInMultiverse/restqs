@@ -7,10 +7,10 @@ all: verify
 help:
 	@printf '%s\n' \
 		'build           Build the crate' \
-		'check           Run cargo check for all targets and features' \
+		'check           Check default and all-feature configurations' \
 		'clippy          Run Clippy with warnings denied' \
 		'coverage        Run cargo llvm-cov with a 100 percent line gate' \
-		'doc             Build docs.rs-style documentation' \
+		'doc             Build documentation with and without sqlx' \
 		'fmt             Format all Rust code' \
 		'fmt-check       Check formatting' \
 		'lint            Alias for clippy' \
@@ -30,9 +30,11 @@ build:
 	$(CARGO) build --all-features
 
 check:
+	$(CARGO) check --all-targets --no-default-features
 	$(CARGO) check --all-targets --all-features
 
 clippy:
+	$(CARGO) clippy --all-targets --no-default-features -- -D warnings
 	$(CARGO) clippy --all-targets --all-features -- -D warnings
 
 lint: clippy
@@ -41,6 +43,7 @@ coverage:
 	$(CARGO) llvm-cov --all-features --all-targets --show-missing-lines --fail-under-lines 100
 
 doc:
+	RUSTDOCFLAGS="--cfg docsrs -D warnings" $(CARGO) doc --no-deps --no-default-features
 	RUSTDOCFLAGS="--cfg docsrs -D warnings" $(CARGO) doc --no-deps --all-features
 
 fmt:
@@ -59,9 +62,11 @@ publish-dry-run: verify
 	$(CARGO) publish --dry-run
 
 test:
+	$(CARGO) test --all-targets --no-default-features
 	$(CARGO) test --all-targets --all-features
 
 test-doc:
+	$(CARGO) test --doc --no-default-features
 	$(CARGO) test --doc --all-features
 
 audit:

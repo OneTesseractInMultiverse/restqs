@@ -23,35 +23,50 @@ flowchart LR
 
 ## Install
 
+This development branch targets the **unreleased 0.2.0 API**. The examples below
+use a local checkout at `../restqs`. Published 0.1.x users should consult the
+[0.1.1 API documentation](https://docs.rs/restqs/0.1.1/restqs/) and the
+[0.2 migration guide](docs/migration-0.2.md) before upgrading.
+
 Use the core parser with no runtime dependencies:
 
 ```toml
 [dependencies]
-restqs = "0.1.0"
+restqs = { path = "../restqs" }
 ```
 
 Turn on the SQLx-oriented adapter contract with the `sqlx` feature:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.0", features = ["sqlx"] }
+restqs = { path = "../restqs", features = ["sqlx"] }
 ```
 
 The `sqlx` feature exposes fragment generation for SQLx-style repositories.
 It returns SQL text fragments and typed bind values. It does not open a
 connection, run a query, or own transaction logic.
 
+Repositories must append parsed pagination and bind its values before execution.
+The [pagination examples](docs/integrations.md#pagination-contract) cover PostgreSQL
+placeholder numbering, SQLite offset-only requests, and checked integer conversion.
+
 ## Quick Start
 
-Start with a catalog. The catalog maps public query names to trusted database
-columns and value types. This catalog is the main safety boundary.
+Start with a catalog. The catalog authorizes logical query fields and defines
+their value types and capabilities. It contains no storage column metadata.
+The exact lowercase names `sort`, `fields`, `limit`, and `skip` are reserved for
+query controls; registering one returns `reserved_field_name`. Use a public alias
+such as `row_limit`; see [the 0.2 migration guide](docs/migration-0.2.md#reserved-query-control-names).
+Register each public name once. Repeating a name, even with the same definition,
+returns `duplicate_field`; configure its type and regex permission before insertion.
+See [catalog migration](docs/migration-0.2.md#duplicate-catalog-registrations).
 
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};
 
 let catalog = FieldCatalog::new()
-    .allow_integer("age", "users.age")?
-    .allow_text("status", "users.status")?;
+    .allow_integer("age")?
+    .allow_text("status")?;
 
 let query = parse("age>=18&status=in(active,pending)", &catalog)?;
 
@@ -64,7 +79,7 @@ The parser returns a plan. It never emits a finished SQL statement.
 ```rust
 use restqs::{FieldCatalog, RqsValue, parse};
 
-let catalog = FieldCatalog::new().allow_text("status", "users.status")?;
+let catalog = FieldCatalog::new().allow_text("status")?;
 let query = parse("status=active", &catalog)?;
 let value = query.filters()[0].value();
 
@@ -126,12 +141,18 @@ regex SQL generation.
 Regex literals support `=` only. Using `!=`, `>`, `>=`, `<`, or `<=` with a
 regex literal returns `invalid_operator`; regex negation is unsupported.
 
+Suffix flags must be unique lowercase letters from `i`, `m`, `s`, and `x`;
+unknown or repeated flags return `invalid_regex_flags`. The SQLx adapter supports
+no flags or `i` for PostgreSQL, no flags for MySQL, and no regex for SQLite.
+Other recognized flags return `adapter_unsupported`. See the
+[regex support matrix](docs/api-guide.md#regex) for dialect behavior.
+
 ## Safe Defaults
 
 RestQS treats the query string as untrusted input. The parser never accepts a
 user field name as a database column. Every field must exist in
-`FieldCatalog`. The catalog validates the trusted column identifier at
-creation time.
+`FieldCatalog`. SQL repositories configure a separate `SqlxColumnMap`, which
+validates physical identifiers and rejects missing mappings during translation.
 
 The default limits reduce accidental high-cost queries:
 
@@ -161,14 +182,17 @@ base SQL, bind calls, connection, transaction, and result mapping.
 ```rust
 use restqs::{
     FieldCatalog, parse,
-    adapters::sqlx::{SqlDialect, SqlxAdapter},
+    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap},
 };
 
 let catalog = FieldCatalog::new()
-    .allow_integer("age", "users.age")?
-    .allow_text("status", "users.status")?;
+    .allow_integer("age")?
+    .allow_text("status")?;
 let query = parse("age>=18&status=active", &catalog)?;
-let parts = SqlxAdapter::new(SqlDialect::Postgres).build(&query)?;
+let columns = SqlxColumnMap::new()
+    .map("age", "users.age")?
+    .map("status", "users.status")?;
+let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build(&query)?;
 
 assert_eq!(
     parts.where_clause,
@@ -177,8 +201,9 @@ assert_eq!(
 # Ok::<(), restqs::RqsError>(())
 ```
 
-The adapter quotes allowlisted columns and returns bind values in placeholder
-order. It does not concatenate user values into SQL text.
+The adapter resolves every filter, sort, and projection through its trusted
+column map and returns bind values in placeholder order. A missing mapping
+returns `missing_column_mapping`; public field names never become SQL directly.
 
 ```mermaid
 sequenceDiagram
@@ -204,7 +229,7 @@ For PostgreSQL applications:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.0", features = ["sqlx"] }
+restqs = { path = "../restqs", features = ["sqlx"] }
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio"] }
 ```
 
@@ -212,24 +237,39 @@ For SQLite applications:
 
 ```toml
 [dependencies]
-restqs = { version = "0.1.0", features = ["sqlx"] }
+restqs = { path = "../restqs", features = ["sqlx"] }
 sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
 The documented examples keep the security boundary visible. SQL text contains
-trusted catalog columns, fixed SQL keywords, and placeholders. User values
+trusted adapter column mappings, fixed SQL keywords, and placeholders. User values
 enter the database only through `.bind(...)`.
 
 ## Architecture
 
 Each module owns one concern. `parameter` decodes query-string text. `parser`
 coordinates the plan build. `value` casts scalar and list values. `catalog`
-owns public field authorization and trusted column metadata. `filter`, `sort`,
+owns public field authorization, value kinds, and capabilities. `filter`, `sort`,
 `projection`, and `pagination` compute plan pieces. `adapters` translate
-completed plans.
+completed plans and own physical storage mappings.
+
+The [in-memory example](examples/in_memory.rs) consumes logical fields and typed
+values without SQL metadata: `cargo run --example in_memory --no-default-features`.
 
 Functions either coordinate work or compute a value. Tests follow the same
 rule: each test function checks one fact.
+
+## Publishing Updates
+
+GitHub releases trigger the crates.io publishing workflow. Each release checks
+one immutable tagged commit on stable Rust and the minimum supported version,
+validates both feature configurations, audits dependencies, and verifies
+coverage and packaging. Publication uses Trusted Publishing after approval in
+the `crates-io` environment. Manual validation defaults to a dry run.
+
+Update the manifest and changelog to an unpublished version before tagging
+each release. See [Publishing](docs/publishing.md)
+for setup and release commands.
 
 ## Documentation
 
@@ -260,7 +300,7 @@ make package
 
 `make test` runs all in-memory tests. `make coverage` fails on any uncovered
 source line. `make verify` checks formatting, type checking, Clippy, tests,
-doc tests, and docs.rs-style docs.
+doc tests, and docs.rs-style docs with and without the `sqlx` feature.
 
 ## License
 

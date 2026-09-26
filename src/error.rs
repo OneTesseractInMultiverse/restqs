@@ -1,4 +1,4 @@
-//! Error types for RQS parsing and adapter translation.
+//! Error types for configuration, RQS parsing, and adapter translation.
 
 use std::fmt::{self, Display, Formatter};
 
@@ -9,7 +9,7 @@ const MAX_DIAGNOSTIC_IDENTIFIER_BYTES: usize = 128;
 /// Result type used by RestQS.
 pub type RqsResult<T> = Result<T, RqsError>;
 
-/// RQS parser and adapter errors.
+/// RQS configuration, parser, and adapter errors.
 ///
 /// Display text replaces malformed field and column identifiers, and identifiers
 /// longer than 128 bytes, with `[redacted]`. Error fields and `Debug` output retain
@@ -34,10 +34,30 @@ pub enum RqsError {
         /// Invalid field name.
         field: String,
     },
+    /// A public field name is reserved for a query control.
+    ReservedFieldName {
+        /// Conflicting logical field name.
+        field: String,
+    },
+    /// Catalog configuration registered the same public field more than once.
+    DuplicateField {
+        /// Public field name registered more than once.
+        field: String,
+    },
     /// A database column name is not valid.
     InvalidColumnName {
         /// Invalid column name.
         column: String,
+    },
+    /// A SQL adapter has no physical column mapping for a referenced logical field.
+    MissingColumnMapping {
+        /// Unmapped logical field name.
+        field: String,
+    },
+    /// SQL adapter configuration registered the same logical field more than once.
+    DuplicateColumnMapping {
+        /// Logical field name registered more than once.
+        field: String,
     },
     /// A query referenced a field that is not in the catalog.
     UnknownField {
@@ -95,6 +115,11 @@ pub enum RqsError {
         /// Field that received a regex value.
         field: String,
     },
+    /// Regex suffix flags included an unknown letter or a duplicate.
+    ///
+    /// Only unique lowercase `i`, `m`, `s`, and `x` flags are recognized.
+    /// The pattern and flags are not included in this error.
+    InvalidRegexFlags,
     /// Text search is not part of the current RQS contract.
     TextSearchUnsupported,
     /// A filter repeated the same field and operator.
@@ -120,7 +145,11 @@ impl RqsError {
             Self::TooManyParameters { .. } => "too_many_parameters",
             Self::InvalidEncoding => "invalid_encoding",
             Self::InvalidFieldName { .. } => "invalid_field_name",
+            Self::ReservedFieldName { .. } => "reserved_field_name",
+            Self::DuplicateField { .. } => "duplicate_field",
             Self::InvalidColumnName { .. } => "invalid_column_name",
+            Self::MissingColumnMapping { .. } => "missing_column_mapping",
+            Self::DuplicateColumnMapping { .. } => "duplicate_column_mapping",
             Self::UnknownField { .. } => "unknown_field",
             Self::InvalidOperator => "invalid_operator",
             Self::MissingValue { .. } => "missing_value",
@@ -131,6 +160,7 @@ impl RqsError {
             Self::NegativePagination { .. } => "negative_pagination",
             Self::LimitTooLarge { .. } => "limit_too_large",
             Self::RegexDisabled { .. } => "regex_disabled",
+            Self::InvalidRegexFlags => "invalid_regex_flags",
             Self::TextSearchUnsupported => "text_search_unsupported",
             Self::DuplicateFilter { .. } => "duplicate_filter",
             Self::AdapterUnsupported { .. } => "adapter_unsupported",
@@ -160,9 +190,29 @@ impl Display for RqsError {
                 "column {} is invalid",
                 diagnostic_identifier(column)
             ),
+            Self::ReservedFieldName { field } => write!(
+                formatter,
+                "field {} is reserved for query controls",
+                diagnostic_identifier(field)
+            ),
+            Self::DuplicateField { field } => write!(
+                formatter,
+                "field {} is already registered in the catalog",
+                diagnostic_identifier(field)
+            ),
             Self::UnknownField { field } => write!(
                 formatter,
                 "field {} is not allowed",
+                diagnostic_identifier(field)
+            ),
+            Self::MissingColumnMapping { field } => write!(
+                formatter,
+                "field {} has no SQL column mapping",
+                diagnostic_identifier(field)
+            ),
+            Self::DuplicateColumnMapping { field } => write!(
+                formatter,
+                "field {} has more than one SQL column mapping",
                 diagnostic_identifier(field)
             ),
             Self::InvalidOperator => write!(formatter, "filter operator is invalid"),
@@ -206,6 +256,12 @@ impl Display for RqsError {
                     formatter,
                     "field {} does not allow regex filters",
                     diagnostic_identifier(field)
+                )
+            }
+            Self::InvalidRegexFlags => {
+                write!(
+                    formatter,
+                    "regex flags must be unique letters from i, m, s, x"
                 )
             }
             Self::TextSearchUnsupported => write!(formatter, "text search is not supported"),

@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Git tag to validate, for example v0.1.0"
+        description: "Existing release tag matching Cargo.toml, for example v0.1.1"
         required: true
         type: string
       publish:
-        description: "Publish to crates.io instead of running validation only"
+        description: "Publish after validation and environment approval"
         required: true
         type: boolean
         default: false
@@ -20,82 +20,93 @@ permissions:
   contents: read
 
 concurrency:
-  group: publish-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  group: publish-restqs
   cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  validate:
+  resolve:
+    name: Resolve release revision
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.release.outputs.sha }}
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve and validate the release tag
+        id: release
+        env:
+          PUBLISH_REQUESTED: ${{ github.event_name == 'release' || inputs.publish }}
+        run: python3 .github/scripts/release.py
+
+  checks:
+    name: Release checks
+    needs: resolve
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.resolve.outputs.sha }}
+
+  package:
     name: Validate release package
+    needs: [resolve, checks]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          ref: ${{ needs.resolve.outputs.sha }}
           persist-credentials: false
 
-      - name: Install Rust
+      - name: Install Rust and coverage tools
         run: |
-          rustup toolchain install stable --profile minimal --component clippy,rustfmt
+          rustup toolchain install stable --profile minimal --component llvm-tools-preview
           rustup default stable
+          cargo install cargo-llvm-cov --locked --version 0.9.1
 
-      - name: Check tag matches Cargo.toml version
-        run: |
-          version="$(python3 - <<'PY'
-          import tomllib
-
-          with open("Cargo.toml", "rb") as manifest:
-              print(tomllib.load(manifest)["package"]["version"])
-          PY
-          )"
-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag="${{ inputs.tag }}"
-          else
-            tag="${GITHUB_REF_NAME}"
-          fi
-
-          tag="${tag#refs/tags/}"
-          tag_version="${tag#v}"
-
-          if [ "${tag_version}" != "${version}" ]; then
-            echo "::error::Tag ${tag} does not match Cargo.toml version ${version}"
-            exit 1
-          fi
-
-      - name: Verify
-        run: make verify
+      - name: Check source line coverage
+        run: make coverage
 
       - name: Inspect package contents
         run: make package-list
 
-      - name: Package
-        run: make package
-
       - name: Publish dry run
-        run: make publish-dry-run
+        run: |
+          cargo generate-lockfile
+          cargo publish --dry-run --locked --registry crates-io
 
   publish:
     name: Publish to crates.io
-    needs: validate
+    needs: [resolve, checks, package]
     if: github.event_name == 'release' || inputs.publish
     runs-on: ubuntu-latest
-    environment: crates-io
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/restqs
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          ref: ${{ needs.resolve.outputs.sha }}
           persist-credentials: false
 
       - name: Install Rust
         run: |
           rustup toolchain install stable --profile minimal
           rustup default stable
+
+      - name: Verify package before authentication
+        run: |
+          cargo generate-lockfile
+          cargo publish --dry-run --locked --registry crates-io
 
       - name: Authenticate with crates.io
         id: auth
@@ -104,4 +115,4 @@ jobs:
       - name: Publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-        run: cargo publish
+        run: cargo publish --locked --registry crates-io

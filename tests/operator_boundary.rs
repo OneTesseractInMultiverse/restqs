@@ -7,9 +7,9 @@ use restqs::{
 
 fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
-        .allow(Field::new("name", "users.name", ValueKind::Text)?.allow_regex())?
-        .allow_text("profile._name2", "users.name")?
-        .allow_integer("age", "users.age")
+        .allow(Field::new("name", ValueKind::Text)?.allow_regex())?
+        .allow_text("profile._name2")?
+        .allow_integer("age")
 }
 
 fn parse_query(input: &str) -> RqsResult<RqsQuery> {

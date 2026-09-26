@@ -15,6 +15,7 @@ flowchart LR
   catalog --> parser
   parser --> plan["RqsQuery"]
   plan --> sqlx["SQLx adapter"]
+  columns["Trusted SQL column map"] --> sqlx
   plan --> seaquery["SeaQuery adapter design"]
   plan --> custom["Custom repository adapter"]
   sqlx --> db["Relational database"]
@@ -28,7 +29,7 @@ does not decide who can see a field. The host application builds the catalog for
 ## Responsibility Model
 
 Each module owns one reason to change. `parameter` decodes query-string text.
-`parser` coordinates the parsing flow. `catalog` owns public field validation and trusted column metadata. `value` casts
+`parser` coordinates the parsing flow. `catalog` owns logical field validation, value kinds, and capabilities. `value` casts
 scalar and list values. `filter`,
 `sort`, `projection`, and `pagination` construct plan pieces. `adapters`
 translate finished plans.
@@ -48,16 +49,41 @@ flowchart TD
 A function either coordinates work or computes a value. A coordinator calls smaller functions and assembles state. A
 computation receives input and returns one result. It does not perform unrelated orchestration.
 
+The internal `control` module owns the authoritative query-control name recognition shared by parameter classification
+and reserved field-name validation. Public-name validation coordinates syntax checking followed by reserved-name
+checking before catalog construction or lookup. SQL mappings apply this policy to logical keys only; physical column
+syntax stays at the adapter boundary.
+
+Catalog registration uses a pure duplicate-name validator over the existing field map. `FieldCatalog::allow`
+coordinates this check before inserting the field, and every convenience builder delegates to that path. Uniqueness
+depends on the exact public name, not its value kind or capabilities. Physical column configuration remains a separate
+adapter concern: distinct public aliases may resolve to the same column.
+
+The parser's internal `parameter_policy` module classifies decoded text into an explicit parameter kind and validates
+control value sizes without changing the plan. `apply_parameter` coordinates classification, validation, and dispatch.
+The internal `filter_policy` module computes duplicate identities from logical field names and normalized operator
+tokens, then checks them against an immutable set of seen identities. `apply_filter` parses and validates before
+explicitly updating that set and appending the filter. Repeated controls retain their existing replacement behavior;
+filter validation errors still take precedence over duplicate rejection.
+
 Filter splitting is a pure computation over decoded text. It finds the field boundary, recognizes the longest supported
 operator at that position, and returns borrowed field and value slices. The parser coordinates catalog resolution and
 typed value parsing after this split; it does not reinterpret comparison characters inside the value as field syntax.
+
+Sort-token interpretation is a pure computation in `sort`. It removes at most one leading `-` or `+` from a decoded
+token and returns the borrowed logical field name and direction, defaulting bare names to ascending. `parse_sort_term`
+coordinates this split, authorized catalog resolution, and `SortTerm` construction. Empty or malformed names still
+fail field validation, and valid unknown names still fail catalog lookup. URL decoding remains in `parameter`, so
+an explicit ascending prefix in a query string must use `%2B`.
 
 The internal `temporal` module owns pure calendar, clock, fraction, and offset validation. The value layer uses those
 computations before constructing date or date-time values. Scalars, wrappers, and lists share that path, so validation
 does not depend on an adapter, external configuration, or a clock.
 
-The filter coordinator calls a pure regex-operator validator before creating a regex plan node. This policy stays in
-the core, so every adapter receives the same equality-only regex contract.
+The filter coordinator calls pure regex-operator and suffix-flag validators before creating a regex plan node. These
+policies stay in the core, so every adapter receives the same equality-only contract with unique, recognized flags.
+Dialect support stays in the adapter: a pure computation selects the regex operator or returns an unsupported error.
+The regex clause coordinator calls that computation before adding the pattern bind, then delegates SQL formatting.
 
 After parsing a typed value, the filter coordinator calls a pure list-operator computation. It maps list equality and
 inequality to `In` and `NotIn`, rejects other operators with lists, and preserves scalar operators. This compatibility
@@ -78,9 +104,9 @@ This rule keeps changes local. A new scalar type belongs in `catalog` and
 | Projection | `Projection`    | Fields requested for selection    |
 | Pagination | `Pagination`    | Limit and offset data             |
 
-Each filter stores a `FieldRef`, not raw user text. The field reference comes from `FieldCatalog`, so adapters receive
-trusted column names only. User input stays in typed `RqsValue` values. Repository code binds those values through the
-database library.
+Each filter stores a logical `FieldRef` resolved through `FieldCatalog`, including its name, value kind, and regex
+permission. Filters, sorting, and projections contain no physical column names. User input stays in typed `RqsValue`
+values. SQL repositories supply a separate trusted column map and bind values through the database library.
 
 The plan is database-neutral. SQLx, SeaQuery, and custom repositories can read the same plan. This keeps parsing tests
 independent from database tests.
@@ -89,6 +115,15 @@ independent from database tests.
 
 Adapters depend on the plan. The plan does not depend on adapters. Cargo feature flags keep heavier integrations outside
 the core parser.
+
+`SqlxColumnMap` lives at the SQL adapter boundary and validates physical identifiers when configured. `SqlxAdapter`
+requires this mapping and resolves every referenced field explicitly, including fields used only for sorting or
+projection. It rejects missing entries instead of deriving identifiers from logical names. Catalog authorization
+remains independent: a mapping cannot make an unlisted request field valid.
+
+The same plan can be translated with different physical schemas or consumed without SQL. The
+[in-memory example](../examples/in_memory.rs) reads logical `age` and its integer value to filter application records.
+It explicitly rejects unsupported plan shapes. See the [0.2 migration](migration-0.2.md) for the API transition.
 
 The SQLx-oriented adapter returns:
 
@@ -109,6 +144,11 @@ unsupported-comparison error from the typed value and operator. The comparison c
 without changing bind state, or allocates a scalar bind and delegates SQL formatting to a pure computation. The core
 plan retains its comparison operator and typed null value.
 
+Placeholder formatting is a pure computation over the SQL dialect and an explicit one-based bind position. The bind
+coordinator appends the value, reads the resulting position, and calls that formatter. Comparisons, lists, and regex
+share this path: PostgreSQL receives a continuous numbered sequence, while MySQL and SQLite receive anonymous `?`
+placeholders. Null comparisons and existence predicates do not consume positions.
+
 ```mermaid
 sequenceDiagram
   participant P as Parser
@@ -126,10 +166,11 @@ sequenceDiagram
 `RqsError` gives stable error codes. Services can map those codes to HTTP responses, metrics, or tests. Display text
 uses a pure identifier-redaction computation: valid dotted ASCII names up to 128 bytes remain visible, and other names
 become `[redacted]`. The internal `identifier` module supplies the syntax computation shared by catalog validation and
-error formatting. The parser coordinates syntax validation and catalog lookup. Error fields and Debug output retain
+error formatting. The parser coordinates public-name validation and catalog lookup. Error fields and Debug output retain
 the original input and are outside the Display redaction contract.
 
-Parser errors represent invalid RQS input. Adapter errors represent unsupported translation for a valid plan.
+Configuration errors such as duplicate catalog names are reported while building trusted configuration. Parser errors
+represent invalid RQS input. Adapter errors represent unsupported translation for a valid plan.
 Authorization errors belong outside RestQS. The application decides the catalog and can reject the request before
 parsing.
 

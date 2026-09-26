@@ -1,5 +1,7 @@
 # API Guide
 
+This guide describes the unreleased 0.2 API. See the [migration guide](migration-0.2.md) for changes from 0.1.x.
+
 RestQS starts with one explicit catalog and ends with one typed plan. The catalog names the public fields accepted by an
 endpoint. The plan describes filters, sort terms, projection fields, and pagination values.
 
@@ -22,16 +24,23 @@ flowchart TD
 
 ## Field Catalog
 
-`FieldCatalog` is the public contract for an endpoint. It maps public names to trusted database column identifiers and
-value kinds.
+`FieldCatalog` is the public contract for an endpoint. It authorizes logical public names and defines value kinds and
+query capabilities. Physical storage names are configured separately by each adapter.
+
+`FieldCatalog::allow` and every `allow_*` builder reject an already registered public name with
+`RqsError::DuplicateField` (`duplicate_field`). Identical definitions are also duplicates. Matching uses the exact,
+case-sensitive public name; distinct aliases can still map to the same trusted SQL column. There is no replacement
+operation: configure each field's type and regex permission before registering it. See
+[catalog migration](migration-0.2.md#duplicate-catalog-registrations) for previously composed catalogs that relied on
+overwriting entries.
 
 ```rust
 use restqs::{FieldCatalog, parse};
 
 let catalog = FieldCatalog::new()
-.allow_integer("age", "users.age") ?
-.allow_text("status", "users.status") ?
-.allow_boolean("active", "users.active") ?;
+.allow_integer("age") ?
+.allow_text("status") ?
+.allow_boolean("active") ?;
 
 let query = parse("age>=18&status=active&active=true", & catalog) ?;
 
@@ -39,16 +48,24 @@ assert_eq!(query.filters().len(), 3);
 # Ok::<(), restqs::RqsError>(())
 ```
 
-The catalog accepts dotted identifiers such as `users.status`. It rejects spaces, quotes, comments, punctuation, and SQL
-fragments. The parser validates field syntax before catalog lookup. Malformed names return `invalid_field_name`;
-syntactically valid names that do not exist in the catalog return `unknown_field`.
+The public query grammar accepts dotted names such as `profile.status`. This is logical identity, not a database path.
+It rejects spaces, quotes, comments, and other punctuation. The parser validates field syntax and reserved names before
+catalog lookup. Malformed names return `invalid_field_name`; other valid names absent from the catalog return `unknown_field`.
+
+The exact lowercase names `sort`, `fields`, `limit`, and `skip` are reserved for query controls. `Field::new`, all
+catalog builders, and logical keys in `SqlxColumnMap` reject them with `reserved_field_name`. The same error applies to
+field references such as `sort=limit`, `fields=skip`, or `limit!=5`. Control syntax such as `limit=5` remains unchanged.
+Matching is exact and case-sensitive: `Limit`, `profile.limit`, and `limit_value` remain valid logical names. In requests,
+matching happens after URL decoding. Physical SQL columns may still use these names through a distinct public alias; see
+[the migration guide](migration-0.2.md#reserved-query-control-names). `$text` is already invalid field syntax, and
+`$text=` retains its `text_search_unsupported` error.
 
 Use a different catalog for each resource shape or authorization context. A public search endpoint can expose a small
 set of fields. An internal endpoint can expose a larger set. Both paths use the same parser.
 
 ## Value Kinds
 
-RestQS supports relational value kinds from the core crate. It avoids database-specific types in the parser.
+RestQS supports storage-independent value kinds in the core crate. It avoids database-specific types in the parser.
 
 | Catalog method   | Value kind | Accepted examples                                   |
 |------------------|------------|-----------------------------------------------------|
@@ -75,7 +92,7 @@ Use `str(null)` on a text field to compare against the literal text `null` with 
 ```rust
 use restqs::{FieldCatalog, RqsValue, parse};
 
-let catalog = FieldCatalog::new().allow_integer("age", "users.age") ?;
+let catalog = FieldCatalog::new().allow_integer("age") ?;
 let query = parse("age=in(18,21)", & catalog) ?;
 let value = query.filters()[0].value();
 
@@ -161,7 +178,7 @@ Comparison filters map to typed plan nodes:
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};
 
-let catalog = FieldCatalog::new().allow_integer("age", "users.age") ?;
+let catalog = FieldCatalog::new().allow_integer("age") ?;
 let query = parse("age>=18", & catalog) ?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::Gte);
@@ -173,7 +190,7 @@ Existence filters use field presence. They do not carry a value.
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};
 
-let catalog = FieldCatalog::new().allow_text("deleted_at", "users.deleted_at") ?;
+let catalog = FieldCatalog::new().allow_text("deleted_at") ?;
 let query = parse("!deleted_at", & catalog) ?;
 
 assert_eq!(query.filters()[0].op(), FilterOp::NotExists);
@@ -192,7 +209,7 @@ order. A bare field name means ascending order too.
 ```rust
 use restqs::{FieldCatalog, SortDirection, parse};
 
-let catalog = FieldCatalog::new().allow_datetime("created_at", "users.created_at") ?;
+let catalog = FieldCatalog::new().allow_datetime("created_at") ?;
 let query = parse("sort=-created_at", & catalog) ?;
 
 assert_eq!(query.sort()[0].direction(), SortDirection::Desc);
@@ -210,8 +227,8 @@ Projection uses `fields=` and comma-separated field names. The plan stores the r
 use restqs::{FieldCatalog, parse};
 
 let catalog = FieldCatalog::new()
-.allow_text("name", "users.name") ?
-.allow_text("email", "users.email") ?;
+.allow_text("name") ?
+.allow_text("email") ?;
 let query = parse("fields=name,email", & catalog) ?;
 
 assert_eq!(query.projection().fields().len(), 2);
@@ -227,7 +244,7 @@ An empty `fields=` value produces an empty projection. Application code can inte
 ```rust
 use restqs::{FieldCatalog, parse};
 
-let catalog = FieldCatalog::new().allow_text("status", "users.status") ?;
+let catalog = FieldCatalog::new().allow_text("status") ?;
 let query = parse("limit=25&skip=50", & catalog) ?;
 
 assert_eq!(query.pagination().limit(), Some(25));
@@ -239,7 +256,7 @@ The default maximum `limit` is 100. Use `ParserConfig` for a resource-specific c
 ```rust
 use restqs::{FieldCatalog, Parser, ParserConfig, ParserLimits};
 
-let catalog = FieldCatalog::new().allow_text("status", "users.status") ?;
+let catalog = FieldCatalog::new().allow_text("status") ?;
 let limits = ParserLimits {
 max_limit: 250,
 ..ParserLimits::default ()
@@ -267,14 +284,39 @@ Only equality supports regex literals:
 | `email</admin/`, `email<=/admin/` | `invalid_operator` |
 
 For a resolved field and recognized regex literal, value-size validation runs first, followed by operator validation,
-then field permission. An unsupported operator returns `invalid_operator` even when the field has regex disabled.
-An equality regex without field permission still returns `regex_disabled`. These restrictions apply to recognized regex
-literals; `email!=str(/admin/)` compares against the literal text `/admin/`.
+then field permission, then flag validation. An unsupported operator returns `invalid_operator` even when the field
+has regex disabled. An equality regex without field permission still returns `regex_disabled`. These restrictions apply
+to recognized regex literals; `email!=str(/admin/)` compares against the literal text `/admin/`.
+
+The parser recognizes the suffix flags `i` (case insensitive), `m` (multiline), `s` (dot matches newlines), and `x`
+(extended syntax). Each flag can occur at most once, in any order. Unknown flags, uppercase flags, whitespace, and
+duplicates such as `/admin/ii` return `invalid_regex_flags`. Accepted flags retain their input order in
+`RegexLiteral::flags()`. The error does not include the submitted pattern or flags.
+
+The following matrix describes the current SQLx adapter, with both regex permission gates enabled:
+
+| Suffix flags | PostgreSQL | MySQL | SQLite |
+| --- | --- | --- | --- |
+| None | `column ~ $1` | `column REGEXP ?` | `adapter_unsupported` |
+| `i` | `column ~* $1` | `adapter_unsupported` | `adapter_unsupported` |
+| `m` | `adapter_unsupported` | `adapter_unsupported` | `adapter_unsupported` |
+| `s` | `adapter_unsupported` | `adapter_unsupported` | `adapter_unsupported` |
+| `x` | `adapter_unsupported` | `adapter_unsupported` | `adapter_unsupported` |
+
+Any combination containing an unsupported flag is rejected in full, including `/admin/im` on PostgreSQL. The error's
+`feature` is `postgres regex flags` or `mysql regex flags` for unsupported flags, and `sqlite regex` for SQLite.
+These are limits of this adapter's translation; the parser preserves recognized flags for custom adapters.
+
+Patterns remain unmodified bind values and use the database's native regex syntax. PostgreSQL's `~` and `~*` operators
+select case-sensitive and case-insensitive matching, respectively; embedded pattern options can override that choice
+as documented in [PostgreSQL pattern matching](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP).
+With no suffix flags, MySQL matching follows the arguments' collations and its regex engine; omitting flags does not
+guarantee case sensitivity. See [MySQL regular expressions](https://dev.mysql.com/doc/refman/8.4/en/regexp.html).
 
 ```rust
 use restqs::{Field, FieldCatalog, FilterOp, ValueKind, parse};
 
-let email = Field::new("email", "users.email", ValueKind::Text) ?.allow_regex();
+let email = Field::new("email", ValueKind::Text) ?.allow_regex();
 let catalog = FieldCatalog::new().allow(email) ?;
 let query = parse("email=/@example.com$/i", & catalog) ?;
 
@@ -295,25 +337,33 @@ enter the message. This display limit does not restrict accepted catalog identif
 Use Display (`{}`) or error codes for ordinary logs and public error responses. Error fields and Debug (`{:?}`) retain
 the original input and are outside this redaction contract.
 
-Malformed nonempty field names now return `invalid_field_name` instead of `unknown_field`. Existing error-code strings
-are unchanged; valid unknown names still return `unknown_field`.
+Malformed nonempty field names return `invalid_field_name`. Reserved control names in field positions return
+`reserved_field_name`; other valid unknown names return `unknown_field`. Existing error-code strings are unchanged.
 
 | Code                      | Meaning                                         |
 |---------------------------|-------------------------------------------------|
 | `invalid_field_name`      | Field syntax was empty or invalid               |
+| `reserved_field_name`     | Logical field name collides with a query control |
+| `duplicate_field`         | Catalog configuration registered the same public field twice |
 | `unknown_field`           | Public field was not in the catalog             |
+| `missing_column_mapping` | SQL adapter has no mapping for a referenced logical field |
+| `duplicate_column_mapping` | SQL configuration registered the same logical field twice |
+| `invalid_column_name`    | SQL configuration contains an invalid physical identifier |
 | `invalid_operator`        | Invalid operator syntax or unsupported operator/value combination |
 | `invalid_value`           | Value did not match the catalog type            |
 | `value_too_large`         | Decoded filter or control value exceeded the byte limit |
 | `regex_disabled`          | Regex was used on a field that did not allow it |
+| `invalid_regex_flags`     | Regex suffix flags contain an unknown or repeated flag |
 | `text_search_unsupported` | `$text=` was requested                          |
 | `duplicate_filter`        | Same field and operator appeared twice          |
 | `limit_too_large`         | Requested `limit` exceeded parser config        |
 | `too_many_parameters`     | Query had more parameters than allowed          |
 | `too_many_list_items`     | List had more items than allowed                |
-| `adapter_unsupported`     | SQL translation cannot represent the requested feature, including ordered null comparisons |
+| `adapter_unsupported`     | SQL translation cannot represent the requested feature, including regex flags and ordered null comparisons |
 
 For `value_too_large`, the `field` metadata identifies the filter's public field name or the control name (`sort`,
 `fields`, `limit`, or `skip`).
 
-Services can map these codes to HTTP 400 responses. Authorization failures belong in application code, not in RestQS.
+Services can map request parsing errors to HTTP 400 responses. Configuration errors such as `duplicate_field` should
+be handled when constructing the catalog, not attributed to request input. Authorization failures belong in application
+code, not in RestQS.

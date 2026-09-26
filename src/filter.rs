@@ -56,6 +56,9 @@ impl FilterOp {
 }
 
 /// Regex literal parsed from slash form.
+///
+/// Suffix flags are unique lowercase letters from `i`, `m`, `s`, and `x`.
+/// Adapters must translate each requested flag or explicitly reject it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegexLiteral {
     pattern: String,
@@ -69,13 +72,13 @@ impl RegexLiteral {
         &self.pattern
     }
 
-    /// Return regex flags.
+    /// Return validated regex flags in input order, without duplicates.
     #[must_use]
     pub fn flags(&self) -> &str {
         &self.flags
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "sqlx"))]
     pub(crate) fn new_for_test(pattern: &str, flags: &str) -> Self {
         Self {
             pattern: pattern.to_owned(),
@@ -162,6 +165,7 @@ pub(crate) fn build_value_filter(
                 field: field.public_name().to_owned(),
             });
         }
+        validate_regex_flags(regex.flags())?;
         return Ok(Filter::regex(field, regex));
     }
 
@@ -176,6 +180,24 @@ fn validate_regex_operator(op: FilterOp) -> RqsResult<()> {
     } else {
         Err(RqsError::InvalidOperator)
     }
+}
+
+fn validate_regex_flags(flags: &str) -> RqsResult<()> {
+    let mut seen = 0_u8;
+    for flag in flags.bytes() {
+        let bit = match flag {
+            b'i' => 1,
+            b'm' => 2,
+            b's' => 4,
+            b'x' => 8,
+            _ => return Err(RqsError::InvalidRegexFlags),
+        };
+        if seen & bit != 0 {
+            return Err(RqsError::InvalidRegexFlags);
+        }
+        seen |= bit;
+    }
+    Ok(())
 }
 
 fn list_operator(op: FilterOp, value: &RqsValue) -> RqsResult<FilterOp> {
@@ -196,9 +218,6 @@ fn parse_regex_literal(raw: &str) -> Option<RegexLiteral> {
     let end = offset + 1;
 
     let pattern = raw[1..end].to_owned();
-    let flags = raw[end + 1..]
-        .chars()
-        .filter(|flag| matches!(flag, 'i' | 'm' | 's' | 'x'))
-        .collect();
+    let flags = raw[end + 1..].to_owned();
     Some(RegexLiteral { pattern, flags })
 }

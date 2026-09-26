@@ -1,8 +1,10 @@
-//! Allowlisted fields and database column metadata.
+//! Allowlisted logical fields and query capabilities.
 
 use std::collections::BTreeMap;
 
-use crate::{RqsError, RqsResult, identifier::is_dotted_identifier};
+use crate::{
+    RqsError, RqsResult, control::validate_unreserved_name, identifier::is_dotted_identifier,
+};
 
 /// Value type expected by an allowlisted field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,29 +41,24 @@ impl ValueKind {
     }
 }
 
-/// One public field mapped to one database column.
+/// One authorized logical query field with a value kind and capabilities.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Field {
     public_name: String,
-    column_name: String,
     value_kind: ValueKind,
     regex_allowed: bool,
 }
 
 impl Field {
-    /// Create one allowlisted field mapping.
-    pub fn new(
-        public_name: impl Into<String>,
-        column_name: impl Into<String>,
-        value_kind: ValueKind,
-    ) -> RqsResult<Self> {
+    /// Create one allowlisted logical field.
+    ///
+    /// Exact lowercase names `sort`, `fields`, `limit`, and `skip` return
+    /// [`RqsError::ReservedFieldName`]. Use a distinct public alias instead.
+    pub fn new(public_name: impl Into<String>, value_kind: ValueKind) -> RqsResult<Self> {
         let public_name = public_name.into();
-        let column_name = column_name.into();
         validate_public_name(&public_name)?;
-        validate_column_name(&column_name)?;
         Ok(Self {
             public_name,
-            column_name,
             value_kind,
             regex_allowed: false,
         })
@@ -80,12 +77,6 @@ impl Field {
         &self.public_name
     }
 
-    /// Return the allowlisted database column.
-    #[must_use]
-    pub fn column_name(&self) -> &str {
-        &self.column_name
-    }
-
     /// Return the expected value type.
     #[must_use]
     pub fn value_kind(&self) -> ValueKind {
@@ -101,7 +92,6 @@ impl Field {
     pub(crate) fn to_ref(&self) -> FieldRef {
         FieldRef {
             public_name: self.public_name.clone(),
-            column_name: self.column_name.clone(),
             value_kind: self.value_kind,
             regex_allowed: self.regex_allowed,
         }
@@ -112,7 +102,6 @@ impl Field {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldRef {
     public_name: String,
-    column_name: String,
     value_kind: ValueKind,
     regex_allowed: bool,
 }
@@ -122,12 +111,6 @@ impl FieldRef {
     #[must_use]
     pub fn public_name(&self) -> &str {
         &self.public_name
-    }
-
-    /// Return the allowlisted database column.
-    #[must_use]
-    pub fn column_name(&self) -> &str {
-        &self.column_name
     }
 
     /// Return the expected value type.
@@ -144,6 +127,10 @@ impl FieldRef {
 }
 
 /// Explicit allowlist for fields that can appear in RQS input.
+///
+/// Each public name can be registered only once. [`Self::allow`] and every
+/// `allow_*` builder reject duplicates with [`RqsError::DuplicateField`], even
+/// when the field definition is identical. Names are case-sensitive.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FieldCatalog {
     fields: BTreeMap<String, Field>,
@@ -157,73 +144,49 @@ impl FieldCatalog {
     }
 
     /// Insert a field and return the updated catalog.
+    ///
+    /// Returns [`RqsError::DuplicateField`] if the exact public name is already
+    /// registered. Configure the field's type and capabilities before insertion.
     pub fn allow(mut self, field: Field) -> RqsResult<Self> {
         let name = field.public_name().to_owned();
+        validate_new_field(&self.fields, &name)?;
         self.fields.insert(name, field);
         Ok(self)
     }
 
     /// Insert a text field.
-    pub fn allow_text(
-        self,
-        public_name: impl Into<String>,
-        column_name: impl Into<String>,
-    ) -> RqsResult<Self> {
-        self.allow_kind(public_name, column_name, ValueKind::Text)
+    pub fn allow_text(self, public_name: impl Into<String>) -> RqsResult<Self> {
+        self.allow_kind(public_name, ValueKind::Text)
     }
 
     /// Insert an integer field.
-    pub fn allow_integer(
-        self,
-        public_name: impl Into<String>,
-        column_name: impl Into<String>,
-    ) -> RqsResult<Self> {
-        self.allow_kind(public_name, column_name, ValueKind::Integer)
+    pub fn allow_integer(self, public_name: impl Into<String>) -> RqsResult<Self> {
+        self.allow_kind(public_name, ValueKind::Integer)
     }
 
     /// Insert a float field.
-    pub fn allow_float(
-        self,
-        public_name: impl Into<String>,
-        column_name: impl Into<String>,
-    ) -> RqsResult<Self> {
-        self.allow_kind(public_name, column_name, ValueKind::Float)
+    pub fn allow_float(self, public_name: impl Into<String>) -> RqsResult<Self> {
+        self.allow_kind(public_name, ValueKind::Float)
     }
 
     /// Insert a boolean field.
-    pub fn allow_boolean(
-        self,
-        public_name: impl Into<String>,
-        column_name: impl Into<String>,
-    ) -> RqsResult<Self> {
-        self.allow_kind(public_name, column_name, ValueKind::Boolean)
+    pub fn allow_boolean(self, public_name: impl Into<String>) -> RqsResult<Self> {
+        self.allow_kind(public_name, ValueKind::Boolean)
     }
 
     /// Insert a date field.
-    pub fn allow_date(
-        self,
-        public_name: impl Into<String>,
-        column_name: impl Into<String>,
-    ) -> RqsResult<Self> {
-        self.allow_kind(public_name, column_name, ValueKind::Date)
+    pub fn allow_date(self, public_name: impl Into<String>) -> RqsResult<Self> {
+        self.allow_kind(public_name, ValueKind::Date)
     }
 
     /// Insert a date-time field.
-    pub fn allow_datetime(
-        self,
-        public_name: impl Into<String>,
-        column_name: impl Into<String>,
-    ) -> RqsResult<Self> {
-        self.allow_kind(public_name, column_name, ValueKind::DateTime)
+    pub fn allow_datetime(self, public_name: impl Into<String>) -> RqsResult<Self> {
+        self.allow_kind(public_name, ValueKind::DateTime)
     }
 
     /// Insert a UUID field.
-    pub fn allow_uuid(
-        self,
-        public_name: impl Into<String>,
-        column_name: impl Into<String>,
-    ) -> RqsResult<Self> {
-        self.allow_kind(public_name, column_name, ValueKind::Uuid)
+    pub fn allow_uuid(self, public_name: impl Into<String>) -> RqsResult<Self> {
+        self.allow_kind(public_name, ValueKind::Uuid)
     }
 
     /// Return a field by public name.
@@ -244,28 +207,31 @@ impl FieldCatalog {
         self.fields.len()
     }
 
-    fn allow_kind(
-        self,
-        public_name: impl Into<String>,
-        column_name: impl Into<String>,
-        value_kind: ValueKind,
-    ) -> RqsResult<Self> {
-        let field = Field::new(public_name, column_name, value_kind)?;
+    fn allow_kind(self, public_name: impl Into<String>, value_kind: ValueKind) -> RqsResult<Self> {
+        let field = Field::new(public_name, value_kind)?;
         self.allow(field)
     }
 }
 
-#[cfg(test)]
+fn validate_new_field(fields: &BTreeMap<String, Field>, name: &str) -> RqsResult<()> {
+    if fields.contains_key(name) {
+        Err(RqsError::DuplicateField {
+            field: name.to_owned(),
+        })
+    } else {
+        Ok(())
+    }
+}
+
+#[cfg(all(test, feature = "sqlx"))]
 impl FieldRef {
     pub(crate) fn new_for_test(
         public_name: &str,
-        column_name: &str,
         value_kind: ValueKind,
         regex_allowed: bool,
     ) -> Self {
         Self {
             public_name: public_name.to_owned(),
-            column_name: column_name.to_owned(),
             value_kind,
             regex_allowed,
         }
@@ -273,21 +239,16 @@ impl FieldRef {
 }
 
 pub(crate) fn validate_public_name(name: &str) -> RqsResult<()> {
+    validate_name_syntax(name)?;
+    validate_unreserved_name(name)
+}
+
+fn validate_name_syntax(name: &str) -> RqsResult<()> {
     if is_dotted_identifier(name) {
         Ok(())
     } else {
         Err(RqsError::InvalidFieldName {
             field: name.to_owned(),
-        })
-    }
-}
-
-fn validate_column_name(name: &str) -> RqsResult<()> {
-    if is_dotted_identifier(name) {
-        Ok(())
-    } else {
-        Err(RqsError::InvalidColumnName {
-            column: name.to_owned(),
         })
     }
 }

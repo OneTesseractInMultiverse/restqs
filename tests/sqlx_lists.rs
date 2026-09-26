@@ -3,14 +3,21 @@
 
 use restqs::{
     FieldCatalog, RqsResult, RqsValue,
-    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxQueryParts},
+    adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap, SqlxQueryParts},
     parse,
 };
 
 fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
-        .allow_integer("age", "users.age")?
-        .allow_text("status", "users.status")
+        .allow_integer("age")?
+        .allow_text("status")
+}
+
+fn adapter(dialect: SqlDialect) -> RqsResult<SqlxAdapter> {
+    let columns = SqlxColumnMap::new()
+        .map("age", "users.age")?
+        .map("status", "users.status")?;
+    Ok(SqlxAdapter::new(dialect, columns))
 }
 
 fn build_mixed_comparisons(dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
@@ -18,7 +25,7 @@ fn build_mixed_comparisons(dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
         "age>=18&status=in(active,pending)&age!=list(21,65)&status!=archived",
         &catalog()?,
     )?;
-    SqlxAdapter::new(dialect).build(&query)
+    adapter(dialect)?.build(&query)
 }
 
 #[test]
@@ -128,7 +135,7 @@ fn sqlite_lists_expand_to_scalar_binds_in_order() -> RqsResult<()> {
 
 #[test]
 fn postgres_pipeline_rejects_greater_than_list() -> RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::Postgres);
+    let adapter = adapter(SqlDialect::Postgres)?;
     let result = parse("age>in(1,2)", &catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());
@@ -139,7 +146,7 @@ fn postgres_pipeline_rejects_greater_than_list() -> RqsResult<()> {
 
 #[test]
 fn postgres_pipeline_rejects_greater_than_or_equal_list() -> RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::Postgres);
+    let adapter = adapter(SqlDialect::Postgres)?;
     let result = parse("age>=in(1,2)", &catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());
@@ -150,7 +157,7 @@ fn postgres_pipeline_rejects_greater_than_or_equal_list() -> RqsResult<()> {
 
 #[test]
 fn postgres_pipeline_rejects_less_than_list() -> RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::Postgres);
+    let adapter = adapter(SqlDialect::Postgres)?;
     let result = parse("age<in(1,2)", &catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());
@@ -161,7 +168,7 @@ fn postgres_pipeline_rejects_less_than_list() -> RqsResult<()> {
 
 #[test]
 fn postgres_pipeline_rejects_less_than_or_equal_list() -> RqsResult<()> {
-    let adapter = SqlxAdapter::new(SqlDialect::Postgres);
+    let adapter = adapter(SqlDialect::Postgres)?;
     let result = parse("age<=in(1,2)", &catalog()?)
         .and_then(|query| adapter.build(&query))
         .map_err(|error| error.error_code());

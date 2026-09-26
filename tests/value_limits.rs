@@ -7,9 +7,9 @@ use restqs::{
 
 fn parse_with_limits(input: &str, limits: ParserLimits) -> RqsResult<RqsQuery> {
     let catalog = FieldCatalog::new()
-        .allow_integer("id", "users.id")?
-        .allow_text("name", "users.name")?
-        .allow(Field::new("email", "users.email", ValueKind::Text)?.allow_regex())?;
+        .allow_integer("id")?
+        .allow_text("name")?
+        .allow(Field::new("email", ValueKind::Text)?.allow_regex())?;
     Parser::with_config(&catalog, ParserConfig::with_limits(limits)).parse(input)
 }
 
