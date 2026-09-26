@@ -1,5 +1,7 @@
 /target/
 Cargo.lock
+!integration-tests/sqlite/Cargo.lock
+/integration-tests/sqlite/target/
 *.swp
 *.swo
 .DS_Store

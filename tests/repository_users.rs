@@ -116,7 +116,7 @@ fn postgres_projection_preserves_filter_and_pagination_binds() -> TestResult {
 fn sqlite_default_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         sqlite("")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users WHERE 1 = 1"#
+        r#"SELECT "users"."id", "users"."name" FROM users"#
     );
     Ok(())
 }
@@ -125,7 +125,7 @@ fn sqlite_default_projection_selects_both_decoder_columns() -> TestResult {
 fn sqlite_empty_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         sqlite("fields=")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users WHERE 1 = 1"#
+        r#"SELECT "users"."id", "users"."name" FROM users"#
     );
     Ok(())
 }
@@ -134,7 +134,7 @@ fn sqlite_empty_projection_selects_both_decoder_columns() -> TestResult {
 fn sqlite_explicit_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         sqlite("fields=id,name")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users WHERE 1 = 1"#
+        r#"SELECT "users"."id", "users"."name" FROM users"#
     );
     Ok(())
 }
@@ -143,7 +143,7 @@ fn sqlite_explicit_projection_selects_both_decoder_columns() -> TestResult {
 fn sqlite_reversed_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         sqlite("fields=name,id")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users WHERE 1 = 1"#
+        r#"SELECT "users"."id", "users"."name" FROM users"#
     );
     Ok(())
 }
@@ -220,4 +220,49 @@ fn sqlite_projection_preserves_filter_and_pagination_sql() -> TestResult {
         r#"SELECT "users"."id", "users"."name" FROM users WHERE "users"."status" = ? LIMIT ? OFFSET ?"#
     );
     Ok(())
+}
+
+#[test]
+fn sqlite_ascending_sort_reaches_the_final_statement() -> TestResult {
+    assert_eq!(
+        sqlite("sort=id")?.sql,
+        r#"SELECT "users"."id", "users"."name" FROM users ORDER BY "users"."id" ASC"#
+    );
+    Ok(())
+}
+
+#[test]
+fn sqlite_descending_sort_reaches_the_final_statement() -> TestResult {
+    assert_eq!(
+        sqlite("sort=-id")?.sql,
+        r#"SELECT "users"."id", "users"."name" FROM users ORDER BY "users"."id" DESC"#
+    );
+    Ok(())
+}
+
+#[test]
+fn sqlite_multiple_terms_sort_reaches_the_final_statement() -> TestResult {
+    assert_eq!(
+        sqlite("sort=age,-name")?.sql,
+        r#"SELECT "users"."id", "users"."name" FROM users ORDER BY "users"."age" ASC, "users"."name" DESC"#
+    );
+    Ok(())
+}
+
+#[test]
+fn sqlite_sort_precedes_pagination_after_filters() -> TestResult {
+    let statement = sqlite("status=active&sort=age,-name&limit=2&skip=1")?;
+    assert_eq!(
+        statement.sql,
+        r#"SELECT "users"."id", "users"."name" FROM users WHERE "users"."status" = ? ORDER BY "users"."age" ASC, "users"."name" DESC LIMIT ? OFFSET ?"#
+    );
+    Ok(())
+}
+
+#[test]
+fn sqlite_rejects_unknown_sort_fields() {
+    assert_eq!(
+        sqlite("sort=secret").map_err(|error| error.to_string()),
+        Err("field secret is not allowed".to_owned())
+    );
 }

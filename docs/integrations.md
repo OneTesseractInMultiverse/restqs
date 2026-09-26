@@ -201,7 +201,7 @@ These tests compile the same pagination module linked above and cover both diale
 requests, null and list filter binds, zero values, omitted limits, and signed-integer boundaries. They also run in
 `make test`. Database execution remains the application's responsibility.
 
-## Documentation-Only SQLx Examples
+## SQLx Repository Examples
 
 The crate does not depend on SQLx, Tokio, PostgreSQL, or SQLite. Application code chooses those crates and versions in
 its own manifest. The following snippets show the path from raw RQS text to database rows. They keep request extraction,
@@ -309,7 +309,19 @@ restqs = { path = "../restqs", features = ["sqlx"] }
 sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
-SQLite uses `?` placeholders. The repository can reuse the same catalog and bind mapping style:
+SQLite uses `?` placeholders. The shared users builder appends authorized `ORDER BY` terms after filters and before
+pagination. For example, `status=active&sort=age,-name&limit=2&skip=1` yields:
+
+```sql
+SELECT "users"."id", "users"."name" FROM users
+WHERE "users"."status" = ?
+ORDER BY "users"."age" ASC, "users"."name" DESC LIMIT ? OFFSET ?
+```
+
+The binds are `Text("active"), Integer(2), Integer(1)`. Omitted sorting adds no ordering clause; applications needing
+repeatable pagination should include a unique tie-breaker such as `sort=age,id`.
+
+The repository can reuse the same catalog and bind mapping style:
 
 ```rust
 mod pagination;
@@ -358,6 +370,12 @@ fn bind_sqlite_value<'query>(
     }
 }
 ```
+
+The [isolated SQLite fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/sqlite)
+compiles this binding and row-decoding flow and includes the same users and pagination modules by path. Run
+`make verify-sqlite` from a repository checkout. It executes SQLx 0.8.6 with bundled SQLite 3.46.0 in memory, checking
+returned rows for both sort directions, multiple terms, and pagination. No server or credentials are needed. This
+separate test crate is excluded from the published package and ordinary unit suite; both Rust CI jobs run it explicitly.
 
 ### Security Boundary In The Examples
 

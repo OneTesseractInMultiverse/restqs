@@ -26,6 +26,9 @@ Run coverage for source-line checks:
 make coverage
 ```
 
+When changing SQLite repository examples, also run `make verify-sqlite`. This separate, locked fixture uses SQLx and
+an in-memory database without external services. See [the testing guide](docs/testing-guide.md#sqlite-execution-checks).
+
 ## Contribution Rules
 
 Keep changes focused and small. Preserve the coordinator-versus-computation split described in `docs/architecture.md`.
