@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Sqlx adapter checks using explicit, single-assertion cases.
 #![cfg(feature = "sqlx")]
 
 use restqs::{
@@ -7,6 +7,7 @@ use restqs::{
     parse,
 };
 
+/// Build trusted column mappings for this suite, independently of catalog authorization.
 fn columns() -> restqs::RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
     restqs::adapters::sqlx::SqlxColumnMap::new()
         .map("age", "users.age")?
@@ -15,6 +16,7 @@ fn columns() -> restqs::RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
         .map("email", "users.email")
 }
 
+/// Build the minimal authorized field catalog used by this suite.
 fn catalog() -> restqs::RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow_integer("age")?
@@ -22,6 +24,7 @@ fn catalog() -> restqs::RqsResult<FieldCatalog> {
         .allow_datetime("created_at")
 }
 
+/// Build the suite catalog with explicit field-level regex permission.
 fn regex_catalog() -> restqs::RqsResult<FieldCatalog> {
     let field = Field::new("email", ValueKind::Text)?.allow_regex();
     FieldCatalog::new().allow(field)

@@ -1,7 +1,8 @@
-#![allow(missing_docs)]
+//! Value checks using explicit, single-assertion cases.
 
 use restqs::{FieldCatalog, RqsValue, parse};
 
+/// Authorize one field of each scalar kind for typed conversion checks.
 fn scalar_catalog() -> restqs::RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow_text("name")?

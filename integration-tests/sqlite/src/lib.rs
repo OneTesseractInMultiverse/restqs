@@ -26,6 +26,7 @@ pub async fn list_sqlite_users(
     Ok(decode_sqlite_users(rows)?)
 }
 
+/// Decode id and name from every SQLite row, propagating driver type or missing-column errors.
 fn decode_sqlite_users(
     rows: Vec<sqlx::sqlite::SqliteRow>,
 ) -> Result<Vec<(i64, String)>, sqlx::Error> {
@@ -34,6 +35,8 @@ fn decode_sqlite_users(
         .collect()
 }
 
+/// Bind one flattened scalar, storing dates, timestamps, and UUIDs as text; reject nested list
+/// values.
 fn bind_sqlite_value<'query>(
     query: sqlx::query::Query<'query, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'query>>,
     value: &'query RqsValue,

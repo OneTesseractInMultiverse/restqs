@@ -7,13 +7,18 @@ use restqs::adapters::sqlx::SqlxQueryParts;
 /// Explicit repository execution policy, independent of request parameters.
 #[derive(Debug, Clone, Copy)]
 pub struct QueryBudget {
+    /// None opts trusted internal work out of result caps.
     bounds: Option<Bounds>,
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Validated application-owned result and offset caps.
 struct Bounds {
+    /// Positive row cap used when the request omits a limit.
     default_limit: u64,
+    /// Inclusive explicit row cap within signed database range.
     max_limit: u64,
+    /// Inclusive skip cap within signed database range.
     max_offset: u64,
 }
 
@@ -29,6 +34,7 @@ pub enum BudgetError {
 }
 
 impl Display for BudgetError {
+    /// Format a stable policy explanation without embedding request values.
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::InvalidConfiguration => "invalid repository result budget",
@@ -41,6 +47,8 @@ impl Display for BudgetError {
 impl std::error::Error for BudgetError {}
 
 impl Default for QueryBudget {
+    /// Use a 25-row default, 100-row maximum, and 10,000-row offset cap for public endpoint
+    /// examples.
     fn default() -> Self {
         Self {
             bounds: Some(Bounds {

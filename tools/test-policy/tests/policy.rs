@@ -1,5 +1,8 @@
+//! Policy contract checks; each test owns one assertion and helpers return setup/results.
+
 use restqs_test_policy::analyze;
 
+/// Analyze a source fixture and return diagnostic messages for one focused assertion.
 fn messages(source: &str) -> Result<Vec<String>, syn::Error> {
     Ok(analyze(source)?
         .diagnostics

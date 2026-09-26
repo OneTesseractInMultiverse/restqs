@@ -1,7 +1,8 @@
-#![allow(missing_docs)]
+//! Temporal values checks using explicit, single-assertion cases.
 
 use restqs::{FieldCatalog, Filter, RqsError, RqsQuery, RqsResult, RqsValue, parse};
 
+/// Parse a temporal predicate under its declared catalog kind, preserving parser error codes.
 fn parse_temporal(input: &str) -> RqsResult<RqsQuery> {
     let catalog = FieldCatalog::new()
         .allow_date("day")?

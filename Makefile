@@ -15,7 +15,7 @@ FUZZ_SECONDS ?= 15
 FUZZ_RUNS ?= 10000
 FUZZ_OPTIONS = -max_total_time=$(FUZZ_SECONDS) -runs=$(FUZZ_RUNS) -max_len=4096 -timeout=5 -rss_limit_mb=1024 -seed=5394771 -dict=fuzz/rqs.dict
 
-.PHONY: all audit build check clippy coverage coverage-setup test-policy verify-test-policy doc fmt fmt-check help lint package package-list publish-dry-run setup test test-doc test-sqlite test-services test-properties verify verify-sqlite verify-services verify-properties fuzz-setup fuzz-smoke
+.PHONY: all audit build check clippy coverage coverage-setup test-policy verify-test-policy doc doc-internal fmt fmt-check help lint package package-list publish-dry-run setup test test-doc test-sqlite test-services test-properties verify verify-sqlite verify-services verify-properties fuzz-setup fuzz-smoke
 
 all: verify
 
@@ -29,7 +29,8 @@ help:
 		'coverage-setup  Install pinned Rust and coverage tools' \
 		'coverage        Run cargo llvm-cov with a 100 percent line gate' \
 		'doc             Build documentation with and without sqlx' \
-		'fmt             Format all Rust code' \
+		'doc-internal    Build rustdoc including private implementation items' \
+		'fmt             Format core and example Rust code' \
 		'fmt-check       Check formatting' \
 		'lint            Alias for clippy' \
 		'package         Verify crate package contents' \
@@ -86,6 +87,9 @@ verify-test-policy:
 doc:
 	RUSTDOCFLAGS="--cfg docsrs -D warnings" $(CARGO) doc --no-deps --no-default-features
 	RUSTDOCFLAGS="--cfg docsrs -D warnings" $(CARGO) doc --no-deps --all-features
+
+doc-internal:
+	RUSTDOCFLAGS="-D warnings" $(CARGO) doc --no-deps --all-features --document-private-items
 
 fmt:
 	$(CARGO) fmt --all

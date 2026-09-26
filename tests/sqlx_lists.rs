@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Sqlx lists checks using explicit, single-assertion cases.
 #![cfg(feature = "sqlx")]
 
 use restqs::{
@@ -7,12 +7,14 @@ use restqs::{
     parse,
 };
 
+/// Build the minimal authorized field catalog used by this suite.
 fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow_integer("age")?
         .allow_text("status")
 }
 
+/// Construct the dialect adapter with the suite's trusted column mappings.
 fn adapter(dialect: SqlDialect) -> RqsResult<SqlxAdapter> {
     let columns = SqlxColumnMap::new()
         .map("age", "users.age")?
@@ -20,6 +22,7 @@ fn adapter(dialect: SqlDialect) -> RqsResult<SqlxAdapter> {
     Ok(SqlxAdapter::new(dialect, columns))
 }
 
+/// Translate a mixture of scalar and membership predicates to check complete bind order.
 fn build_mixed_comparisons(dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
     let query = parse(
         "age>=18&status=in(active,pending)&age!=list(21,65)&status!=archived",

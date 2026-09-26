@@ -40,7 +40,10 @@ instrumented checks. Preserve minimized failures as described in [the testing gu
 
 Keep changes focused and small. Preserve the coordinator-versus-computation split described in `docs/architecture.md`.
 Add or update tests for every behavior change. Update docs for public API, examples, error codes, adapter behavior, or
-security behavior changes.
+security behavior changes. Document public contracts and internal invariants, including error conditions and trust
+boundaries. Keep examples executable; `make test-doc` checks the README and current guides.
+Use `make doc-internal` to review private-item documentation. Test names state the single fact under test, and
+setup helpers document their role without hiding assertions.
 
 Unit tests stay free of external configuration. They do not require files, network access, local services, databases,
 credentials, or process-specific environment variables.
@@ -55,8 +58,7 @@ in parser or adapter behavior.
 
 ## Pull Request Checklist
 
-Open an issue before a large API change. Use the issue templates for bugs and feature requests. Use GitHub Discussions
-for usage questions or broad design discussion.
+Open an issue before a large API change. Use the issue templates for bugs, feature requests, and usage questions.
 
 Run these commands before opening a pull request:
 

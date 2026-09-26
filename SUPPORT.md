@@ -1,12 +1,7 @@
 # Support
 
-Use GitHub Discussions for usage questions, design discussion, and examples:
-
-https://github.com/OneTesseractInMultiverse/restqs/discussions
-
-Use GitHub Issues for reproducible bugs and focused feature requests:
-
-https://github.com/OneTesseractInMultiverse/restqs/issues
+Use [GitHub Issues](https://github.com/OneTesseractInMultiverse/restqs/issues/new/choose) for usage questions,
+reproducible bugs, and focused feature requests. Choose the matching template and provide a minimal example.
 
 Report suspected vulnerabilities through GitHub private vulnerability reporting:
 

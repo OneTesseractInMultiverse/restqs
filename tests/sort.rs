@@ -1,7 +1,8 @@
-#![allow(missing_docs)]
+//! Sort checks using explicit, single-assertion cases.
 
 use restqs::{FieldCatalog, RqsError, RqsResult, SortDirection, parse};
 
+/// Build the minimal authorized field catalog used by this suite.
 fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow_text("status")?

@@ -1,0 +1,22 @@
+name: Usage Question
+description: Ask about the documented API, query syntax, or repository integration.
+title: "Question: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep secrets and production data out of examples. Report suspected vulnerabilities through the private security link instead.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question and minimal example
+      description: Include the expected behavior, query, catalog, and error code where relevant.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions and features
+      description: RestQS version, Rust version, enabled features, and database driver/dialect if applicable.
+    validations:
+      required: true

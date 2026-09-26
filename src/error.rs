@@ -4,6 +4,7 @@ use std::fmt::{self, Display, Formatter};
 
 use crate::identifier::is_dotted_identifier;
 
+/// Maximum UTF-8 byte length of an identifier exposed by error Display output.
 const MAX_DIAGNOSTIC_IDENTIFIER_BYTES: usize = 128;
 
 /// Result type used by RestQS.
@@ -181,6 +182,8 @@ impl RqsError {
 }
 
 impl Display for RqsError {
+    /// Format the failure class and bounded identifiers; error fields and Debug retain the
+    /// original input.
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::QueryTooLarge { max_bytes } => {
@@ -305,6 +308,8 @@ impl Display for RqsError {
 
 impl std::error::Error for RqsError {}
 
+/// Expose only short, syntactically valid identifiers in Display; redact other input without
+/// changing error data.
 fn diagnostic_identifier(value: &str) -> &str {
     if value.len() <= MAX_DIAGNOSTIC_IDENTIFIER_BYTES && is_dotted_identifier(value) {
         value

@@ -5,119 +5,58 @@ User-facing changes are tracked in this file.
 The project uses the [documented compatibility policy](docs/compatibility.md): compatible patches within each `0.x`
 line and migration notes for new incompatible lines, with a narrow documented security-fix exception.
 
-## Unreleased - 0.2.0
+## 0.2.0
+
+This release introduces breaking API and validation changes from 0.1.x. Follow
+[the migration guide](docs/migration-0.2.md). The library keeps Rust 1.85 as its minimum supported version,
+empty default features, and zero dependencies, including when `sqlx` is enabled.
 
 ### Added
 
-An explicit pre-1.0 compatibility policy now covers public Rust API shape, accepted query behavior, stable error codes,
-MSRV, and security validation fixes. Release preparation compares both feature surfaces with the immutable published
-0.1.1 baseline and records expected 0.2.0 breaks and migration steps.
-
-
-GitHub private vulnerability reporting is enabled, with private-only support routing and a maintainer checklist for
-reporting availability and security notifications. GitHub remains the sole private disclosure channel.
-
-
-Pull requests now run a required quality-policy job with pinned 100% source-line coverage and syntax-aware assertion
-checks for Rust and Python tests. Helpers cannot hide assertions, and unsupported generated tests fail explicitly.
-The same gates run against the immutable release commit; the published library gains no dependencies.
-
-
-Reproducible bounded property tests and separate decoding, parsing, and adapter fuzz targets now exercise hostile input,
-limit boundaries, authorized plan fields, operator/value compatibility, bind correspondence, and SQL/value separation.
-Known regressions are replayed from committed inputs. Required CI runs the property suite on both Rust toolchains and
-bounded sanitizer-backed fuzz smoke tests on pinned nightly, retaining failing inputs for reproduction.
-
-
-Database conformance fixtures now execute scalar, null, list, projection, ordering, pagination, and supported regex
-contracts through SQLx. SQLite remains service-free; PostgreSQL 17.6 and MySQL 8.4.6 run in an opt-in suite and required
-stable CI. The service fixture tests SQLx 0.9.0 on Rust 1.94+, while core and SQLite retain Rust 1.85 support. Driver
-dependencies and lockfiles remain isolated from the published crate and ordinary unit suite.
-
-
-The fixed-response repository examples now enforce application-owned result budgets: a 25-row default, a maximum
-explicit limit of 100, and an inclusive offset cap of 10,000. Custom budgets and an explicit internal unbounded policy
-are available in example code; checked database integer conversion always applies. Parser behavior is unchanged.
-
-
-`SqlxAdapter::build_with_bind_start` accepts an explicit one-based first bind position for composing PostgreSQL
-fragments after caller-owned parameters. Standalone `build` still starts at `$1`; MySQL and SQLite keep anonymous
-placeholders. Zero positions and arithmetic overflow return `invalid_bind_position` and `bind_position_overflow`.
-A tested tenant repository example preserves the authorization predicate and binds tenant, filters, then pagination.
+- `SqlxColumnMap` explicitly maps authorized logical fields to trusted physical columns. Missing or duplicate mappings
+  fail with `missing_column_mapping` or `duplicate_column_mapping`; request names never become SQL identifiers.
+- `SqlxAdapter::build_with_bind_start` composes PostgreSQL fragments after caller-owned binds. Zero and overflowing
+  positions fail explicitly. The tested tenant example preserves its mandatory authorization predicate.
+- Repository examples apply a 25-row default, 100-row maximum, and 10,000-row offset cap. Custom application budgets
+  and an explicit trusted internal unbounded policy are available, with checked signed database integer conversion.
+- SQLite, PostgreSQL 17.6, and MySQL 8.4.6 execution fixtures check filtering, projection, ordering, pagination, binds,
+  and supported regex behavior. Driver dependencies remain outside the published crate; PostgreSQL/MySQL fixtures
+  use SQLx 0.9.0 on Rust 1.94+, while SQLite uses SQLx 0.8.6 and retains Rust 1.85 support.
+- Generated properties and bounded sanitizer-backed fuzz targets exercise decoding, typed plans, limit boundaries,
+  bind correspondence, and SQL/value separation with reproducible regression inputs.
+- Required CI and release gates enforce one assertion per Rust/Python test and 100% library source-line coverage.
+  Release jobs validate and publish the same immutable tagged commit after environment approval.
+- Public and internal Rust documentation covers validation and adapter boundaries. README and guide examples run as
+  doctests; missing private implementation docs fail Clippy, and docs.rs includes the optional adapter. Integration docs link
+  compiled driver sources instead of duplicating them; unsupported adapter designs and stale support links are removed.
+- Compatibility policy covers Rust API shape, query behavior, error codes, MSRV, and security fixes. Private security
+  reports use GitHub as the sole disclosure channel, with documented maintainer verification.
 
 ### Changed
 
-The core catalog and plan now contain logical field identity, value kind, and query capabilities without SQL column
-metadata. `Field::new` and all `FieldCatalog::allow_*` builders drop the physical column argument; `column_name()`
-accessors are removed. `SqlxAdapter::new` requires an owned `SqlxColumnMap` and is no longer `Copy`. Every SQL filter,
-sort term, and projection resolves through that trusted configuration. Missing and duplicate entries return the new
-`missing_column_mapping` and `duplicate_column_mapping` error codes. Physical identifier validation moves into the
-adapter. This breaking API change targets 0.2.0; see [Migrating to 0.2](docs/migration-0.2.md).
-
-Parameter classification, control-size policy, and duplicate-filter identity and rejection are now pure internal
-computations. The parser coordinates them before updating query state. This refactor preserves syntax, stable error
-codes, and filter validation precedence without changing the public API.
-
-Sort-prefix interpretation is now a pure computation, separate from authorized field resolution and sort-term
-construction. Bare, descending, and percent-encoded ascending sort terms retain their syntax and validation errors.
-
-SQL placeholder formatting is now a pure computation over the dialect and explicit bind position, separate from bind
-insertion. PostgreSQL numbering, MySQL and SQLite anonymous placeholders, SQL fragments, and bind order are unchanged.
-
-Bind-order tests and the integration example now compare complete typed value sequences. Focused mixed scalar/list
-tests cover input order and repeated list values instead of relying on bind counts.
-
-Error-display tests now check rendered messages for each error variant and hostile-input redaction instead of counting
-messages. Stable error-code checks remain separate from display formatting and safety checks.
+- `Field::new` and catalog builders no longer accept physical columns; `column_name()` accessors are removed.
+  `SqlxAdapter::new` now requires an owned `SqlxColumnMap`, and the adapter is no longer `Copy`.
+  Core plans contain only logical field identity, value kinds, and capabilities.
+- Classification, control budgets, duplicate identity, sort-prefix interpretation, and placeholder formatting are
+  separate internal computations coordinated by parser/adapter functions.
+- Repeated `sort`, `fields`, `limit`, or `skip` controls fail with `duplicate_control`, including empty values and encoded
+  equivalent names. Value-size validation precedes duplicate detection and interpretation of the repeated value.
+- Duplicate catalog names fail with `duplicate_field`. The exact control names `sort`, `fields`, `limit`, and `skip`
+  fail registration with `reserved_field_name`; use public aliases for affected fields.
+- Ordered list comparisons fail with `invalid_operator`; equality and inequality retain `In` and `NotIn` semantics.
+- Regex suffixes must be unique lowercase `i`, `m`, `s`, or `x`. Unknown/repeated flags fail with `invalid_regex_flags`.
+  PostgreSQL translates no flags or `i`, MySQL translates no flags, and unsupported dialect/flag combinations fail
+  with `adapter_unsupported`. SQLite continues to reject regex.
+- Float conversion rejects NaN, infinities, and overflow with `invalid_value`, including casts and list items.
+  Finite extremes, subnormals, signed zero, and underflow rounded to zero remain accepted.
 
 ### Fixed
 
-The SQLite user repository now preserves authorized sorting before pagination, sharing SQL assembly with PostgreSQL.
-An isolated SQLx fixture checks actual SQLite row order for ascending, descending, multiple-term, filtered, and paginated
-queries. The fixture runs in both Rust CI jobs and has a separately audited lockfile; the published crate remains dependency-free.
-
-
-The PostgreSQL and SQLite user repository examples now validate projection before execution for their fixed `(id, name)`
-response. Omitted or empty fields and exactly `id,name` in either order are accepted. Partial or additional selections
-return an explicit adapter error rather than failing during row decoding or being silently ignored. Both examples use
-shared, compiled repository helpers with catalog-authorized fields and trusted column mappings.
-
-
-Repeated `sort`, `fields`, `limit`, and `skip` controls now return `duplicate_control` instead of silently using the
-last value. Identical and empty values and percent-encoded equivalent names follow the same rule. Control value-size
-checks precede duplicate detection, which precedes interpreting the repeated value. Single empty controls and distinct
-range-filter operators retain their behavior. See [the migration guide](docs/migration-0.2.md#repeated-query-controls).
-
-Ordered comparisons (`>`, `>=`, `<`, `<=`) with `in(...)` or `list(...)` values now return `invalid_operator` during
-parsing, preventing list values from reaching SQLx as scalar binds. Equality and inequality still produce `In` and
-`NotIn` filters with one bind per item. Value-size, item-count, and item-type validation retain their precedence.
-
-Catalog builders now reject duplicate public names with `duplicate_field`, including identical definitions, instead
-of silently replacing the field's type or regex permission. Validation runs before insertion. Names remain exact and
-case-sensitive, and distinct aliases may still share a physical SQL column. Configure each field before registering
-it; see [catalog migration](docs/migration-0.2.md#duplicate-catalog-registrations).
-
-Logical field names `sort`, `fields`, `limit`, and `skip` now fail registration with `reserved_field_name` instead of
-silently becoming query controls in equality expressions. The catalog and parser share one control-name policy, and
-logical SQL mapping keys follow it too. Reserved names in field references also return this error. Matching is exact
-and case-sensitive; existing control syntax and physical SQL identifiers are unchanged. Use a public alias for affected
-fields; see [the migration guide](docs/migration-0.2.md#reserved-query-control-names).
-
-The SQLx repository examples now apply parsed limits and offsets before execution and bind pagination after filter
-values. A shared, tested example module handles PostgreSQL placeholder numbering, SQLite's `LIMIT -1 OFFSET ?` form
-for offset-only requests, and checked signed-integer conversion. Values above `i64::MAX` fail before SQLx query
-creation. The guide explicitly documents that an omitted limit leaves results uncapped and requires application policy.
-
-Regex suffix flags are no longer silently discarded or ignored. The parser accepts unique lowercase `i`, `m`, `s`,
-and `x` flags, preserving their order, and returns the new `invalid_regex_flags` error for unknown or repeated flags.
-The SQLx adapter accepts no flags or `i` for PostgreSQL, and no flags for MySQL; other recognized flags return
-`adapter_unsupported`. SQLite still rejects all regex. Previously accepted requests with invalid or unsupported flags
-now fail explicitly. Both permission gates and bound patterns are preserved.
-
-Float parsing now rejects NaN, positive and negative infinity, and overflow to infinity with `invalid_value` across
-raw scalars, `float(...)` wrappers, and list items. Finite extremes, subnormal values, signed zero, and underflow rounded
-to zero remain accepted. SQL adapters preserve accepted float bind values. See
-[the float migration policy](docs/migration-0.2.md#finite-float-values) for previously accepted special values.
+- Repository examples apply authorized ordering before pagination and bind pagination after all filter values.
+  PostgreSQL numbering and SQLite offset-only syntax are covered by shared executable helpers.
+- Fixed `(id, name)` responses reject incompatible projections before execution. Omitted/empty projection or exactly
+  both fields in either order is supported; dynamic projections require an application-owned decoder.
+- Focused tests verify complete typed bind order and error-display redaction, separately from stable error codes.
 
 ## 0.1.1 - 2026-09-24
 

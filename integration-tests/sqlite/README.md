@@ -12,7 +12,8 @@ make test-sqlite
 make verify-sqlite
 ```
 
-The core crate and `make verify` remain dependency-free. This separate manifest and lockfile contain the fixture's
+The core crate remains dependency-free. `make verify` also builds the isolated syntax-policy tool, which has its own
+dependencies. This separate manifest and lockfile contain the fixture's
 SQLx 0.8.6 and Tokio 1.53.1 dependencies, with bundled SQLite 3.46.0 from `libsqlite3-sys` 0.30.1. The fixture has been
 checked on Rust 1.85 and stable. Both Rust CI jobs run formatting, Clippy, and these tests; the security job audits its
 lockfile. Dependabot checks this manifest weekly. PostgreSQL and MySQL execution coverage lives in the sibling `services` fixture.

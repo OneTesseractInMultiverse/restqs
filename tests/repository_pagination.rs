@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Repository pagination checks using explicit, single-assertion cases.
 #![cfg(feature = "sqlx")]
 
 #[path = "../examples/support/pagination.rs"]
@@ -16,12 +16,14 @@ use restqs::{
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+/// Build trusted column mappings for this suite, independently of catalog authorization.
 fn columns() -> RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
     restqs::adapters::sqlx::SqlxColumnMap::new()
         .map("id", "users.id")?
         .map("status", "users.status")
 }
 
+/// Parse and translate fixture input for the selected SQL dialect before pagination assembly.
 fn query_parts(raw: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
     let catalog = FieldCatalog::new()
         .allow_integer("id")?
@@ -30,6 +32,7 @@ fn query_parts(raw: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
     SqlxAdapter::new(dialect, columns()?).build(&query)
 }
 
+/// Compose trusted fixture SELECT, filter, and ordering fragments without pagination.
 fn base_sql(parts: &SqlxQueryParts) -> String {
     let mut sql = "SELECT * FROM users".to_owned();
     if let Some(clause) = &parts.where_clause {
@@ -43,16 +46,20 @@ fn base_sql(parts: &SqlxQueryParts) -> String {
     sql
 }
 
+/// Build the fixture's PostgreSQL statement from raw input, propagating parse and repository
+/// errors.
 fn postgres(raw: &str) -> TestResult<SqlStatement> {
     let parts = query_parts(raw, SqlDialect::Postgres)?;
     Ok(append_postgres_pagination(&base_sql(&parts), &parts)?)
 }
 
+/// Build the fixture's SQLite statement from raw input, propagating parse and repository errors.
 fn sqlite(raw: &str) -> TestResult<SqlStatement> {
     let parts = query_parts(raw, SqlDialect::Sqlite)?;
     Ok(append_sqlite_pagination(&base_sql(&parts), &parts)?)
 }
 
+/// Construct pagination metadata directly to exercise database signed-integer boundaries.
 fn numeric_parts(limit: Option<u64>, offset: Option<u64>) -> SqlxQueryParts {
     SqlxQueryParts {
         where_clause: None,
@@ -383,6 +390,7 @@ fn sqlite_rejects_oversized_offset_from_parser() -> RqsResult<()> {
     Ok(())
 }
 
+/// Build the fixture query with an authenticated tenant prefix and the suite's explicit mappings.
 fn tenant_statement(raw: &str) -> TestResult<SqlStatement> {
     let catalog = FieldCatalog::new()
         .allow_integer("id")?

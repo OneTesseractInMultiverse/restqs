@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Reserved fields checks using explicit, single-assertion cases.
 
 use restqs::{Field, FieldCatalog, Filter, RqsError, RqsResult, RqsValue, ValueKind, parse};
 

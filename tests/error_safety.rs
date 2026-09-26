@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Error safety checks using explicit, single-assertion cases.
 
 use restqs::{FieldCatalog, RqsError, parse};
 

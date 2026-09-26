@@ -13,6 +13,7 @@ use crate::{
 /// Missing entries never fall back to using the public field name as SQL.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SqlxColumnMap {
+    /// Trusted logical-to-physical identifier mappings; never populated from request data.
     columns: BTreeMap<String, String>,
 }
 
@@ -56,6 +57,8 @@ impl SqlxColumnMap {
     }
 }
 
+/// Validate trusted physical identifiers using dotted ASCII syntax; SQL expressions and quoting
+/// are forbidden.
 fn validate_column_name(name: &str) -> RqsResult<()> {
     if is_dotted_identifier(name) {
         Ok(())
@@ -66,6 +69,8 @@ fn validate_column_name(name: &str) -> RqsResult<()> {
     }
 }
 
+/// Reject duplicate logical keys so a later registration cannot silently change the physical
+/// mapping.
 fn validate_new_mapping(columns: &BTreeMap<String, String>, name: &str) -> RqsResult<()> {
     if columns.contains_key(name) {
         Err(RqsError::DuplicateColumnMapping {

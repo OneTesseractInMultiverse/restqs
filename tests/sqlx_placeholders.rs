@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Sqlx placeholders checks using explicit, single-assertion cases.
 #![cfg(feature = "sqlx")]
 
 use restqs::{
@@ -17,6 +17,7 @@ const WITHOUT_REGEX: &str = concat!(
     "&status!=in(archived,blocked)&age<65&!deleted",
 );
 
+/// Build the minimal authorized field catalog used by this suite.
 fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow_integer("age")?
@@ -25,6 +26,7 @@ fn catalog() -> RqsResult<FieldCatalog> {
         .allow(Field::new("email", ValueKind::Text)?.allow_regex())
 }
 
+/// Construct the dialect adapter with the suite's trusted column mappings.
 fn adapter(dialect: SqlDialect) -> RqsResult<SqlxAdapter> {
     let columns = SqlxColumnMap::new()
         .map("age", "users.age")?
@@ -34,6 +36,7 @@ fn adapter(dialect: SqlDialect) -> RqsResult<SqlxAdapter> {
     Ok(SqlxAdapter::new(dialect, columns).allow_regex())
 }
 
+/// Translate the suite query with trusted columns for the selected dialect.
 fn build(raw: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
     let query = parse(raw, &catalog()?)?;
     adapter(dialect)?.build(&query)
@@ -182,6 +185,8 @@ fn reusing_an_adapter_starts_a_fresh_placeholder_sequence() -> RqsResult<()> {
     Ok(())
 }
 
+/// Translate the suite query at an explicit one-based bind position to exercise composition
+/// boundaries.
 fn build_at(raw: &str, dialect: SqlDialect, first: usize) -> RqsResult<SqlxQueryParts> {
     let query = parse(raw, &catalog()?)?;
     adapter(dialect)?.build_with_bind_start(&query, first)

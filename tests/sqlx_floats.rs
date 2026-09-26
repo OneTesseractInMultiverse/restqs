@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Sqlx floats checks using explicit, single-assertion cases.
 #![cfg(feature = "sqlx")]
 
 use restqs::{
@@ -7,6 +7,7 @@ use restqs::{
     parse,
 };
 
+/// Parse a float predicate and build dialect fragments to inspect the bound finite value.
 fn build_float_query(raw: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
     let catalog = FieldCatalog::new().allow_float("score")?;
     let query = parse(raw, &catalog)?;

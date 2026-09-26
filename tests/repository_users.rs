@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Repository users checks using explicit, single-assertion cases.
 #![cfg(feature = "sqlx")]
 
 #[path = "../examples/support/budget.rs"]
@@ -15,11 +15,14 @@ use users::{postgres_users_statement, sqlite_users_statement, users_catalog};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+/// Build the fixture's PostgreSQL statement from raw input, propagating parse and repository
+/// errors.
 fn postgres(raw: &str) -> TestResult<SqlStatement> {
     let query = parse(raw, &users_catalog()?)?;
     postgres_users_statement(&query)
 }
 
+/// Build the fixture's SQLite statement from raw input, propagating parse and repository errors.
 fn sqlite(raw: &str) -> TestResult<SqlStatement> {
     let query = parse(raw, &users_catalog()?)?;
     sqlite_users_statement(&query)

@@ -14,8 +14,11 @@ pub struct SqlStatement {
 }
 
 #[derive(Clone, Copy)]
+/// Pagination converted to the signed integer representation used by database binds.
 struct CheckedPagination {
+    /// Validated signed row cap, preserving explicit zero.
     limit: Option<i64>,
+    /// Validated signed skip count.
     offset: Option<i64>,
 }
 
@@ -49,6 +52,8 @@ pub fn append_sqlite_pagination(
     Ok(assemble_statement(base_sql, parts, clause, pagination))
 }
 
+/// Convert supplied pagination to signed database integers before statement construction; reject
+/// overflow.
 fn checked_pagination(parts: &SqlxQueryParts) -> Result<CheckedPagination, TryFromIntError> {
     Ok(CheckedPagination {
         limit: parts.limit.map(i64::try_from).transpose()?,
@@ -56,6 +61,7 @@ fn checked_pagination(parts: &SqlxQueryParts) -> Result<CheckedPagination, TryFr
     })
 }
 
+/// Place limit and offset after the existing bind vector using numbered PostgreSQL placeholders.
 fn postgres_clause(pagination: CheckedPagination, filter_binds: usize) -> String {
     match (pagination.limit, pagination.offset) {
         (Some(_), Some(_)) => {
@@ -67,6 +73,8 @@ fn postgres_clause(pagination: CheckedPagination, filter_binds: usize) -> String
     }
 }
 
+/// Select fixed SQLite pagination syntax, including the no-bind `LIMIT -1` sentinel for
+/// offset-only requests.
 fn sqlite_clause(pagination: CheckedPagination) -> &'static str {
     match (pagination.limit, pagination.offset) {
         (Some(_), Some(_)) => " LIMIT ? OFFSET ?",
@@ -76,6 +84,8 @@ fn sqlite_clause(pagination: CheckedPagination) -> &'static str {
     }
 }
 
+/// Append trusted pagination syntax and extend filter binds with limit then offset, preserving
+/// positional order.
 fn assemble_statement(
     base_sql: &str,
     parts: &SqlxQueryParts,

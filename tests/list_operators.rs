@@ -1,16 +1,18 @@
-#![allow(missing_docs)]
+//! List operators checks using explicit, single-assertion cases.
 
 use restqs::{
     FieldCatalog, Filter, FilterOp, Parser, ParserConfig, ParserLimits, RqsQuery, RqsResult,
     RqsValue, parse,
 };
 
+/// Build the minimal authorized field catalog used by this suite.
 fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow_integer("age")?
         .allow_text("status")
 }
 
+/// Parse fixture input using explicit input budgets, returning the original parser result.
 fn parse_with_limits(input: &str, limits: ParserLimits) -> RqsResult<RqsQuery> {
     let catalog = catalog()?;
     Parser::with_config(&catalog, ParserConfig::with_limits(limits)).parse(input)

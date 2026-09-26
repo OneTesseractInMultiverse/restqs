@@ -42,10 +42,17 @@ impl ValueKind {
 }
 
 /// One authorized logical query field with a value kind and capabilities.
+///
+/// Build fields from trusted application configuration. A field authorizes a
+/// logical name; it does not identify a database column or grant access to rows.
+/// Regex is disabled until [`Self::allow_regex`] is called.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Field {
+    /// Validated, case-sensitive logical identifier exposed by the query API.
     public_name: String,
+    /// Catalog type used to validate scalar and list operands.
     value_kind: ValueKind,
+    /// Catalog authorization for slash-form regex values; false unless explicitly enabled.
     regex_allowed: bool,
 }
 
@@ -54,6 +61,13 @@ impl Field {
     ///
     /// Exact lowercase names `sort`, `fields`, `limit`, and `skip` return
     /// [`RqsError::ReservedFieldName`]. Use a distinct public alias instead.
+    /// Names consist of dot-separated ASCII identifiers: each segment starts
+    /// with a letter or underscore and continues with letters, digits, or underscores.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RqsError::InvalidFieldName`] for malformed or empty names, then
+    /// [`RqsError::ReservedFieldName`] for a syntactically valid control name.
     pub fn new(public_name: impl Into<String>, value_kind: ValueKind) -> RqsResult<Self> {
         let public_name = public_name.into();
         validate_public_name(&public_name)?;
@@ -65,6 +79,10 @@ impl Field {
     }
 
     /// Permit regex values for this field.
+    ///
+    /// This authorizes parsing slash-form patterns without compiling them. A
+    /// consuming adapter must separately opt in and implement the requested flags.
+    /// Database execution cost and pattern syntax remain repository concerns.
     #[must_use]
     pub fn allow_regex(mut self) -> Self {
         self.regex_allowed = true;
@@ -89,6 +107,8 @@ impl Field {
         self.regex_allowed
     }
 
+    /// Snapshot the authorized metadata into an owned plan node, independent of the catalog
+    /// lifetime.
     pub(crate) fn to_ref(&self) -> FieldRef {
         FieldRef {
             public_name: self.public_name.clone(),
@@ -99,10 +119,17 @@ impl Field {
 }
 
 /// Resolved field data stored in an RQS plan.
+///
+/// Owns a snapshot of the catalog name, value kind, and regex permission.
+/// Consumers can inspect but cannot modify these resolved capabilities. Physical
+/// storage identifiers are intentionally absent.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldRef {
+    /// Validated, case-sensitive logical identifier exposed by the query API.
     public_name: String,
+    /// Catalog type used to validate scalar and list operands.
     value_kind: ValueKind,
+    /// Catalog authorization for slash-form regex values; false unless explicitly enabled.
     regex_allowed: bool,
 }
 
@@ -133,6 +160,7 @@ impl FieldRef {
 /// when the field definition is identical. Names are case-sensitive.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FieldCatalog {
+    /// Authorized logical fields keyed by their unique public names.
     fields: BTreeMap<String, Field>,
 }
 
@@ -155,11 +183,17 @@ impl FieldCatalog {
     }
 
     /// Insert a text field.
+    ///
+    /// Uses [`Field::new`] name validation and [`Self::allow`] duplicate checks.
+    /// Returns the updated catalog or the corresponding configuration error.
     pub fn allow_text(self, public_name: impl Into<String>) -> RqsResult<Self> {
         self.allow_kind(public_name, ValueKind::Text)
     }
 
     /// Insert an integer field.
+    ///
+    /// Uses [`Field::new`] name validation and [`Self::allow`] duplicate checks.
+    /// Returns the updated catalog or the corresponding configuration error.
     pub fn allow_integer(self, public_name: impl Into<String>) -> RqsResult<Self> {
         self.allow_kind(public_name, ValueKind::Integer)
     }
@@ -173,21 +207,33 @@ impl FieldCatalog {
     }
 
     /// Insert a boolean field.
+    ///
+    /// Uses [`Field::new`] name validation and [`Self::allow`] duplicate checks.
+    /// Returns the updated catalog or the corresponding configuration error.
     pub fn allow_boolean(self, public_name: impl Into<String>) -> RqsResult<Self> {
         self.allow_kind(public_name, ValueKind::Boolean)
     }
 
     /// Insert a date field.
+    ///
+    /// Uses [`Field::new`] name validation and [`Self::allow`] duplicate checks.
+    /// Returns the updated catalog or the corresponding configuration error.
     pub fn allow_date(self, public_name: impl Into<String>) -> RqsResult<Self> {
         self.allow_kind(public_name, ValueKind::Date)
     }
 
     /// Insert a date-time field.
+    ///
+    /// Uses [`Field::new`] name validation and [`Self::allow`] duplicate checks.
+    /// Returns the updated catalog or the corresponding configuration error.
     pub fn allow_datetime(self, public_name: impl Into<String>) -> RqsResult<Self> {
         self.allow_kind(public_name, ValueKind::DateTime)
     }
 
     /// Insert a UUID field.
+    ///
+    /// Uses [`Field::new`] name validation and [`Self::allow`] duplicate checks.
+    /// Returns the updated catalog or the corresponding configuration error.
     pub fn allow_uuid(self, public_name: impl Into<String>) -> RqsResult<Self> {
         self.allow_kind(public_name, ValueKind::Uuid)
     }
@@ -210,12 +256,14 @@ impl FieldCatalog {
         self.fields.len()
     }
 
+    /// Validate a typed field definition, then register it without replacing an existing name.
     fn allow_kind(self, public_name: impl Into<String>, value_kind: ValueKind) -> RqsResult<Self> {
         let field = Field::new(public_name, value_kind)?;
         self.allow(field)
     }
 }
 
+/// Reject an exact duplicate logical name, including an identical field definition.
 fn validate_new_field(fields: &BTreeMap<String, Field>, name: &str) -> RqsResult<()> {
     if fields.contains_key(name) {
         Err(RqsError::DuplicateField {
@@ -228,6 +276,8 @@ fn validate_new_field(fields: &BTreeMap<String, Field>, name: &str) -> RqsResult
 
 #[cfg(all(test, feature = "sqlx"))]
 impl FieldRef {
+    /// Construct field metadata directly for adapter invariant tests; unavailable in production
+    /// builds.
     pub(crate) fn new_for_test(
         public_name: &str,
         value_kind: ValueKind,
@@ -241,11 +291,13 @@ impl FieldRef {
     }
 }
 
+/// Check identifier syntax before checking the reserved control namespace.
 pub(crate) fn validate_public_name(name: &str) -> RqsResult<()> {
     validate_name_syntax(name)?;
     validate_unreserved_name(name)
 }
 
+/// Accept nonempty dotted ASCII identifiers; return `InvalidFieldName` otherwise.
 fn validate_name_syntax(name: &str) -> RqsResult<()> {
     if is_dotted_identifier(name) {
         Ok(())

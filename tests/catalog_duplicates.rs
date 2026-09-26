@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Catalog duplicates checks using explicit, single-assertion cases.
 
 use restqs::{Field, FieldCatalog, RqsError, RqsResult, ValueKind};
 

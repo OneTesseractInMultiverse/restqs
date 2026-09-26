@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Pagination checks using explicit, single-assertion cases.
 
 #[test]
 fn pagination_new_sets_limit() {

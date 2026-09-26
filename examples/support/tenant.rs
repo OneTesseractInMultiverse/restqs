@@ -12,6 +12,8 @@ use super::pagination::{SqlStatement, append_postgres_pagination};
 /// `tenant_id` comes from the authenticated application context, never from RQS.
 /// The caller supplies trusted column mappings and binds `statement.binds` in order.
 /// Projection remains dynamic; the caller must decode the selected columns.
+/// Omitted limits remain uncapped in this low-level composition example. Apply an
+/// application result budget before executing it on a public endpoint.
 pub fn tenant_users_statement(
     query: &RqsQuery,
     columns: SqlxColumnMap,
@@ -23,6 +25,8 @@ pub fn tenant_users_statement(
     Ok(append_postgres_pagination(&sql, &combined)?)
 }
 
+/// Compose mapped projection, filters, and ordering around a mandatory trusted tenant predicate
+/// at `$1`.
 fn tenant_select_sql(parts: &SqlxQueryParts) -> String {
     let projection = if parts.projection.is_empty() {
         r#""users"."id", "users"."status""#.to_owned()
@@ -42,6 +46,8 @@ fn tenant_select_sql(parts: &SqlxQueryParts) -> String {
     sql
 }
 
+/// Insert the authenticated tenant value before filter binds whose PostgreSQL positions already
+/// start at two.
 fn prepend_tenant_bind(mut parts: SqlxQueryParts, tenant_id: i64) -> SqlxQueryParts {
     parts.binds.insert(0, RqsValue::Integer(tenant_id));
     parts

@@ -2,8 +2,8 @@
 
 RestQS follows Cargo's compatible release lines and adds explicit guarantees for query behavior, error codes, and the
 minimum supported Rust version (MSRV). Being pre-1.0 does not make patch releases unrestricted. This policy applies to
-future releases; it does not change previously published artifacts. The current published baseline is 0.1.1; `main`
-targets the unreleased 0.2.0 API.
+releases from 0.2 onward; it does not change previously published artifacts. The migration baseline for the 0.2.0
+release is the published 0.1.1 artifact recorded below.
 
 ## Release Lines
 
@@ -76,7 +76,7 @@ coordinate disclosure privately when necessary. Do not silently present it as be
 
 The published 0.1.1 release already tightened calendar validation, operator boundaries, regex/operator combinations, and
 value-size enforcement, and corrected SQL null semantics and error redaction. Its changelog remains the historical
-record. The forthcoming 0.2.0 deliberately groups further validation changes with its incompatible API migration.
+record. Version 0.2.0 deliberately groups further validation changes with its incompatible API migration.
 
 ## Rust and Tooling Versions
 

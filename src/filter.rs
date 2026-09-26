@@ -61,7 +61,9 @@ impl FilterOp {
 /// Adapters must translate each requested flag or explicitly reject it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegexLiteral {
+    /// Uncompiled database regex pattern, excluding slash delimiters.
     pattern: String,
+    /// Validated unique lowercase suffix flags in request order.
     flags: String,
 }
 
@@ -78,6 +80,8 @@ impl RegexLiteral {
         &self.flags
     }
 
+    /// Construct a literal directly for adapter rejection tests, bypassing parser flag
+    /// validation.
     #[cfg(all(test, feature = "sqlx"))]
     pub(crate) fn new_for_test(pattern: &str, flags: &str) -> Self {
         Self {
@@ -87,12 +91,20 @@ impl RegexLiteral {
     }
 }
 
-/// One filter in an RQS plan.
+/// One authorized predicate in an RQS plan.
+///
+/// Scalar and membership predicates have a [`Self::value`]; existence predicates
+/// have no operand. Regex predicates have only a [`Self::regex_literal`]. Parser
+/// construction enforces these shapes before an adapter receives the node.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Filter {
+    /// Owned logical field metadata resolved from the catalog.
     field: FieldRef,
+    /// Normalized operator; list operands use membership and regex operands use Regex.
     op: FilterOp,
+    /// Typed scalar or list operand; absent for existence and regex predicates.
     value: Option<RqsValue>,
+    /// Regex literal only for Regex predicates; absent for all other operators.
     regex: Option<RegexLiteral>,
 }
 
@@ -131,13 +143,13 @@ impl Filter {
         self.op
     }
 
-    /// Return the value.
+    /// Return the scalar/list operand, or None for existence and regex predicates.
     #[must_use]
     pub fn value(&self) -> Option<&RqsValue> {
         self.value.as_ref()
     }
 
-    /// Return the regex literal.
+    /// Return the parsed literal only for a Regex predicate; no regex engine has compiled it.
     #[must_use]
     pub fn regex_literal(&self) -> Option<&RegexLiteral> {
         self.regex.as_ref()
@@ -174,6 +186,7 @@ pub(crate) fn build_value_filter(
     Ok(Filter::new(field, op, Some(value)))
 }
 
+/// Accept equality only; regex inequality and ordered comparisons have no core semantics.
 fn validate_regex_operator(op: FilterOp) -> RqsResult<()> {
     if op == FilterOp::Eq {
         Ok(())
@@ -182,6 +195,7 @@ fn validate_regex_operator(op: FilterOp) -> RqsResult<()> {
     }
 }
 
+/// Reject unknown or repeated suffix flags; permit each of lowercase `i`, `m`, `s`, `x` once.
 fn validate_regex_flags(flags: &str) -> RqsResult<()> {
     let mut seen = 0_u8;
     for flag in flags.bytes() {
@@ -200,6 +214,8 @@ fn validate_regex_flags(flags: &str) -> RqsResult<()> {
     Ok(())
 }
 
+/// Normalize list equality/inequality to membership, reject ordered lists, and preserve scalar
+/// operators.
 fn list_operator(op: FilterOp, value: &RqsValue) -> RqsResult<FilterOp> {
     match (op, value) {
         (FilterOp::Eq, RqsValue::List(_)) => Ok(FilterOp::In),
@@ -209,6 +225,8 @@ fn list_operator(op: FilterOp, value: &RqsValue) -> RqsResult<FilterOp> {
     }
 }
 
+/// Split a leading slash literal at its last slash; return None when no closing delimiter exists.
+/// Pattern syntax and flags are validated elsewhere.
 fn parse_regex_literal(raw: &str) -> Option<RegexLiteral> {
     if !raw.starts_with('/') {
         return None;

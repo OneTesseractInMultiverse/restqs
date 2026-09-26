@@ -1,10 +1,11 @@
-#![allow(missing_docs)]
+//! Parameter policy checks using explicit, single-assertion cases.
 
 use restqs::{
     Field, FieldCatalog, Filter, FilterOp, Parser, ParserConfig, ParserLimits, RqsError, RqsResult,
     RqsValue, ValueKind, parse,
 };
 
+/// Build the minimal authorized field catalog used by this suite.
 fn catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new()
         .allow_integer("age")?

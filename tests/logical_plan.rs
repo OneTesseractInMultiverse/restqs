@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Logical plan checks using explicit, single-assertion cases.
 
 #[path = "../examples/support/in_memory.rs"]
 mod in_memory;

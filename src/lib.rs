@@ -87,3 +87,28 @@ pub use projection::Projection;
 pub use query::RqsQuery;
 pub use sort::{SortDirection, SortTerm};
 pub use value::RqsValue;
+
+// Compile the published guide examples as part of both feature configurations.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+mod readme_examples {}
+
+#[cfg(doctest)]
+#[doc = include_str!("../docs/api-guide.md")]
+mod api_examples {}
+
+#[cfg(all(doctest, feature = "sqlx"))]
+#[doc = include_str!("../docs/integrations.md")]
+mod integration_examples {}
+
+#[cfg(doctest)]
+#[doc = include_str!("../docs/testing-guide.md")]
+mod testing_examples {}
+
+#[cfg(all(doctest, feature = "sqlx"))]
+#[doc = include_str!("../docs/security-model.md")]
+mod security_examples {}
+
+#[cfg(all(doctest, feature = "sqlx"))]
+#[doc = include_str!("../docs/migration-0.2.md")]
+mod migration_examples {}

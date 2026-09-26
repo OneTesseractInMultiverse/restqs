@@ -5,6 +5,8 @@ use crate::FieldRef;
 /// Projection selected by `fields=`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Projection {
+    /// Resolved requested fields in input order; empty delegates selection defaults to the
+    /// consumer.
     fields: Vec<FieldRef>,
 }
 

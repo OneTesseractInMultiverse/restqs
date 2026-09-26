@@ -1,3 +1,5 @@
+//! Regressions contract checks; each test owns one assertion and helpers return setup/results.
+
 use restqs::{ParserLimits, RqsError, RqsValue};
 use restqs_robustness::{generous_limits, parse};
 

@@ -1,3 +1,5 @@
+//! Bounded adapter fuzz entry point: check bind correspondence and value/SQL separation at varying bind offsets.
+
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use restqs_robustness::adapter_input_contract;

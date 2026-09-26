@@ -1,10 +1,11 @@
-#![allow(missing_docs)]
+//! Regex flags checks using explicit, single-assertion cases.
 
 use restqs::{
     Field, FieldCatalog, Parser, ParserConfig, ParserLimits, RegexLiteral, RqsResult, RqsValue,
     ValueKind, parse,
 };
 
+/// Build the suite catalog with explicit field-level regex permission.
 fn regex_catalog() -> RqsResult<FieldCatalog> {
     FieldCatalog::new().allow(Field::new("email", ValueKind::Text)?.allow_regex())
 }
@@ -224,6 +225,7 @@ fn explicit_text_bypasses_regex_flag_validation() -> RqsResult<()> {
 
 #[cfg(feature = "sqlx")]
 mod sqlx {
+    /// Build trusted column mappings for this suite, independently of catalog authorization.
     fn columns() -> RqsResult<restqs::adapters::sqlx::SqlxColumnMap> {
         restqs::adapters::sqlx::SqlxColumnMap::new().map("email", "users.email")
     }
@@ -232,6 +234,7 @@ mod sqlx {
     use restqs::RqsError;
     use restqs::adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxQueryParts};
 
+    /// Parse a regex query and translate it with explicit catalog and adapter opt-ins.
     fn build_regex(input: &str, dialect: SqlDialect) -> RqsResult<SqlxQueryParts> {
         let query = parse(input, &regex_catalog()?)?;
         SqlxAdapter::new(dialect, columns()?)
