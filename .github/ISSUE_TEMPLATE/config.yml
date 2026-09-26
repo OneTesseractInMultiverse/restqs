@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: Security report
     url: https://github.com/OneTesseractInMultiverse/restqs/security/advisories/new
-    about: Report suspected vulnerabilities privately.
+    about: Sign in to GitHub to report suspected vulnerabilities privately; never include details in a public issue.
   - name: Usage and support
     url: https://github.com/OneTesseractInMultiverse/restqs/discussions
     about: Ask usage questions and discuss design ideas.

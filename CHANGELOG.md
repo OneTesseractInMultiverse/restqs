@@ -8,6 +8,10 @@ The project uses semantic versioning.
 
 ### Added
 
+GitHub private vulnerability reporting is enabled, with private-only support routing and a maintainer checklist for
+reporting availability and security notifications. GitHub remains the sole private disclosure channel.
+
+
 Pull requests now run a required quality-policy job with pinned 100% source-line coverage and syntax-aware assertion
 checks for Rust and Python tests. Helpers cannot hide assertions, and unsupported generated tests fail explicitly.
 The same gates run against the immutable release commit; the published library gains no dependencies.
