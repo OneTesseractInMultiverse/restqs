@@ -222,3 +222,19 @@ fn unsupported_adapter_message_names_the_feature() {
 
     assert_eq!(error.to_string(), "adapter does not support sqlite regex");
 }
+
+#[test]
+fn invalid_bind_position_message_explains_one_based_numbering() {
+    assert_eq!(
+        RqsError::InvalidBindPosition.to_string(),
+        "bind positions must start at one or greater"
+    );
+}
+
+#[test]
+fn bind_overflow_message_identifies_the_platform_limit() {
+    assert_eq!(
+        RqsError::BindPositionOverflow.to_string(),
+        "bind position exceeds the platform integer range"
+    );
+}

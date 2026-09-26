@@ -2,7 +2,7 @@
 #![cfg(feature = "sqlx")]
 
 use restqs::{
-    Field, FieldCatalog, RqsResult, RqsValue, ValueKind,
+    Field, FieldCatalog, RqsError, RqsResult, RqsValue, ValueKind,
     adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap, SqlxQueryParts},
     parse,
 };
@@ -180,4 +180,189 @@ fn reusing_an_adapter_starts_a_fresh_placeholder_sequence() -> RqsResult<()> {
         Some("\"users\".\"age\" = $1")
     );
     Ok(())
+}
+
+fn build_at(raw: &str, dialect: SqlDialect, first: usize) -> RqsResult<SqlxQueryParts> {
+    let query = parse(raw, &catalog()?)?;
+    adapter(dialect)?.build_with_bind_start(&query, first)
+}
+
+#[test]
+fn postgres_composes_mixed_binds_after_a_caller_parameter() -> RqsResult<()> {
+    let parts = build_at(WITH_REGEX, SqlDialect::Postgres, 2)?;
+    assert_eq!(
+        parts.where_clause.as_deref(),
+        Some(concat!(
+            "\"users\".\"deleted\" IS NULL",
+            " AND \"users\".\"age\" >= $2",
+            " AND \"users\".\"status\" IN ($3, $4)",
+            " AND \"users\".\"email\" ~ $5",
+            " AND \"users\".\"status\" NOT IN ($6, $7)",
+            " AND \"users\".\"age\" < $8",
+            " AND \"users\".\"deleted\" IS NULL",
+        ))
+    );
+    Ok(())
+}
+
+#[test]
+fn starting_position_does_not_add_caller_binds() -> RqsResult<()> {
+    let parts = build_at(WITH_REGEX, SqlDialect::Postgres, 2)?;
+    assert_eq!(
+        parts.binds,
+        vec![
+            RqsValue::Integer(18),
+            RqsValue::Text("active".to_owned()),
+            RqsValue::Text("pending".to_owned()),
+            RqsValue::Text("@example.com$".to_owned()),
+            RqsValue::Text("archived".to_owned()),
+            RqsValue::Text("blocked".to_owned()),
+            RqsValue::Integer(65),
+        ]
+    );
+    Ok(())
+}
+
+#[test]
+fn explicit_start_does_not_change_subsequent_standalone_builds() -> RqsResult<()> {
+    let adapter = adapter(SqlDialect::Postgres)?;
+    let query = parse("age=21", &catalog()?)?;
+    let _ = adapter.build_with_bind_start(&query, 12)?;
+    assert_eq!(
+        adapter.build(&query)?.where_clause.as_deref(),
+        Some("\"users\".\"age\" = $1")
+    );
+    Ok(())
+}
+
+#[test]
+fn numbering_crosses_digit_boundaries_from_an_explicit_start() -> RqsResult<()> {
+    let parts = build_at("age=in(18,21)&status=active", SqlDialect::Postgres, 9)?;
+    assert_eq!(
+        parts.where_clause.as_deref(),
+        Some("\"users\".\"age\" IN ($9, $10) AND \"users\".\"status\" = $11")
+    );
+    Ok(())
+}
+
+#[test]
+fn final_representable_position_does_not_require_a_successor() -> RqsResult<()> {
+    let parts = build_at("age=18&deleted=null", SqlDialect::Postgres, usize::MAX)?;
+    assert_eq!(
+        parts.where_clause,
+        Some(format!(
+            "\"users\".\"age\" = ${} AND \"users\".\"deleted\" IS NULL",
+            usize::MAX
+        ))
+    );
+    Ok(())
+}
+
+#[test]
+fn bindless_filters_do_not_advance_the_start() -> RqsResult<()> {
+    let parts = build_at("deleted=null&!status", SqlDialect::Postgres, usize::MAX)?;
+    assert!(parts.binds.is_empty());
+    Ok(())
+}
+
+#[test]
+fn postgres_rejects_zero_start_for_empty_plan() {
+    assert_eq!(
+        build_at("", SqlDialect::Postgres, 0),
+        Err(RqsError::InvalidBindPosition)
+    );
+}
+
+#[test]
+fn postgres_rejects_zero_start_for_filter() {
+    assert_eq!(
+        build_at("age=18", SqlDialect::Postgres, 0),
+        Err(RqsError::InvalidBindPosition)
+    );
+}
+
+#[test]
+fn postgres_checks_position_overflow() {
+    assert_eq!(
+        build_at("age=18&status=active", SqlDialect::Postgres, usize::MAX),
+        Err(RqsError::BindPositionOverflow)
+    );
+}
+
+#[test]
+fn mysql_rejects_zero_start_for_empty_plan() {
+    assert_eq!(
+        build_at("", SqlDialect::MySql, 0),
+        Err(RqsError::InvalidBindPosition)
+    );
+}
+
+#[test]
+fn mysql_rejects_zero_start_for_filter() {
+    assert_eq!(
+        build_at("age=18", SqlDialect::MySql, 0),
+        Err(RqsError::InvalidBindPosition)
+    );
+}
+
+#[test]
+fn mysql_checks_position_overflow() {
+    assert_eq!(
+        build_at("age=18&status=active", SqlDialect::MySql, usize::MAX),
+        Err(RqsError::BindPositionOverflow)
+    );
+}
+
+#[test]
+fn mysql_keeps_anonymous_placeholders_with_an_explicit_start() -> RqsResult<()> {
+    let parts = build_at("age=18", SqlDialect::MySql, 12)?;
+    assert_eq!(parts.where_clause.as_deref(), Some(r#"`users`.`age` = ?"#));
+    Ok(())
+}
+
+#[test]
+fn sqlite_rejects_zero_start_for_empty_plan() {
+    assert_eq!(
+        build_at("", SqlDialect::Sqlite, 0),
+        Err(RqsError::InvalidBindPosition)
+    );
+}
+
+#[test]
+fn sqlite_rejects_zero_start_for_filter() {
+    assert_eq!(
+        build_at("age=18", SqlDialect::Sqlite, 0),
+        Err(RqsError::InvalidBindPosition)
+    );
+}
+
+#[test]
+fn sqlite_checks_position_overflow() {
+    assert_eq!(
+        build_at("age=18&status=active", SqlDialect::Sqlite, usize::MAX),
+        Err(RqsError::BindPositionOverflow)
+    );
+}
+
+#[test]
+fn sqlite_keeps_anonymous_placeholders_with_an_explicit_start() -> RqsResult<()> {
+    let parts = build_at("age=18", SqlDialect::Sqlite, 12)?;
+    assert_eq!(parts.where_clause.as_deref(), Some(r#""users"."age" = ?"#));
+    Ok(())
+}
+
+#[test]
+fn overflow_propagates_from_list_binds() {
+    assert_eq!(
+        build_at("age=in(1,2)", SqlDialect::Postgres, usize::MAX),
+        Err(RqsError::BindPositionOverflow)
+    );
+}
+
+#[test]
+fn overflow_propagates_from_regex_binds() {
+    assert_eq!(
+        build_at("age=18&email=/example/", SqlDialect::Postgres, usize::MAX),
+        Err(RqsError::BindPositionOverflow)
+    );
 }

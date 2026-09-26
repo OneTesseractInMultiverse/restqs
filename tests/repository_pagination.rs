@@ -4,6 +4,9 @@
 #[path = "../examples/support/pagination.rs"]
 mod pagination;
 
+#[path = "../examples/support/tenant.rs"]
+mod tenant;
+
 use pagination::{SqlStatement, append_postgres_pagination, append_sqlite_pagination};
 use restqs::{
     FieldCatalog, RqsResult, RqsValue,
@@ -378,4 +381,77 @@ fn sqlite_rejects_oversized_offset_from_parser() -> RqsResult<()> {
 
     assert!(append_sqlite_pagination("SELECT * FROM users", &parts).is_err());
     Ok(())
+}
+
+fn tenant_statement(raw: &str) -> TestResult<SqlStatement> {
+    let catalog = FieldCatalog::new()
+        .allow_integer("id")?
+        .allow_text("status")?;
+    let query = parse(raw, &catalog)?;
+    tenant::tenant_users_statement(&query, columns()?, 42)
+}
+
+#[test]
+fn tenant_predicate_keeps_first_placeholder_before_filters_and_pagination() -> TestResult {
+    let statement = tenant_statement("status=active&sort=-id&limit=1&skip=2")?;
+    assert_eq!(
+        statement.sql,
+        r#"SELECT "users"."id", "users"."status" FROM users WHERE "users"."tenant_id" = $1 AND ("users"."status" = $2) ORDER BY "users"."id" DESC LIMIT $3 OFFSET $4"#
+    );
+    Ok(())
+}
+
+#[test]
+fn tenant_bind_precedes_filters_limit_and_offset() -> TestResult {
+    let statement = tenant_statement("status=active&limit=1&skip=2")?;
+    assert_eq!(
+        statement.binds,
+        vec![
+            RqsValue::Integer(42),
+            RqsValue::Text("active".to_owned()),
+            RqsValue::Integer(1),
+            RqsValue::Integer(2)
+        ]
+    );
+    Ok(())
+}
+
+#[test]
+fn tenant_predicate_is_preserved_without_filters() -> TestResult {
+    let statement = tenant_statement("")?;
+    assert_eq!(
+        statement.sql,
+        r#"SELECT "users"."id", "users"."status" FROM users WHERE "users"."tenant_id" = $1"#
+    );
+    Ok(())
+}
+
+#[test]
+fn tenant_predicate_is_bound_without_filters() -> TestResult {
+    assert_eq!(tenant_statement("")?.binds, vec![RqsValue::Integer(42)]);
+    Ok(())
+}
+
+#[test]
+fn tenant_pagination_follows_null_and_list_filters() -> TestResult {
+    let statement = tenant_statement("status=null&id=in(10,20)&skip=2")?;
+    assert_eq!(
+        statement.sql,
+        r#"SELECT "users"."id", "users"."status" FROM users WHERE "users"."tenant_id" = $1 AND ("users"."status" IS NULL AND "users"."id" IN ($2, $3)) OFFSET $4"#
+    );
+    Ok(())
+}
+
+#[test]
+fn tenant_composition_preserves_authorized_projection() -> TestResult {
+    assert_eq!(
+        tenant_statement("fields=status")?.sql,
+        r#"SELECT "users"."status" FROM users WHERE "users"."tenant_id" = $1"#
+    );
+    Ok(())
+}
+
+#[test]
+fn request_cannot_replace_tenant_authorization() {
+    assert!(tenant_statement("tenant_id=99").is_err());
 }

@@ -421,6 +421,8 @@ Malformed nonempty field names return `invalid_field_name`. Reserved control nam
 | `limit_too_large`         | Requested `limit` exceeded parser config        |
 | `too_many_parameters`     | Query had more parameters than allowed          |
 | `too_many_list_items`     | List had more items than allowed                |
+| `invalid_bind_position` | The requested first SQL bind position is zero |
+| `bind_position_overflow` | SQL bind position arithmetic exceeds the platform integer range |
 | `adapter_unsupported`     | SQL translation cannot represent the requested feature, including regex flags and ordered null comparisons |
 
 For `value_too_large`, the `field` metadata identifies the filter's public field name or the control name (`sort`,

@@ -6,6 +6,13 @@ The project uses semantic versioning.
 
 ## Unreleased - 0.2.0
 
+### Added
+
+`SqlxAdapter::build_with_bind_start` accepts an explicit one-based first bind position for composing PostgreSQL
+fragments after caller-owned parameters. Standalone `build` still starts at `$1`; MySQL and SQLite keep anonymous
+placeholders. Zero positions and arithmetic overflow return `invalid_bind_position` and `bind_position_overflow`.
+A tested tenant repository example preserves the authorization predicate and binds tenant, filters, then pagination.
+
 ### Changed
 
 The core catalog and plan now contain logical field identity, value kind, and query capabilities without SQL column
