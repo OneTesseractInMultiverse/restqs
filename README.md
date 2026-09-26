@@ -125,6 +125,11 @@ supported. Leap seconds are rejected. Encode positive offset signs as `%2B`
 in query strings. See the [date-time format](docs/api-guide.md#dates-and-date-times)
 for the complete grammar.
 
+Float fields accept finite `f64` results. NaN, positive or negative infinity,
+and overflow such as `1e999` return `invalid_value` in scalars, `float(...)`,
+and list items. Subnormal values and signed zero remain supported; underflow
+may round to zero. See [float values](docs/api-guide.md#float-values).
+
 The SQLx adapter translates `name=null` to `IS NULL` and `name!=null` to
 `IS NOT NULL`, without bind values. Ordered comparisons with null return
 `adapter_unsupported`. Use `str(null)` to compare against the text `null`.

@@ -76,6 +76,10 @@ coordinates this split, authorized catalog resolution, and `SortTerm` constructi
 fail field validation, and valid unknown names still fail catalog lookup. URL decoding remains in `parameter`, so
 an explicit ascending prefix in a query string must use `%2B`.
 
+Float conversion is a pure computation in `value`: it parses an `f64` and accepts it only when finite. Scalar dispatch
+maps conversion failures to the existing typed-value error. Raw scalars, cast wrappers, and list items share this path,
+so the finite-result policy belongs to the database-neutral core and adapters receive the same validated values.
+
 The internal `temporal` module owns pure calendar, clock, fraction, and offset validation. The value layer uses those
 computations before constructing date or date-time values. Scalars, wrappers, and lists share that path, so validation
 does not depend on an adapter, external configuration, or a clock.

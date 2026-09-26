@@ -111,6 +111,36 @@ controls. Cast wrappers, regex delimiters and flags, and entire comma-separated 
 filters have no value to limit. Oversized values return `value_too_large` before their contents are interpreted; regex
 values within the limit still require field permission.
 
+### Float Values
+
+Float fields accept only finite `f64` results. NaN, positive and negative infinity (including `inf` and `Infinity`
+spellings), and numeric overflow such as `1e999` return `invalid_value` with the public field name and expected type
+`float`. The policy applies equally to raw scalars, `float(...)` wrappers, and every item of `in(...)` or `list(...)`.
+If any item is non-finite, the entire query fails before a plan is returned. There is no option to enable special floats.
+
+Finite boundary values such as `1.7976931348623157e308` and its negative are accepted, as are subnormal values such as
+`5e-324` and both signs of zero. Decimal input uses Rust's `f64` parsing and rounding; underflow such as `1e-999` remains
+accepted as zero. This is a finite-result policy, not an exact-decimal or lossless-conversion guarantee.
+
+```rust
+use restqs::{FieldCatalog, RqsError, parse};
+
+let catalog = FieldCatalog::new().allow_float("score")?;
+let result = parse("score=float(-inf)", &catalog);
+
+assert_eq!(result, Err(RqsError::InvalidValue {
+    field: "score".to_owned(),
+    expected: "float",
+}));
+# Ok::<(), restqs::RqsError>(())
+```
+
+The finite-result guarantee applies to parser output. `RqsValue::Float` remains a public enum variant that can be
+constructed directly with any `f64`. SQL fragments built from parsed plans preserve accepted float values as float
+binds; they do not substitute null or text for non-finite input. The application still owns database binding and
+column-specific range and precision constraints. Explicit `null` retains its existing behavior, and `str(NaN)` on a
+text field remains text. See [the 0.2 migration guide](migration-0.2.md#finite-float-values).
+
 ### Dates and Date-Times
 
 Dates use `YYYY-MM-DD` with four ASCII year digits (`0000` through `9999`) and Gregorian month lengths and leap-year

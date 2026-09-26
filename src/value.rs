@@ -15,6 +15,9 @@ pub enum RqsValue {
     /// Signed 64-bit integer value.
     Integer(i64),
     /// 64-bit floating point value.
+    ///
+    /// Parsing accepts only finite results, including subnormal values and signed
+    /// zero. NaN, infinities, and overflow return [`RqsError::InvalidValue`].
     Float(f64),
     /// UTF-8 text.
     Text(String),
@@ -97,15 +100,17 @@ fn parse_scalar(field: &str, raw: &str, kind: ValueKind) -> RqsResult<RqsValue> 
             .parse::<i64>()
             .map(RqsValue::Integer)
             .map_err(|_| invalid_value(field, kind)),
-        ValueKind::Float => raw
-            .parse::<f64>()
-            .map(RqsValue::Float)
-            .map_err(|_| invalid_value(field, kind)),
+        ValueKind::Float => parse_float(raw).ok_or_else(|| invalid_value(field, kind)),
         ValueKind::Boolean => parse_boolean(raw).ok_or_else(|| invalid_value(field, kind)),
         ValueKind::Date => parse_date(raw).ok_or_else(|| invalid_value(field, kind)),
         ValueKind::DateTime => parse_datetime(raw).ok_or_else(|| invalid_value(field, kind)),
         ValueKind::Uuid => parse_uuid(raw).ok_or_else(|| invalid_value(field, kind)),
     }
+}
+
+fn parse_float(raw: &str) -> Option<RqsValue> {
+    let value = raw.parse::<f64>().ok()?;
+    value.is_finite().then_some(RqsValue::Float(value))
 }
 
 fn parse_boolean(raw: &str) -> Option<RqsValue> {
