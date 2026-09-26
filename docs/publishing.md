@@ -9,6 +9,12 @@ and its Python tests stay in `.github/` and are excluded from the crate.
 
 ## Release Flow
 
+Choose the version using the [compatibility policy](compatibility.md). Before 1.0, an intentional API, query-behavior,
+or library-MSRV break requires the next `0.x` line; a compatible `0.1.x` patch must preserve that line's contract, except
+for the documented security-fix allowance. The unreleased 0.2.0 field-mapping and validation changes require
+[the migration guide](migration-0.2.md). Compare both feature surfaces against the recorded published baseline before
+merging the release-preparation PR; the API review complements CI and is not inferred from a version bump.
+
 Merge the reviewed version and changelog changes into `main`, then create a tag matching `Cargo.toml`, such as `v0.1.1`.
 Publishing a GitHub release starts `.github/workflows/publish.yml`.
 
@@ -88,7 +94,8 @@ four settings above and the GitHub environment rules before rerunning the workfl
 
 ## Preparing an Update
 
-1. Update `Cargo.toml` to an unpublished version and update `CHANGELOG.md`. Review compatibility and merge the PR.
+1. Update `Cargo.toml` to an unpublished version and update `CHANGELOG.md`. Complete the API/behavior comparison and
+   migration-note steps in [the release checklist](release-checklist.md#prepare-the-version), then merge the PR.
 2. Create and push the matching tag on the reviewed `main` commit. For example, after changing the manifest to `0.1.1`:
 
    ```sh

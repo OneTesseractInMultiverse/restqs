@@ -42,10 +42,10 @@ Long design explanations work best as paragraphs with small examples between the
 
 ## Compatibility Policy
 
-The crate follows semantic versioning. Patch releases fix behavior and docs. Minor releases add compatible APIs or
-adapters. Major releases can change public APIs, error codes, or plan shape.
+The [compatibility policy](compatibility.md) defines the release contract. Before 1.0, patches within one `0.x` line
+preserve supported Rust APIs, query behavior, stable error-code meanings, and the library MSRV, with a narrow documented
+security-fix exception. An intentional break requires the next `0.x` line; `0.1.x` to `0.2.0` is such a transition.
 
-Before 1.0, a change from `0.x` to `0.(x+1)` is an incompatible release line under Cargo's version rules. The unreleased
-0.2 field-mapping change follows this rule and includes a [migration guide](migration-0.2.md).
-
-`RqsError::error_code()` values are compatibility-sensitive. Treat removal or meaning changes as breaking changes.
+After 1.0, patches fix compatible behavior, minor releases add compatible APIs, and major releases carry incompatible
+changes. Public struct fields and exhaustive enum variants can be source-breaking even when described as additions.
+Review these changes against the recorded published baseline and include migration notes before release.
