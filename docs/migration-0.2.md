@@ -1,7 +1,8 @@
 # Migrating to 0.2
 
 Version 0.2 is an unreleased breaking API change. Published 0.1.x applications keep their existing API until they
-upgrade. This migration separates the endpoint's logical field allowlist from each SQL repository's physical schema.
+upgrade. Cargo requirements such as `restqs = "0.1"` stay on that line; moving to `0.2` is an explicit upgrade.
+See the [compatibility policy and 0.1.1 API baseline](compatibility.md). This migration separates the endpoint's logical field allowlist from each SQL repository's physical schema.
 
 ## Logical Catalog
 
@@ -79,7 +80,8 @@ The policy is exact and case-sensitive. Names such as `Limit`, `profile.limit`, 
 Control syntax, including percent-encoded names, keeps its existing behavior. Reserved names used as field references
 in sorting, projection, non-equality comparisons, or existence filters now return `reserved_field_name` before catalog
 lookup. Malformed names still return `invalid_field_name`, including `$text`; the unsupported `$text=` control still
-returns `text_search_unsupported`. Update exhaustive matches on `RqsError` for the new variant.
+returns `text_search_unsupported`. `RqsError` is already non-exhaustive; keep a fallback match arm and add a specific
+arm for the new variant if the application needs to distinguish it.
 
 ## Repeated Query Controls
 
@@ -107,6 +109,32 @@ Update clients that send special float values to use finite numbers or an explic
 Use `null` only when null is the intended query meaning; rejection does not automatically convert special floats to
 null. Finite extremes, subnormal values, signed zero, and underflow rounded to zero keep their behavior. Text fields
 can still contain strings such as `NaN`. See [float values](api-guide.md#float-values) for the complete policy.
+
+## Ordered List Comparisons
+
+Queries such as `age>in(18,21)` or `age<=list(30,40)` now fail during parsing with `invalid_operator` instead of producing
+list-valued ordered comparisons that the SQL adapter could not safely consume. Use `age=in(18,21)` for membership,
+`age!=list(30,40)` for exclusion, or scalar comparisons such as `age>=18&age<=40` for a range. Value-size, item-count, and
+item-type checks keep their precedence before the operator rejection.
+
+## Regex Flags
+
+Regex suffixes must contain unique lowercase flags from `i`, `m`, `s`, and `x`. Unknown or duplicate flags, such as
+`name=/alice/ii`, now return `invalid_regex_flags` rather than being accepted and discarded. The parser preserves valid
+flags, but SQL support is narrower: PostgreSQL supports no flags or `i`; MySQL supports no flags; SQLite rejects regex.
+Recognized flags unsupported by the selected adapter return `adapter_unsupported` rather than being silently ignored.
+
+Remove duplicated/unknown suffixes and only send flags supported by the target dialect. Do not strip meaningful flags
+automatically: doing so changes matching behavior. Both field and adapter regex permission gates remain required. See
+[the regex matrix](api-guide.md#regex) for the detailed contract.
+
+## Error Representation
+
+New validation and configuration failures add variants to the already non-exhaustive `RqsError`. Keep fallback arms
+when matching errors; use `error_code()` strings for protocol/log classification. Inserted variants change internal
+ordinal positions in 0.2, which the API comparison tool reports. There is no stable numeric serialization or memory-layout
+contract for this enum, and `Debug` output is not a wire format. Existing code strings are retained; new failure classes
+and deliberate precedence changes are called out above and in the changelog.
 
 ## SQL Repository Configuration
 

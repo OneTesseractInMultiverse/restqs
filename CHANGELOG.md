@@ -2,11 +2,17 @@
 
 User-facing changes are tracked in this file.
 
-The project uses semantic versioning.
+The project uses the [documented compatibility policy](docs/compatibility.md): compatible patches within each `0.x`
+line and migration notes for new incompatible lines, with a narrow documented security-fix exception.
 
 ## Unreleased - 0.2.0
 
 ### Added
+
+An explicit pre-1.0 compatibility policy now covers public Rust API shape, accepted query behavior, stable error codes,
+MSRV, and security validation fixes. Release preparation compares both feature surfaces with the immutable published
+0.1.1 baseline and records expected 0.2.0 breaks and migration steps.
+
 
 GitHub private vulnerability reporting is enabled, with private-only support routing and a maintainer checklist for
 reporting availability and security notifications. GitHub remains the sole private disclosure channel.

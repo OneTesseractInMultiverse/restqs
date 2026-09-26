@@ -78,4 +78,7 @@ Reviewers check behavior, safety boundaries, tests, and documentation. A change 
 identifiers needs revision. A change that mixes parsing with SQL execution needs revision. A change that adds an adapter
 without dialect-specific tests needs revision.
 
-Public error codes are compatibility-sensitive. Treat changes to existing codes as public API changes.
+Public error codes are compatibility-sensitive. Follow the [compatibility policy](docs/compatibility.md) for code,
+query behavior, and MSRV changes. An added field in `ParserLimits` or a variant in an exhaustive enum can break source;
+compatible patches cannot make those changes. Include the published API baseline, comparison results, and migration
+notes in release-preparation PRs.

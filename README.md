@@ -294,6 +294,7 @@ for setup and release commands.
 - [Security Model](docs/security-model.md)
 - [Testing Guide](docs/testing-guide.md)
 - [Publishing](docs/publishing.md)
+- [Compatibility Policy](docs/compatibility.md)
 - [Release Checklist](docs/release-checklist.md)
 - [Open Source Practices](docs/open-source.md)
 - [Support](SUPPORT.md)
