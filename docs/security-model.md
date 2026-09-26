@@ -199,6 +199,19 @@ assert_eq!(query.pagination().limit(), Some(25));
 Limits do not replace database indexes or query planning. They reduce the shape of request input before repository code
 builds a database query.
 
+## Repository Execution Budgets
+
+`max_limit` validates only an explicitly supplied request limit; it does not cap an empty query. Offsets have no parser
+maximum beyond `u64`. A public repository must add its own default result cap, maximum offset, signed database numeric
+conversion, and execution deadlines. See [the production budget example](integrations.md#production-result-budgets): its
+default is 25 rows, maximum explicit limit is 100, and maximum offset is 10,000. Rejections happen before database calls.
+An explicit application-only internal policy can omit caps; it still checks numeric conversion.
+
+Enforce both database statement timeouts and application deadlines, including connection acquisition and row collection.
+Verify cancellation behavior with the chosen driver and release or discard connections as needed after timeout. A row
+limit cannot guarantee cheap scanning or sorting. For authorized regex routes, use database execution limits and bounded
+concurrency as well as pattern-size checks. Keep regex disabled where that execution policy is not established.
+
 ## Authorization Boundary
 
 RestQS does not decide who can use a field. The application decides that by choosing the catalog. A public request and

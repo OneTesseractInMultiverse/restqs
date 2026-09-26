@@ -1,6 +1,9 @@
 #![allow(missing_docs)]
 #![cfg(feature = "sqlx")]
 
+#[path = "../examples/support/budget.rs"]
+pub mod budget;
+
 #[path = "../examples/support/pagination.rs"]
 mod pagination;
 #[path = "../examples/support/users.rs"]
@@ -26,7 +29,7 @@ fn sqlite(raw: &str) -> TestResult<SqlStatement> {
 fn postgres_default_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         postgres("")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users"#
+        r#"SELECT "users"."id", "users"."name" FROM users LIMIT $1"#
     );
     Ok(())
 }
@@ -35,7 +38,7 @@ fn postgres_default_projection_selects_both_decoder_columns() -> TestResult {
 fn postgres_empty_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         postgres("fields=")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users"#
+        r#"SELECT "users"."id", "users"."name" FROM users LIMIT $1"#
     );
     Ok(())
 }
@@ -44,7 +47,7 @@ fn postgres_empty_projection_selects_both_decoder_columns() -> TestResult {
 fn postgres_explicit_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         postgres("fields=id,name")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users"#
+        r#"SELECT "users"."id", "users"."name" FROM users LIMIT $1"#
     );
     Ok(())
 }
@@ -53,7 +56,7 @@ fn postgres_explicit_projection_selects_both_decoder_columns() -> TestResult {
 fn postgres_reversed_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         postgres("fields=name,id")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users"#
+        r#"SELECT "users"."id", "users"."name" FROM users LIMIT $1"#
     );
     Ok(())
 }
@@ -116,7 +119,7 @@ fn postgres_projection_preserves_filter_and_pagination_binds() -> TestResult {
 fn sqlite_default_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         sqlite("")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users"#
+        r#"SELECT "users"."id", "users"."name" FROM users LIMIT ?"#
     );
     Ok(())
 }
@@ -125,7 +128,7 @@ fn sqlite_default_projection_selects_both_decoder_columns() -> TestResult {
 fn sqlite_empty_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         sqlite("fields=")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users"#
+        r#"SELECT "users"."id", "users"."name" FROM users LIMIT ?"#
     );
     Ok(())
 }
@@ -134,7 +137,7 @@ fn sqlite_empty_projection_selects_both_decoder_columns() -> TestResult {
 fn sqlite_explicit_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         sqlite("fields=id,name")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users"#
+        r#"SELECT "users"."id", "users"."name" FROM users LIMIT ?"#
     );
     Ok(())
 }
@@ -143,7 +146,7 @@ fn sqlite_explicit_projection_selects_both_decoder_columns() -> TestResult {
 fn sqlite_reversed_projection_selects_both_decoder_columns() -> TestResult {
     assert_eq!(
         sqlite("fields=name,id")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users"#
+        r#"SELECT "users"."id", "users"."name" FROM users LIMIT ?"#
     );
     Ok(())
 }
@@ -226,7 +229,7 @@ fn sqlite_projection_preserves_filter_and_pagination_sql() -> TestResult {
 fn sqlite_ascending_sort_reaches_the_final_statement() -> TestResult {
     assert_eq!(
         sqlite("sort=id")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users ORDER BY "users"."id" ASC"#
+        r#"SELECT "users"."id", "users"."name" FROM users ORDER BY "users"."id" ASC LIMIT ?"#
     );
     Ok(())
 }
@@ -235,7 +238,7 @@ fn sqlite_ascending_sort_reaches_the_final_statement() -> TestResult {
 fn sqlite_descending_sort_reaches_the_final_statement() -> TestResult {
     assert_eq!(
         sqlite("sort=-id")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users ORDER BY "users"."id" DESC"#
+        r#"SELECT "users"."id", "users"."name" FROM users ORDER BY "users"."id" DESC LIMIT ?"#
     );
     Ok(())
 }
@@ -244,7 +247,7 @@ fn sqlite_descending_sort_reaches_the_final_statement() -> TestResult {
 fn sqlite_multiple_terms_sort_reaches_the_final_statement() -> TestResult {
     assert_eq!(
         sqlite("sort=age,-name")?.sql,
-        r#"SELECT "users"."id", "users"."name" FROM users ORDER BY "users"."age" ASC, "users"."name" DESC"#
+        r#"SELECT "users"."id", "users"."name" FROM users ORDER BY "users"."age" ASC, "users"."name" DESC LIMIT ?"#
     );
     Ok(())
 }

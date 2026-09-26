@@ -5,6 +5,7 @@ use restqs::{
     adapters::sqlx::{SqlDialect, SqlxAdapter, SqlxColumnMap, SqlxQueryParts},
 };
 
+use super::budget::QueryBudget;
 use super::pagination::{SqlStatement, append_postgres_pagination, append_sqlite_pagination};
 
 type RepositoryResult = Result<SqlStatement, Box<dyn std::error::Error>>;
@@ -24,17 +25,36 @@ pub fn users_catalog() -> RqsResult<FieldCatalog> {
 /// The plan must be authorized with [`users_catalog`]. Omitted/empty projection
 /// or exactly `id,name` in either order is supported. Other selections return
 /// `adapter_unsupported` before SQL execution. Rows always contain `id` and `name`.
+/// Default policy caps omitted limits at 25, explicit limits at 100, and offsets at 10,000.
 pub fn postgres_users_statement(query: &RqsQuery) -> RepositoryResult {
+    postgres_users_statement_with_budget(query, QueryBudget::default())
+}
+
+/// Assemble a user statement with an explicit application-owned result policy.
+pub fn postgres_users_statement_with_budget(
+    query: &RqsQuery,
+    budget: QueryBudget,
+) -> RepositoryResult {
     validate_users_projection(query.projection())?;
     let parts = SqlxAdapter::new(SqlDialect::Postgres, users_columns()?).build(query)?;
+    let parts = budget.apply(parts)?;
     let sql = users_select_sql(&parts);
     Ok(append_postgres_pagination(&sql, &parts)?)
 }
 
-/// Assemble SQLite SQL using the same fixed response contract as PostgreSQL.
+/// Assemble SQLite SQL using the same fixed response and default budgets as PostgreSQL.
 pub fn sqlite_users_statement(query: &RqsQuery) -> RepositoryResult {
+    sqlite_users_statement_with_budget(query, QueryBudget::default())
+}
+
+/// Assemble a user statement with an explicit application-owned result policy.
+pub fn sqlite_users_statement_with_budget(
+    query: &RqsQuery,
+    budget: QueryBudget,
+) -> RepositoryResult {
     validate_users_projection(query.projection())?;
     let parts = SqlxAdapter::new(SqlDialect::Sqlite, users_columns()?).build(query)?;
+    let parts = budget.apply(parts)?;
     let sql = users_select_sql(&parts);
     Ok(append_sqlite_pagination(&sql, &parts)?)
 }
