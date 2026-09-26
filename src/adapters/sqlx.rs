@@ -63,8 +63,32 @@ impl SqlxAdapter {
     ///
     /// Every filter, sort, and projection field must have a configured mapping.
     /// Missing mappings return [`RqsError::MissingColumnMapping`].
+    /// PostgreSQL placeholders start at `$1`.
     pub fn build(&self, query: &RqsQuery) -> RqsResult<SqlxQueryParts> {
-        let mut builder = FragmentBuilder::new(self.dialect, self.regex_enabled, &self.columns);
+        self.build_with_bind_start(query, 1)
+    }
+
+    /// Build fragments starting at an explicit one-based bind position.
+    ///
+    /// Use `2` when the caller's PostgreSQL statement already binds one value.
+    /// Returned binds contain only generated filter values; bind the caller's
+    /// values first. MySQL and SQLite retain anonymous `?` placeholders.
+    ///
+    /// Zero returns [`RqsError::InvalidBindPosition`], even for an empty plan.
+    /// Position arithmetic exceeding `usize` returns [`RqsError::BindPositionOverflow`].
+    /// Database and driver parameter limits remain the caller's responsibility.
+    pub fn build_with_bind_start(
+        &self,
+        query: &RqsQuery,
+        first_bind_position: usize,
+    ) -> RqsResult<SqlxQueryParts> {
+        validate_bind_start(first_bind_position)?;
+        let mut builder = FragmentBuilder::new(
+            self.dialect,
+            self.regex_enabled,
+            &self.columns,
+            first_bind_position,
+        );
         builder.add_filters(query.filters())?;
         builder.add_sort(query.sort())?;
         builder.add_projection(query)?;
@@ -86,12 +110,13 @@ pub struct SqlxQueryParts {
     pub limit: Option<u64>,
     /// Offset value.
     pub offset: Option<u64>,
-    /// Bind values in placeholder order.
+    /// Generated filter bind values in placeholder order, excluding caller-owned binds.
     pub binds: Vec<RqsValue>,
 }
 
 struct FragmentBuilder<'a> {
     dialect: SqlDialect,
+    first_bind_position: usize,
     columns: &'a SqlxColumnMap,
     regex_enabled: bool,
     clauses: Vec<String>,
@@ -103,9 +128,15 @@ struct FragmentBuilder<'a> {
 }
 
 impl<'a> FragmentBuilder<'a> {
-    fn new(dialect: SqlDialect, regex_enabled: bool, columns: &'a SqlxColumnMap) -> Self {
+    fn new(
+        dialect: SqlDialect,
+        regex_enabled: bool,
+        columns: &'a SqlxColumnMap,
+        first_bind_position: usize,
+    ) -> Self {
         Self {
             dialect,
+            first_bind_position,
             columns,
             regex_enabled,
             clauses: Vec::new(),
@@ -186,7 +217,7 @@ impl<'a> FragmentBuilder<'a> {
         if let Some(clause) = null_comparison_clause(column, operator, value)? {
             return Ok(clause);
         }
-        let placeholder = self.push_bind(value.clone());
+        let placeholder = self.push_bind(value.clone())?;
         Ok(format_comparison(column, operator, &placeholder))
     }
 
@@ -204,7 +235,7 @@ impl<'a> FragmentBuilder<'a> {
         let placeholders = values
             .iter()
             .map(|value| self.push_bind(value.clone()))
-            .collect::<Vec<_>>()
+            .collect::<RqsResult<Vec<_>>>()?
             .join(", ");
         let operator = match filter.op() {
             FilterOp::In => "IN",
@@ -228,15 +259,30 @@ impl<'a> FragmentBuilder<'a> {
             });
         };
         let operator = regex_operator(self.dialect, regex.flags())?;
-        let placeholder = self.push_bind(RqsValue::Text(regex.pattern().to_owned()));
+        let placeholder = self.push_bind(RqsValue::Text(regex.pattern().to_owned()))?;
         Ok(format_comparison(column, operator, &placeholder))
     }
 
-    fn push_bind(&mut self, value: RqsValue) -> String {
+    fn push_bind(&mut self, value: RqsValue) -> RqsResult<String> {
+        let position = bind_position(self.first_bind_position, self.binds.len())?;
+        let placeholder = format_placeholder(self.dialect, position);
         self.binds.push(value);
-        let position = self.binds.len();
-        format_placeholder(self.dialect, position)
+        Ok(placeholder)
     }
+}
+
+fn validate_bind_start(position: usize) -> RqsResult<()> {
+    if position == 0 {
+        Err(RqsError::InvalidBindPosition)
+    } else {
+        Ok(())
+    }
+}
+
+fn bind_position(first: usize, preceding_binds: usize) -> RqsResult<usize> {
+    first
+        .checked_add(preceding_binds)
+        .ok_or(RqsError::BindPositionOverflow)
 }
 
 /// Format a placeholder for an explicit one-based bind position.
@@ -665,7 +711,7 @@ mod tests {
     fn null_comparison_preserves_existing_bind_state() -> RqsResult<()> {
         let filter = Filter::new(text_field(), FilterOp::Eq, Some(RqsValue::Null));
         let columns = columns()?;
-        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, false, &columns);
+        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, false, &columns, 1);
         builder.binds.push(RqsValue::Integer(18));
         builder.filter_clause(&filter)?;
 
@@ -677,7 +723,7 @@ mod tests {
     fn comparison_filter_without_value_is_rejected() -> RqsResult<()> {
         let filter = Filter::new(text_field(), FilterOp::Eq, None);
         let columns = columns()?;
-        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, false, &columns);
+        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, false, &columns, 1);
         let error = builder
             .filter_clause(&filter)
             .map_err(|error| error.error_code());
@@ -694,7 +740,7 @@ mod tests {
             Some(RqsValue::Text("active".to_owned())),
         );
         let columns = columns()?;
-        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, false, &columns);
+        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, false, &columns, 1);
         let error = builder
             .filter_clause(&filter)
             .map_err(|error| error.error_code());
@@ -711,7 +757,7 @@ mod tests {
             Some(RqsValue::List(vec![RqsValue::Text("active".to_owned())])),
         );
         let columns = columns()?;
-        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, false, &columns);
+        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, false, &columns, 1);
         let error = builder
             .list_clause(&filter, "\"users\".\"status\"")
             .map_err(|error| error.error_code());
@@ -724,7 +770,7 @@ mod tests {
     fn regex_filter_without_literal_is_rejected() -> RqsResult<()> {
         let filter = Filter::new(text_field(), FilterOp::Regex, None);
         let columns = columns()?;
-        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, true, &columns);
+        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, true, &columns, 1);
         let error = builder
             .filter_clause(&filter)
             .map_err(|error| error.error_code());
@@ -737,7 +783,7 @@ mod tests {
     fn postgres_unsupported_flags_do_not_add_a_bind() -> RqsResult<()> {
         let filter = Filter::regex(regex_field(), RegexLiteral::new_for_test("a.b", "s"));
         let columns = columns()?;
-        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, true, &columns);
+        let mut builder = FragmentBuilder::new(SqlDialect::Postgres, true, &columns, 1);
         let _ = builder.filter_clause(&filter);
 
         assert!(builder.binds.is_empty());
@@ -748,7 +794,7 @@ mod tests {
     fn mysql_unsupported_flags_do_not_add_a_bind() -> RqsResult<()> {
         let filter = Filter::regex(regex_field(), RegexLiteral::new_for_test("admin", "i"));
         let columns = columns()?;
-        let mut builder = FragmentBuilder::new(SqlDialect::MySql, true, &columns);
+        let mut builder = FragmentBuilder::new(SqlDialect::MySql, true, &columns, 1);
         let _ = builder.filter_clause(&filter);
 
         assert!(builder.binds.is_empty());
@@ -759,7 +805,7 @@ mod tests {
     fn sqlite_regex_does_not_add_a_bind() -> RqsResult<()> {
         let filter = Filter::regex(regex_field(), RegexLiteral::new_for_test("admin", ""));
         let columns = columns()?;
-        let mut builder = FragmentBuilder::new(SqlDialect::Sqlite, true, &columns);
+        let mut builder = FragmentBuilder::new(SqlDialect::Sqlite, true, &columns, 1);
         let _ = builder.filter_clause(&filter);
 
         assert!(builder.binds.is_empty());

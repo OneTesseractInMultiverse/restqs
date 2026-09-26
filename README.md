@@ -227,6 +227,12 @@ sequenceDiagram
   H->>Q: assemble SQL and bind values
 ```
 
+Use `adapter.build_with_bind_start(&query, 2)` when a PostgreSQL base statement already uses `$1`.
+`build` still starts at `$1`. Returned binds contain only generated filter values; prepend caller-owned values
+before execution. Zero positions return `invalid_bind_position`, and position arithmetic overflow returns
+`bind_position_overflow`. MySQL and SQLite keep `?` placeholders. See the
+[tenant composition example](docs/integrations.md#composing-with-caller-owned-predicates).
+
 ## Documented SQLx Examples
 
 The crate does not depend on SQLx, Tokio, PostgreSQL, or SQLite. Application

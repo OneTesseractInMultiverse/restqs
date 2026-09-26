@@ -58,6 +58,8 @@ fn all_error_codes_are_stable() {
             field: "age".to_owned(),
             operator: ">",
         },
+        RqsError::InvalidBindPosition,
+        RqsError::BindPositionOverflow,
         RqsError::AdapterUnsupported { feature: "regex" },
     ];
 
@@ -87,6 +89,8 @@ fn all_error_codes_are_stable() {
             "text_search_unsupported",
             "duplicate_control",
             "duplicate_filter",
+            "invalid_bind_position",
+            "bind_position_overflow",
             "adapter_unsupported"
         ]
     );

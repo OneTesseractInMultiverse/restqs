@@ -124,10 +124,49 @@ Real SQLx code then binds each `RqsValue` with the matching database type. Keep 
 location has the schema knowledge needed for precise binding. Bind `statement.binds`, which includes pagination, rather
 than only `parts.binds`. The example above binds `Text("active")` followed by `Integer(25)`.
 
+### Composing With Caller-Owned Predicates
+
+When a PostgreSQL base statement already uses `$1`, call `adapter.build_with_bind_start(&query, 2)`.
+The starting position is one-based and belongs to this build only. `build(&query)` continues to start at `$1`.
+Every generated scalar, list item, and regex pattern advances the sequence; null and existence predicates do not.
+The returned `parts.binds` contains only generated filter values. Bind the base statement's values first.
+MySQL and SQLite accept the same API but retain anonymous `?` placeholders and positional binding.
+
+Zero is invalid even for an empty plan (`invalid_bind_position`). Each generated position uses checked addition;
+exceeding `usize` returns `bind_position_overflow`. This checks arithmetic, not database or driver parameter limits.
+The repository must enforce the limits of its execution backend.
+
+[The tenant composition module](../examples/support/tenant.rs) compiles in the repository tests. Copy it alongside
+`pagination.rs` as `tenant.rs` and declare both modules. It reserves `$1` for a tenant ID supplied by authenticated
+application context, adds generated filters in parentheses with `AND`, and preserves projection and sorting. It
+prepends the tenant value before calling the pagination helper, so that helper sees the complete base bind sequence.
+The tenant field is absent from the public catalog; a query cannot choose or replace the authorized tenant.
+
+```rust
+mod pagination;
+mod tenant;
+
+use restqs::{FieldCatalog, parse, adapters::sqlx::SqlxColumnMap};
+
+let catalog = FieldCatalog::new().allow_integer("id")?.allow_text("status")?;
+let columns = SqlxColumnMap::new().map("id", "users.id")?.map("status", "users.status")?;
+let query = parse("status=active&limit=25", &catalog)?;
+let authenticated_tenant_id = 42; // Supplied by the application's authorization context.
+let statement = tenant::tenant_users_statement(&query, columns, authenticated_tenant_id)?;
+// SQL: SELECT "users"."id", "users"."status" FROM users
+//      WHERE "users"."tenant_id" = $1 AND ("users"."status" = $2) LIMIT $3
+// Bind in order: Integer(42), Text("active"), Integer(25).
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Bind `statement.binds` in order using the repository's schema-aware SQLx binder. This assembly example has a dynamic
+projection and no row decoder; applications using it must decode the selected columns. The fixed response repositories
+below have their own projection contract.
+
 ### Pagination Contract
 
 The shared module appends pagination after the repository's filters and ordering. The base SQL must contain exactly
-the filter placeholders described by `parts.binds`, and no pagination or trailing semicolon. PostgreSQL numbering starts
+the base placeholders described by `parts.binds` (including any caller-owned values), and no pagination or trailing semicolon. PostgreSQL numbering starts
 at `parts.binds.len() + 1`, so lists and null comparisons do not shift pagination incorrectly. SQLite uses positional
 placeholders. Both bind filter values first, then the supplied limit, then the supplied offset, regardless of query
 parameter order.

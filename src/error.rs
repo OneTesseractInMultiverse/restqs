@@ -134,6 +134,10 @@ pub enum RqsError {
         /// Repeated operator.
         operator: &'static str,
     },
+    /// The requested first SQL bind position was zero; positions are one-based.
+    InvalidBindPosition,
+    /// SQL bind position arithmetic exceeded the platform's `usize` range.
+    BindPositionOverflow,
     /// SQL translation cannot represent a filter with this adapter.
     AdapterUnsupported {
         /// Unsupported feature name.
@@ -169,6 +173,8 @@ impl RqsError {
             Self::TextSearchUnsupported => "text_search_unsupported",
             Self::DuplicateControl { .. } => "duplicate_control",
             Self::DuplicateFilter { .. } => "duplicate_filter",
+            Self::InvalidBindPosition => "invalid_bind_position",
+            Self::BindPositionOverflow => "bind_position_overflow",
             Self::AdapterUnsupported { .. } => "adapter_unsupported",
         }
     }
@@ -283,6 +289,13 @@ impl Display for RqsError {
                     diagnostic_identifier(field)
                 )
             }
+            Self::InvalidBindPosition => {
+                write!(formatter, "bind positions must start at one or greater")
+            }
+            Self::BindPositionOverflow => write!(
+                formatter,
+                "bind position exceeds the platform integer range"
+            ),
             Self::AdapterUnsupported { feature } => {
                 write!(formatter, "adapter does not support {feature}")
             }
