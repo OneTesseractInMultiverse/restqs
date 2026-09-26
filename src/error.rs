@@ -1,4 +1,4 @@
-//! Error types for RQS parsing and adapter translation.
+//! Error types for configuration, RQS parsing, and adapter translation.
 
 use std::fmt::{self, Display, Formatter};
 
@@ -9,7 +9,7 @@ const MAX_DIAGNOSTIC_IDENTIFIER_BYTES: usize = 128;
 /// Result type used by RestQS.
 pub type RqsResult<T> = Result<T, RqsError>;
 
-/// RQS parser and adapter errors.
+/// RQS configuration, parser, and adapter errors.
 ///
 /// Display text replaces malformed field and column identifiers, and identifiers
 /// longer than 128 bytes, with `[redacted]`. Error fields and `Debug` output retain
@@ -37,6 +37,11 @@ pub enum RqsError {
     /// A public field name is reserved for a query control.
     ReservedFieldName {
         /// Conflicting logical field name.
+        field: String,
+    },
+    /// Catalog configuration registered the same public field more than once.
+    DuplicateField {
+        /// Public field name registered more than once.
         field: String,
     },
     /// A database column name is not valid.
@@ -140,6 +145,7 @@ impl RqsError {
             Self::InvalidEncoding => "invalid_encoding",
             Self::InvalidFieldName { .. } => "invalid_field_name",
             Self::ReservedFieldName { .. } => "reserved_field_name",
+            Self::DuplicateField { .. } => "duplicate_field",
             Self::InvalidColumnName { .. } => "invalid_column_name",
             Self::MissingColumnMapping { .. } => "missing_column_mapping",
             Self::DuplicateColumnMapping { .. } => "duplicate_column_mapping",
@@ -186,6 +192,11 @@ impl Display for RqsError {
             Self::ReservedFieldName { field } => write!(
                 formatter,
                 "field {} is reserved for query controls",
+                diagnostic_identifier(field)
+            ),
+            Self::DuplicateField { field } => write!(
+                formatter,
+                "field {} is already registered in the catalog",
                 diagnostic_identifier(field)
             ),
             Self::UnknownField { field } => write!(

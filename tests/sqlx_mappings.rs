@@ -350,6 +350,42 @@ fn mapping_rejects_duplicate_identical_entry() -> RqsResult<()> {
 }
 
 #[test]
+fn distinct_public_aliases_can_share_a_physical_column() -> RqsResult<()> {
+    let catalog = FieldCatalog::new()
+        .allow_integer("age")?
+        .allow_integer("years")?;
+    let query = parse("age>=18&years<65", &catalog)?;
+    let columns = SqlxColumnMap::new()
+        .map("age", "users.age")?
+        .map("years", "users.age")?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build(&query)?;
+
+    assert_eq!(
+        parts.where_clause.as_deref(),
+        Some("\"users\".\"age\" >= $1 AND \"users\".\"age\" < $2")
+    );
+    Ok(())
+}
+
+#[test]
+fn aliases_sharing_a_column_keep_their_own_bind_values() -> RqsResult<()> {
+    let catalog = FieldCatalog::new()
+        .allow_integer("age")?
+        .allow_integer("years")?;
+    let query = parse("age>=18&years<65", &catalog)?;
+    let columns = SqlxColumnMap::new()
+        .map("age", "users.age")?
+        .map("years", "users.age")?;
+    let parts = SqlxAdapter::new(SqlDialect::Postgres, columns).build(&query)?;
+
+    assert_eq!(
+        parts.binds,
+        vec![RqsValue::Integer(18), RqsValue::Integer(65)]
+    );
+    Ok(())
+}
+
+#[test]
 fn invalid_column_display_redacts_sql_text() {
     let result = SqlxColumnMap::new()
         .map("status", "users.status; SELECT secret")

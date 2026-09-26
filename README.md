@@ -57,6 +57,9 @@ their value types and capabilities. It contains no storage column metadata.
 The exact lowercase names `sort`, `fields`, `limit`, and `skip` are reserved for
 query controls; registering one returns `reserved_field_name`. Use a public alias
 such as `row_limit`; see [the 0.2 migration guide](docs/migration-0.2.md#reserved-query-control-names).
+Register each public name once. Repeating a name, even with the same definition,
+returns `duplicate_field`; configure its type and regex permission before insertion.
+See [catalog migration](docs/migration-0.2.md#duplicate-catalog-registrations).
 
 ```rust
 use restqs::{FieldCatalog, FilterOp, parse};

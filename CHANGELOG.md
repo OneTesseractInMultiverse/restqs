@@ -33,6 +33,11 @@ messages. Stable error-code checks remain separate from display formatting and s
 
 ### Fixed
 
+Catalog builders now reject duplicate public names with `duplicate_field`, including identical definitions, instead
+of silently replacing the field's type or regex permission. Validation runs before insertion. Names remain exact and
+case-sensitive, and distinct aliases may still share a physical SQL column. Configure each field before registering
+it; see [catalog migration](docs/migration-0.2.md#duplicate-catalog-registrations).
+
 Logical field names `sort`, `fields`, `limit`, and `skip` now fail registration with `reserved_field_name` instead of
 silently becoming query controls in equality expressions. The catalog and parser share one control-name policy, and
 logical SQL mapping keys follow it too. Reserved names in field references also return this error. Matching is exact

@@ -31,6 +31,30 @@ are removed. Use `public_name()` for logical identity. Value kinds, endpoint all
 and per-field regex permission keep their existing meanings. Filters, sort terms, and projections contain logical
 field references with no SQL metadata.
 
+## Duplicate Catalog Registrations
+
+`FieldCatalog::allow` and all `allow_*` builders now reject a repeated public name with `RqsError::DuplicateField`
+(`duplicate_field`), including an identical definition. Previously the last registration silently replaced the field's
+type and regex permission. Matching is exact and case-sensitive, so `status` and `Status` remain distinct names.
+
+Remove overlapping registrations from catalog composition and choose each field's final definition before insertion.
+For example, configure regex permission on the field rather than registering the same name again to enable it:
+
+```rust
+use restqs::{Field, FieldCatalog, ValueKind};
+
+let email = Field::new("email", ValueKind::Text)?.allow_regex();
+let catalog = FieldCatalog::new().allow(email)?;
+
+assert_eq!(catalog.get("email").map(Field::regex_allowed), Some(true));
+# Ok::<(), restqs::RqsError>(())
+```
+
+There is no replacement API. Build the catalog for each endpoint from its intended definitions, and treat duplicate
+errors as configuration failures. Distinct public aliases remain supported: a catalog can register both `age` and
+`years`, and a SQL repository can map both to `users.age`. Physical column changes belong in `SqlxColumnMap`; duplicate
+logical mapping keys already return `duplicate_column_mapping` independently of this catalog policy.
+
 ## Reserved Query-Control Names
 
 The exact lowercase public names `sort`, `fields`, `limit`, and `skip` now return `RqsError::ReservedFieldName`
