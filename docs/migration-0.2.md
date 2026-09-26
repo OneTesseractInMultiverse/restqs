@@ -81,6 +81,21 @@ in sorting, projection, non-equality comparisons, or existence filters now retur
 lookup. Malformed names still return `invalid_field_name`, including `$text`; the unsupported `$text=` control still
 returns `text_search_unsupported`. Update exhaustive matches on `RqsError` for the new variant.
 
+## Repeated Query Controls
+
+Repeated `sort`, `fields`, `limit`, and `skip` controls now return `RqsError::DuplicateControl` with error code
+`duplicate_control` and the canonical parameter name. Previously the last value replaced the first, allowing requests
+such as `sort=age&sort=` to clear sorting and `limit=1&limit=100` to raise the requested limit.
+
+Emit each control once. Combine intended sort terms or projection fields into one comma-separated value before
+encoding the query. Identical values, empty values in either position, and percent-encoded equivalent names are all
+duplicates. A single empty control keeps its existing meaning. Requests using distinct range-filter operators remain
+valid; duplicate-filter behavior is unchanged.
+
+Control value-size checks precede duplicate detection, and duplicate detection precedes interpreting the repeated
+value. For example, `limit=5&limit=bad` now returns `duplicate_control` instead of `invalid_pagination`. An invalid
+first control still fails before a later occurrence is processed. See [repeated query controls](api-guide.md#repeated-query-controls).
+
 ## Finite Float Values
 
 Float parsing now rejects NaN, positive and negative infinity, and overflow to infinity with `invalid_value`

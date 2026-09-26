@@ -59,12 +59,15 @@ coordinates this check before inserting the field, and every convenience builder
 depends on the exact public name, not its value kind or capabilities. Physical column configuration remains a separate
 adapter concern: distinct public aliases may resolve to the same column.
 
-The parser's internal `parameter_policy` module classifies decoded text into an explicit parameter kind and validates
-control value sizes without changing the plan. `apply_parameter` coordinates classification, validation, and dispatch.
+The parser's internal `parameter_policy` module classifies decoded text into an explicit parameter kind, validates
+control value sizes, and computes canonical control keys and duplicate rejection without changing the plan.
+`apply_parameter` coordinates classification, size validation, duplicate validation, and dispatch, then records a
+successfully applied control. Both identity sets are created afresh per parse. Control duplicates are rejected before
+the repeated value is interpreted, including when either value is empty or the names use equivalent URL encoding.
 The internal `filter_policy` module computes duplicate identities from logical field names and normalized operator
 tokens, then checks them against an immutable set of seen identities. `apply_filter` parses and validates before
-explicitly updating that set and appending the filter. Repeated controls retain their existing replacement behavior;
-filter validation errors still take precedence over duplicate rejection.
+explicitly updating that set and appending the filter. Filter validation errors still take precedence over duplicate
+filter rejection. Distinct operators on the same field retain distinct identities, independently of control tracking.
 
 Filter splitting is a pure computation over decoded text. It finds the field boundary, recognizes the longest supported
 operator at that position, and returns borrowed field and value slices. The parser coordinates catalog resolution and

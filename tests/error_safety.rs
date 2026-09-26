@@ -3,6 +3,25 @@
 use restqs::{FieldCatalog, RqsError, parse};
 
 #[test]
+fn duplicate_control_message_omits_the_repeated_value() -> restqs::RqsResult<()> {
+    let catalog = FieldCatalog::new().allow_integer("age")?;
+    let result =
+        parse("sort=age&sort=private%0Asecret", &catalog).map_err(|error| error.to_string());
+
+    assert_eq!(result, Err("query repeats control sort".to_owned()));
+    Ok(())
+}
+
+#[test]
+fn duplicate_control_message_redacts_malformed_names() {
+    let error = RqsError::DuplicateControl {
+        parameter: "sort\nsecret",
+    };
+
+    assert_eq!(error.to_string(), "query repeats control [redacted]");
+}
+
+#[test]
 fn duplicate_field_message_redacts_malformed_identifiers() {
     let error = RqsError::DuplicateField {
         field: "status\nsecret".to_owned(),

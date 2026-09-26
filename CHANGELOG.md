@@ -17,7 +17,7 @@ adapter. This breaking API change targets 0.2.0; see [Migrating to 0.2](docs/mig
 
 Parameter classification, control-size policy, and duplicate-filter identity and rejection are now pure internal
 computations. The parser coordinates them before updating query state. This refactor preserves syntax, stable error
-codes, validation precedence, and repeated-control behavior without changing the public API.
+codes, and filter validation precedence without changing the public API.
 
 Sort-prefix interpretation is now a pure computation, separate from authorized field resolution and sort-term
 construction. Bare, descending, and percent-encoded ascending sort terms retain their syntax and validation errors.
@@ -32,6 +32,11 @@ Error-display tests now check rendered messages for each error variant and hosti
 messages. Stable error-code checks remain separate from display formatting and safety checks.
 
 ### Fixed
+
+Repeated `sort`, `fields`, `limit`, and `skip` controls now return `duplicate_control` instead of silently using the
+last value. Identical and empty values and percent-encoded equivalent names follow the same rule. Control value-size
+checks precede duplicate detection, which precedes interpreting the repeated value. Single empty controls and distinct
+range-filter operators retain their behavior. See [the migration guide](docs/migration-0.2.md#repeated-query-controls).
 
 Ordered comparisons (`>`, `>=`, `<`, `<=`) with `in(...)` or `list(...)` values now return `invalid_operator` during
 parsing, preventing list values from reaching SQLx as scalar binds. Equality and inequality still produce `In` and

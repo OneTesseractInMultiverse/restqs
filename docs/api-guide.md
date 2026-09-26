@@ -300,6 +300,37 @@ assert_eq!(query.pagination().limit(), Some(200));
 
 Negative pagination values fail with `negative_pagination`. Non-numeric values fail with `invalid_pagination`.
 
+## Repeated Query Controls
+
+Each supported control may appear only once per query. The parser rejects every repeat with `duplicate_control`
+(`RqsError::DuplicateControl`), even when values are identical or either occurrence is empty. Order does not change
+this policy. Matching uses the canonical name after URL decoding, so `limit=1&%6Cimit=5` is also a duplicate.
+
+| Control | Meaning of one empty occurrence | Meaning of a repeated occurrence |
+| --- | --- | --- |
+| `sort` | No sort terms | `duplicate_control` |
+| `fields` | Empty projection | `duplicate_control` |
+| `limit` | Limit of zero | `duplicate_control` |
+| `skip` | Offset of zero | `duplicate_control` |
+
+```rust
+use restqs::{FieldCatalog, RqsError, parse};
+
+let result = parse("limit=1&limit=100", &FieldCatalog::new());
+
+assert_eq!(result, Err(RqsError::DuplicateControl { parameter: "limit" }));
+```
+
+Parameters are processed in order after query-size, parameter-count, and decoding checks. For each control, decoded
+value-size validation runs before duplicate detection, which runs before interpreting its value or resolving its
+fields. Thus `limit=bad&limit=5` fails with `invalid_pagination`, while `limit=5&limit=bad` fails with
+`duplicate_control`; an oversized repeated value still fails with `value_too_large`. Error metadata contains only the
+canonical control name, not either value. Unsupported `$text=` retains `text_search_unsupported`.
+
+Different controls can coexist. Filter identities are still tracked separately: `age>=18&age<65` remains valid, while
+repeating the same field and operator still returns `duplicate_filter` after filter value validation. A case variant
+such as `Limit` remains a distinct catalog field, not a control. Duplicate tracking resets for each parse call.
+
 ## Regex
 
 Regex is an opt-in capability. The field must allow regex values. The adapter must allow regex SQL generation.
@@ -386,6 +417,7 @@ Malformed nonempty field names return `invalid_field_name`. Reserved control nam
 | `invalid_regex_flags`     | Regex suffix flags contain an unknown or repeated flag |
 | `text_search_unsupported` | `$text=` was requested                          |
 | `duplicate_filter`        | Same field and operator appeared twice          |
+| `duplicate_control`       | A supported query control appeared more than once, including empty values |
 | `limit_too_large`         | Requested `limit` exceeded parser config        |
 | `too_many_parameters`     | Query had more parameters than allowed          |
 | `too_many_list_items`     | List had more items than allowed                |

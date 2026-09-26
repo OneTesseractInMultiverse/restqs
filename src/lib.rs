@@ -38,6 +38,8 @@
 //! at 100. The value byte limit covers filter values and `sort`, `fields`,
 //! `limit`, and `skip` controls, including wrappers, regex delimiters and flags,
 //! and complete lists. Existence filters have no value to limit.
+//! Each supported query control may appear only once, including empty values.
+//! Repeated controls return [`RqsError::DuplicateControl`] after URL decoding.
 //!
 //! # Adapter Boundary
 //!

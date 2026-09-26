@@ -1,4 +1,6 @@
-//! Pure classification and size policy for decoded parameters.
+//! Pure classification, size, and duplicate policy for decoded parameters.
+
+use std::collections::BTreeSet;
 
 use crate::{RqsError, RqsResult, control::Control, limits::validate_value_size};
 
@@ -33,6 +35,28 @@ pub(super) fn validate_control_size(parameter: Parameter<'_>, max_bytes: usize) 
         Parameter::Offset(value) => validate_value_size("skip", value, max_bytes),
         // Filters validate their values after syntax checks and field resolution.
         Parameter::Filter(_) => Ok(()),
+    }
+}
+
+pub(super) fn control_key(parameter: Parameter<'_>) -> Option<&'static str> {
+    match parameter {
+        Parameter::Sort(_) => Some("sort"),
+        Parameter::Projection(_) => Some("fields"),
+        Parameter::Limit(_) => Some("limit"),
+        Parameter::Offset(_) => Some("skip"),
+        Parameter::Filter(_) => None,
+    }
+}
+
+pub(super) fn validate_new_control(
+    key: Option<&'static str>,
+    seen: &BTreeSet<&'static str>,
+) -> RqsResult<()> {
+    match key {
+        Some(parameter) if seen.contains(parameter) => {
+            Err(RqsError::DuplicateControl { parameter })
+        }
+        _ => Ok(()),
     }
 }
 

@@ -3,6 +3,13 @@
 use restqs::RqsError;
 
 #[test]
+fn duplicate_control_message_names_the_repeated_control() {
+    let error = RqsError::DuplicateControl { parameter: "sort" };
+
+    assert_eq!(error.to_string(), "query repeats control sort");
+}
+
+#[test]
 fn duplicate_field_message_names_the_catalog_collision() {
     let error = RqsError::DuplicateField {
         field: "profile.status".to_owned(),

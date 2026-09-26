@@ -122,6 +122,11 @@ pub enum RqsError {
     InvalidRegexFlags,
     /// Text search is not part of the current RQS contract.
     TextSearchUnsupported,
+    /// A query repeated a supported control parameter, including an empty value.
+    DuplicateControl {
+        /// Canonical control name: `sort`, `fields`, `limit`, or `skip`.
+        parameter: &'static str,
+    },
     /// A filter repeated the same field and operator.
     DuplicateFilter {
         /// Field used more than once.
@@ -162,6 +167,7 @@ impl RqsError {
             Self::RegexDisabled { .. } => "regex_disabled",
             Self::InvalidRegexFlags => "invalid_regex_flags",
             Self::TextSearchUnsupported => "text_search_unsupported",
+            Self::DuplicateControl { .. } => "duplicate_control",
             Self::DuplicateFilter { .. } => "duplicate_filter",
             Self::AdapterUnsupported { .. } => "adapter_unsupported",
         }
@@ -265,6 +271,11 @@ impl Display for RqsError {
                 )
             }
             Self::TextSearchUnsupported => write!(formatter, "text search is not supported"),
+            Self::DuplicateControl { parameter } => write!(
+                formatter,
+                "query repeats control {}",
+                diagnostic_identifier(parameter)
+            ),
             Self::DuplicateFilter { field, operator } => {
                 write!(
                     formatter,
