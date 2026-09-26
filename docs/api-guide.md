@@ -27,6 +27,13 @@ flowchart TD
 `FieldCatalog` is the public contract for an endpoint. It authorizes logical public names and defines value kinds and
 query capabilities. Physical storage names are configured separately by each adapter.
 
+`FieldCatalog::allow` and every `allow_*` builder reject an already registered public name with
+`RqsError::DuplicateField` (`duplicate_field`). Identical definitions are also duplicates. Matching uses the exact,
+case-sensitive public name; distinct aliases can still map to the same trusted SQL column. There is no replacement
+operation: configure each field's type and regex permission before registering it. See
+[catalog migration](migration-0.2.md#duplicate-catalog-registrations) for previously composed catalogs that relied on
+overwriting entries.
+
 ```rust
 use restqs::{FieldCatalog, parse};
 
@@ -328,6 +335,7 @@ Malformed nonempty field names return `invalid_field_name`. Reserved control nam
 |---------------------------|-------------------------------------------------|
 | `invalid_field_name`      | Field syntax was empty or invalid               |
 | `reserved_field_name`     | Logical field name collides with a query control |
+| `duplicate_field`         | Catalog configuration registered the same public field twice |
 | `unknown_field`           | Public field was not in the catalog             |
 | `missing_column_mapping` | SQL adapter has no mapping for a referenced logical field |
 | `duplicate_column_mapping` | SQL configuration registered the same logical field twice |
@@ -347,4 +355,6 @@ Malformed nonempty field names return `invalid_field_name`. Reserved control nam
 For `value_too_large`, the `field` metadata identifies the filter's public field name or the control name (`sort`,
 `fields`, `limit`, or `skip`).
 
-Services can map these codes to HTTP 400 responses. Authorization failures belong in application code, not in RestQS.
+Services can map request parsing errors to HTTP 400 responses. Configuration errors such as `duplicate_field` should
+be handled when constructing the catalog, not attributed to request input. Authorization failures belong in application
+code, not in RestQS.

@@ -3,6 +3,33 @@
 use restqs::{FieldCatalog, RqsError, parse};
 
 #[test]
+fn duplicate_field_message_redacts_malformed_identifiers() {
+    let error = RqsError::DuplicateField {
+        field: "status\nsecret".to_owned(),
+    };
+
+    assert_eq!(
+        error.to_string(),
+        "field [redacted] is already registered in the catalog"
+    );
+}
+
+#[test]
+fn duplicate_field_message_redacts_long_registered_names() -> restqs::RqsResult<()> {
+    let name = "a".repeat(129);
+    let result = FieldCatalog::new()
+        .allow_text(&name)?
+        .allow_text(&name)
+        .map_err(|error| error.to_string());
+
+    assert_eq!(
+        result,
+        Err("field [redacted] is already registered in the catalog".to_owned())
+    );
+    Ok(())
+}
+
+#[test]
 fn reserved_field_message_redacts_malformed_identifiers() {
     let error = RqsError::ReservedFieldName {
         field: "limit\nsecret".to_owned(),

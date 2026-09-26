@@ -3,6 +3,18 @@
 use restqs::RqsError;
 
 #[test]
+fn duplicate_field_message_names_the_catalog_collision() {
+    let error = RqsError::DuplicateField {
+        field: "profile.status".to_owned(),
+    };
+
+    assert_eq!(
+        error.to_string(),
+        "field profile.status is already registered in the catalog"
+    );
+}
+
+#[test]
 fn reserved_field_message_identifies_the_control_collision() {
     let error = RqsError::ReservedFieldName {
         field: "limit".to_owned(),

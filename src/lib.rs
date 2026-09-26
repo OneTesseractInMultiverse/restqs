@@ -9,6 +9,8 @@
 //! requested field against that catalog and returns [`RqsQuery`].
 //! The exact public names `sort`, `fields`, `limit`, and `skip` are reserved for
 //! query controls and rejected with [`RqsError::ReservedFieldName`].
+//! Registering the same public field name twice returns [`RqsError::DuplicateField`],
+//! including identical definitions. Configure each field before registering it.
 //!
 //! # Basic Parsing
 //!

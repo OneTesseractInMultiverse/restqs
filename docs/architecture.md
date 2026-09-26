@@ -54,6 +54,11 @@ and reserved field-name validation. Public-name validation coordinates syntax ch
 checking before catalog construction or lookup. SQL mappings apply this policy to logical keys only; physical column
 syntax stays at the adapter boundary.
 
+Catalog registration uses a pure duplicate-name validator over the existing field map. `FieldCatalog::allow`
+coordinates this check before inserting the field, and every convenience builder delegates to that path. Uniqueness
+depends on the exact public name, not its value kind or capabilities. Physical column configuration remains a separate
+adapter concern: distinct public aliases may resolve to the same column.
+
 The parser's internal `parameter_policy` module classifies decoded text into an explicit parameter kind and validates
 control value sizes without changing the plan. `apply_parameter` coordinates classification, validation, and dispatch.
 The internal `filter_policy` module computes duplicate identities from logical field names and normalized operator
@@ -160,7 +165,8 @@ become `[redacted]`. The internal `identifier` module supplies the syntax comput
 error formatting. The parser coordinates public-name validation and catalog lookup. Error fields and Debug output retain
 the original input and are outside the Display redaction contract.
 
-Parser errors represent invalid RQS input. Adapter errors represent unsupported translation for a valid plan.
+Configuration errors such as duplicate catalog names are reported while building trusted configuration. Parser errors
+represent invalid RQS input. Adapter errors represent unsupported translation for a valid plan.
 Authorization errors belong outside RestQS. The application decides the catalog and can reject the request before
 parsing.
 

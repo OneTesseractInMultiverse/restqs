@@ -14,6 +14,9 @@ fn all_error_codes_are_stable() {
         RqsError::ReservedFieldName {
             field: "limit".to_owned(),
         },
+        RqsError::DuplicateField {
+            field: "status".to_owned(),
+        },
         RqsError::InvalidColumnName {
             column: "bad".to_owned(),
         },
@@ -65,6 +68,7 @@ fn all_error_codes_are_stable() {
             "invalid_encoding",
             "invalid_field_name",
             "reserved_field_name",
+            "duplicate_field",
             "invalid_column_name",
             "missing_column_mapping",
             "duplicate_column_mapping",

@@ -52,6 +52,7 @@ Failure tests are part of the public contract. They prove safe defaults and erro
 Important failure cases include:
 
 - Unknown public fields.
+- Duplicate catalog names, including identical definitions and changes to type or regex permission.
 - Invalid database column identifiers.
 - Missing or duplicate adapter column mappings, including sort-only and projection-only plans.
 - Wrong value type for a field.

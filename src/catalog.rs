@@ -127,6 +127,10 @@ impl FieldRef {
 }
 
 /// Explicit allowlist for fields that can appear in RQS input.
+///
+/// Each public name can be registered only once. [`Self::allow`] and every
+/// `allow_*` builder reject duplicates with [`RqsError::DuplicateField`], even
+/// when the field definition is identical. Names are case-sensitive.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FieldCatalog {
     fields: BTreeMap<String, Field>,
@@ -140,8 +144,12 @@ impl FieldCatalog {
     }
 
     /// Insert a field and return the updated catalog.
+    ///
+    /// Returns [`RqsError::DuplicateField`] if the exact public name is already
+    /// registered. Configure the field's type and capabilities before insertion.
     pub fn allow(mut self, field: Field) -> RqsResult<Self> {
         let name = field.public_name().to_owned();
+        validate_new_field(&self.fields, &name)?;
         self.fields.insert(name, field);
         Ok(self)
     }
@@ -202,6 +210,16 @@ impl FieldCatalog {
     fn allow_kind(self, public_name: impl Into<String>, value_kind: ValueKind) -> RqsResult<Self> {
         let field = Field::new(public_name, value_kind)?;
         self.allow(field)
+    }
+}
+
+fn validate_new_field(fields: &BTreeMap<String, Field>, name: &str) -> RqsResult<()> {
+    if fields.contains_key(name) {
+        Err(RqsError::DuplicateField {
+            field: name.to_owned(),
+        })
+    } else {
+        Ok(())
     }
 }
 
