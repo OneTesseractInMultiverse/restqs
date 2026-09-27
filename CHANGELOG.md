@@ -5,6 +5,16 @@ User-facing changes are tracked in this file.
 The project uses the [documented compatibility policy](docs/compatibility.md): compatible patches within each `0.x`
 line and migration notes for new incompatible lines, with a narrow documented security-fix exception.
 
+## Unreleased
+
+- Update SQLite execution to SQLx 0.9.0, including its dynamic-SQL marker and argument types, and refresh its locked
+  transitive dependencies. Both database fixtures now require Rust 1.94 and run on stable CI; the library keeps
+  Rust 1.85 and no runtime dependencies.
+- Update the assertion-policy tool to Syn 3.0.6, cargo-audit to 0.22.2, the coverage toolchain to Rust 1.98.1, and
+  fuzzing to nightly-2026-09-27. Preserve the coverage and single-assertion gates.
+- Refresh digest-pinned test services to PostgreSQL 18.6 and the latest available official MySQL image, 26.7.0.
+  Document current dependency versions and unavoidable upstream/MSRV constraints.
+
 ## 0.2.0
 
 This release introduces breaking API and validation changes from 0.1.x. Follow

@@ -2,12 +2,12 @@
 name = "restqs-sqlite-tests"
 version = "0.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.94"
 publish = false
 
 [dependencies]
 restqs = { path = "../..", features = ["sqlx"] }
-sqlx = { version = "=0.8.6", default-features = false, features = ["sqlite", "runtime-tokio"] }
+sqlx = { version = "=0.9.0", default-features = false, features = ["sqlite", "runtime-tokio"] }
 tokio = { version = "1", features = ["rt"] }
 
 [lints.rust]

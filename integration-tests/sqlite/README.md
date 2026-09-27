@@ -14,15 +14,18 @@ make verify-sqlite
 
 The core crate remains dependency-free. `make verify` also builds the isolated syntax-policy tool, which has its own
 dependencies. This separate manifest and lockfile contain the fixture's
-SQLx 0.8.6 and Tokio 1.53.1 dependencies, with bundled SQLite 3.46.0 from `libsqlite3-sys` 0.30.1. The fixture has been
-checked on Rust 1.85 and stable. Both Rust CI jobs run formatting, Clippy, and these tests; the security job audits its
-lockfile. Dependabot checks this manifest weekly. PostgreSQL and MySQL execution coverage lives in the sibling `services` fixture.
+SQLx 0.9.0 and Tokio 1.53.1 dependencies, with bundled SQLite 3.51.3 from `libsqlite3-sys` 0.37.0.
+The fixture requires Rust 1.94 or newer and runs on stable CI. Core tests and generated properties still run on
+Rust 1.85; driver dependency requirements do not change the published library's MSRV. The security job audits this
+lockfile, and Dependabot checks the manifest weekly. PostgreSQL/MySQL execution uses the sibling `services` fixture.
 
-SQLx (MIT OR Apache-2.0) supplies the real database binding and row-decoding path. Tokio (MIT) supplies the async runtime.
-Both are maintained upstream; SQLx 0.9 is available, but this fixture intentionally exercises the documented 0.8 API and
-keeps Rust 1.85 compatibility. Their maintenance cost is isolated compilation time, a committed dependency lockfile,
-and dependency update review. Neither adds parser or adapter runtime behavior to the published library. The lockfile
-passed `cargo audit` when introduced. The lockfile keeps `yoke-derive` at 0.8.2 because 0.8.3 uses an API unavailable
-on Rust 1.85; CI checks this minimum version so future dependency updates cannot silently break it.
+SQLx (MIT OR Apache-2.0) supplies real database binding and row decoding; Tokio (MIT) supplies the async runtime.
+Their maintenance cost is isolated compilation time, a committed lockfile, and dependency update review. Neither adds
+runtime dependencies to the library. SQLx 0.9 requires `AssertSqlSafe` for dynamic SQL and no longer gives
+`SqliteArguments` a lifetime parameter. The repository marker accepts only fixed SQL, trusted mapped columns, and
+placeholders; request values stay separate binds. It is not a sanitizer for arbitrary SQL.
+
+The former `yoke-derive` 0.8.2 MSRV workaround is no longer needed. See
+[dependency maintenance](../../docs/dependencies.md) for current versions and upstream constraints.
 
 Upstream: [SQLx](https://github.com/launchbadge/sqlx), [Tokio](https://github.com/tokio-rs/tokio).

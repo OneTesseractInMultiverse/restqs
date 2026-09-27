@@ -253,12 +253,12 @@ restqs = { version = "0.2", features = ["sqlx"] }
 sqlx = { version = "0.9.0", default-features = false, features = ["postgres", "runtime-tokio"] }
 ```
 
-For the SQLite example (SQLx 0.8.6, Rust 1.85 or newer):
+For the SQLite example (SQLx 0.9.0, Rust 1.94 or newer):
 
 ```toml
 [dependencies]
 restqs = { version = "0.2", features = ["sqlx"] }
-sqlx = { version = "0.8.6", default-features = false, features = ["sqlite", "runtime-tokio"] }
+sqlx = { version = "0.9.0", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
 The documented examples keep the security boundary visible. SQL text contains
@@ -300,6 +300,7 @@ for setup and release commands.
 - [Testing Guide](docs/testing-guide.md)
 - [Publishing](docs/publishing.md)
 - [Compatibility Policy](docs/compatibility.md)
+- [Dependency Maintenance](docs/dependencies.md)
 - [Release Checklist](docs/release-checklist.md)
 - [Open Source Practices](docs/open-source.md)
 - [Support](SUPPORT.md)

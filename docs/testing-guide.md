@@ -110,8 +110,8 @@ fresh in-memory SQLite database per test and closes its pool even when the query
 returned ordering against explicit values, including tie-breaking and sorting before pagination.
 
 See [the fixture README](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/sqlite) for tested
-versions and dependency rationale. Both Rust CI jobs verify this fixture, including dependency compatibility
-with Rust 1.85, and the security job audits its lockfile. No database service setup is required. PostgreSQL and MySQL execution suites are opt-in locally and run in the required stable CI job.
+versions and dependency rationale. Stable Rust CI verifies this SQLx 0.9 fixture (Rust 1.94 minimum),
+and the security job audits its lockfile. No database service setup is required. PostgreSQL and MySQL execution suites are opt-in locally and run in the required stable CI job.
 
 ## PostgreSQL and MySQL Execution Checks
 
@@ -120,7 +120,7 @@ for versions, disposable Docker commands, and connection URLs. `make verify-serv
 all service tests explicitly. Each uses a fresh temporary table and single-connection pool with cleanup after errors.
 No URL means a failing setup, never a silently skipped success. Plain Cargo tests leave these service tests ignored.
 
-The service fixture uses SQLx 0.9.0 on Rust 1.94+; the core and SQLite suite still run on Rust 1.85. Stable CI gates merges
+The service fixture uses SQLx 0.9.0 on Rust 1.94+; the core, properties, and policy checker still run on Rust 1.85. Stable CI gates merges
 on both database services as well as SQLite. Every fixture has a separate audited lockfile and no core dependencies.
 
 ## Generated Properties and Fuzzing
@@ -149,7 +149,7 @@ make setup
 make coverage
 ```
 
-Coverage uses pinned Rust 1.97.1 with `llvm-tools-preview` and cargo-llvm-cov 0.9.1 (`make coverage-setup` installs both).
+Coverage uses pinned Rust 1.98.1 with `llvm-tools-preview` and cargo-llvm-cov 0.9.1 (`make coverage-setup` installs both).
 The command checks every measured file under the library's `src/` with all features and all root test targets, requiring
 100% total line coverage and zero uncovered lines across the measured files. Example executables, external fixtures, checker tooling, doctests, and
 compiler-generated code are outside this source-line metric; their separate suites still run. No changed-line exemption
