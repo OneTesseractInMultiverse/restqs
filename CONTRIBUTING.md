@@ -85,3 +85,7 @@ Public error codes are compatibility-sensitive. Follow the [compatibility policy
 query behavior, and MSRV changes. An added field in `ParserLimits` or a variant in an exhaustive enum can break source;
 compatible patches cannot make those changes. Include the published API baseline, comparison results, and migration
 notes in release-preparation PRs.
+
+The current published baseline is [0.2.0](docs/compatibility.md#public-api-comparison-baseline). Documentation in `main`
+includes corrections after publication; keep released facts in the changelog and put later changes under Unreleased.
+Complete the [post-publication checklist](docs/release-checklist.md#validate-and-publish) when a new version becomes available.

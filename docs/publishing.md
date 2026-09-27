@@ -7,15 +7,32 @@ before preparing an update.
 The package ships source, tests, examples, docs, policy files, `Makefile`, `SUPPORT.md`, and `LICENSE`. Release automation
 and its Python tests stay in `.github/` and are excluded from the crate.
 
+## Current Published Release
+
+**RestQS 0.2.0 was published on 2026-09-26** and is the latest stable release. Its Rust 1.85 minimum, empty default
+features, optional `sqlx` adapter, and dependency-free manifest remain the supported library contract.
+
+| Record | Published value |
+| --- | --- |
+| Registry | [restqs 0.2.0 on crates.io](https://crates.io/crates/restqs/0.2.0) |
+| Release tag | [`v0.2.0`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.0) |
+| Peeled commit | `e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc` |
+| Successful publication | [Publish run 36276976250](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/36276976250) |
+| Released documentation | [API](https://docs.rs/restqs/0.2.0/restqs/) and [SQL adapter](https://docs.rs/restqs/0.2.0/restqs/adapters/sqlx/) |
+
+Use [0.2.0 as the active API baseline](compatibility.md#public-api-comparison-baseline) for compatible updates.
+Changes after this tag, including current fixture/tool versions, are recorded under [Unreleased](../CHANGELOG.md#unreleased).
+The published version and tag cannot be reused for those changes.
+
 ## Release Flow
 
 Choose the version using the [compatibility policy](compatibility.md). Before 1.0, an intentional API, query-behavior,
-or library-MSRV break requires the next `0.x` line; a compatible `0.1.x` patch must preserve that line's contract, except
-for the documented security-fix allowance. The 0.2.0 field-mapping and validation changes require
+or library-MSRV break requires the next `0.x` line; a compatible `0.2.x` patch must preserve that line's contract, except
+for the documented security-fix allowance. Applications moving from 0.1.x to the published 0.2 line must follow
 [the migration guide](migration-0.2.md). Compare both feature surfaces against the recorded published baseline before
 merging the release-preparation PR; the API review complements CI and is not inferred from a version bump.
 
-Merge the reviewed version and changelog changes into `main`, then create a tag matching `Cargo.toml`, such as `v0.2.0`.
+Merge the reviewed version and changelog changes into `main`, then create a new tag matching the unpublished version in `Cargo.toml`.
 Publishing a GitHub release starts `.github/workflows/publish.yml`.
 
 ```mermaid
@@ -74,7 +91,8 @@ Expect `can_admins_bypass: false`, the required reviewer, `prevent_self_review: 
 
 ## Trusted Publishing
 
-In [the crate settings](https://crates.io/crates/restqs/settings), add a GitHub Actions Trusted Publisher with:
+Trusted Publishing was used for the 0.2.0 publication. In
+[the crate settings](https://crates.io/crates/restqs/settings), verify the saved GitHub Actions Trusted Publisher matches:
 
 | Setting | Value |
 | --- | --- |
@@ -94,21 +112,25 @@ four settings above and the GitHub environment rules before rerunning the workfl
 
 ## Preparing an Update
 
+The commands below use **0.2.1 as an example of a future compatible patch**, not an already prepared or published release.
+Select an available version first, update the manifest and notes, and use that version consistently in every command.
+Do not rerun publication for 0.2.0.
+
 1. Update `Cargo.toml` to an unpublished version and update `CHANGELOG.md`. Complete the API/behavior comparison and
    migration-note steps in [the release checklist](release-checklist.md#prepare-the-version), then merge the PR.
-2. Create and push the matching tag on the reviewed `main` commit. For example, after changing the manifest to `0.2.0`:
+2. Create and push the matching tag on the reviewed `main` commit. For example, after changing the manifest to `0.2.1`:
 
    ```sh
    git switch main
    git pull --ff-only
-   git tag -a v0.2.0 -m 'Release v0.2.0'
-   git push origin v0.2.0
+   git tag -a v0.2.1 -m 'Release v0.2.1'
+   git push origin v0.2.1
    ```
 
 3. Validate without publishing or creating a GitHub release:
 
    ```sh
-   gh workflow run publish.yml --ref main -f tag=v0.2.0 -f publish=false
+   gh workflow run publish.yml --ref main -f tag=v0.2.1 -f publish=false
    gh run list --workflow publish.yml
    ```
 
@@ -119,7 +141,7 @@ four settings above and the GitHub environment rules before rerunning the workfl
 4. Prepare a draft GitHub release for the validated tag using the reviewed changelog notes:
 
    ```sh
-   gh release create v0.2.0 --verify-tag --draft --title v0.2.0 --notes-file release-notes.md
+   gh release create v0.2.1 --verify-tag --draft --title v0.2.1 --notes-file release-notes.md
    ```
 
    Keep `release-notes.md` outside the package, or remove it after use. A draft does not publish to crates.io.
@@ -127,16 +149,18 @@ four settings above and the GitHub environment rules before rerunning the workfl
 
 
    ```sh
-   gh release edit v0.2.0 --draft=false
+   gh release edit v0.2.1 --draft=false
    ```
 
 5. Wait for the release checks, then approve the `crates-io` deployment from the Actions run. Check the published version
    on crates.io and its documentation on docs.rs.
+6. Complete the [post-publication documentation updates](release-checklist.md#validate-and-publish), including the active
+   API baseline, security support table, installation status, and this release record. Preserve historical release facts.
 
 Use manual publication to retry a failed run for an unpublished version:
 
 ```sh
-gh workflow run publish.yml --ref main -f tag=v0.2.0 -f publish=true
+gh workflow run publish.yml --ref main -f tag=v0.2.1 -f publish=true
 ```
 
 Retries run all gates again and still require approval. If an upload timed out, check crates.io before retrying: a
@@ -161,6 +185,13 @@ network, or repository files. `make verify` covers linting, tests, doctests, and
 
 ## docs.rs
 
-docs.rs builds with all features, exposing the optional adapter alongside the core API.
+The [0.2.0 API documentation](https://docs.rs/restqs/0.2.0/restqs/) is available. docs.rs builds with all features,
+exposing the optional adapter alongside the core API.
 `make doc` builds documentation with `RUSTDOCFLAGS="--cfg docsrs -D warnings"`, with and without `sqlx`. Broken links
 and rustdoc warnings fail the build. GitHub Actions publication does not need a separate docs.rs credential.
+
+crates.io and docs.rs display documentation from the published package. The 0.2.0 package was prepared before upload,
+so its bundled README and guides retain their pre-publication wording. Corrections merged into `main` are available in
+the [repository documentation](https://github.com/OneTesseractInMultiverse/restqs#documentation); they do not rewrite
+the published archive or a docs.rs build of it. Shipping corrected documentation on those versioned surfaces requires
+a new crate version. Keep release tags immutable and include the corrections in the next release.

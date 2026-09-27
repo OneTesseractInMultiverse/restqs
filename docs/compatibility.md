@@ -2,16 +2,15 @@
 
 RestQS follows Cargo's compatible release lines and adds explicit guarantees for query behavior, error codes, and the
 minimum supported Rust version (MSRV). Being pre-1.0 does not make patch releases unrestricted. This policy applies to
-releases from 0.2 onward; it does not change previously published artifacts. The migration baseline for the 0.2.0
-release is the published 0.1.1 artifact recorded below.
+releases from 0.2 onward; it does not change previously published artifacts. **0.2.0 is the current published release
+and API comparison baseline**. The earlier 0.1.1 comparison is retained below as migration history.
 
 ## Release Lines
 
 | Version change | RestQS policy |
 | --- | --- |
-| `0.1.1` → `0.1.2` | Compatible fixes and compatible additions; preserve existing Rust APIs, supported query behavior, error-code meanings, and MSRV, subject to the security exception below. |
-| `0.1.x` → `0.2.0` | New incompatible line. API or behavior changes require a migration guide. Cargo requirements such as `restqs = "0.1"` do not select it automatically. |
-| `0.2.0` → `0.2.1` | Same compatibility promise within the 0.2 line. A further intentional break requires `0.3.0`. |
+| `0.2.0` → `0.2.1` | Compatible fixes and compatible additions; preserve existing Rust APIs, supported query behavior, error-code meanings, and MSRV, subject to the security exception below. |
+| `0.2.x` → `0.3.0` | New incompatible line. API or behavior changes require a migration guide. Cargo requirements such as `restqs = "0.2"` do not select it automatically. |
 | `1.2.3` → `1.2.4` | Compatible fixes and documentation updates. |
 | `1.2.3` → `1.3.0` | Compatible new APIs/features; existing supported uses continue working. |
 | `1.x` → `2.0.0` | Incompatible API, behavior, or MSRV changes, with migration notes. |
@@ -91,46 +90,51 @@ MSRV. Keep installation examples clear about that distinction.
 
 ## Public API Comparison Baseline
 
-Use the published **0.1.1** release as the baseline for preparing 0.2.0:
+Use the published **0.2.0** release as the baseline for the next compatible 0.2.x update:
 
-- Tag: [`v0.1.1`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.1.1).
-- Peeled commit: `973f2167facc75727e67a19f25bcc819511798d7` (the annotated tag object has a different ID).
-- Manifest: version `0.1.1`, edition `2024`, Rust `1.85`, empty default features, optional `sqlx`.
-- Released API: [restqs 0.1.1 rustdoc](https://docs.rs/restqs/0.1.1/restqs/).
+- Tag: [`v0.2.0`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.0).
+- Peeled commit: `e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc` (the annotated tag object has a different ID).
+- Published to [crates.io](https://crates.io/crates/restqs/0.2.0) on 2026-09-26 through the
+  [CI publication workflow](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/36276976250).
+- Manifest: version `0.2.0`, edition `2024`, Rust `1.85`, empty default features, optional `sqlx`, no dependencies.
+- Released API: [restqs 0.2.0 rustdoc](https://docs.rs/restqs/0.2.0/restqs/), including the
+  [SQL adapter](https://docs.rs/restqs/0.2.0/restqs/adapters/sqlx/).
 
 From a full Git checkout, install the pinned comparison tool and run both feature surfaces:
 
 ```sh
 cargo +1.98.1 install cargo-semver-checks --locked --version 0.50.0
-git fetch origin tag v0.1.1
-git rev-parse 'v0.1.1^{commit}'
-cargo +1.98.1 semver-checks --baseline-rev 973f2167facc75727e67a19f25bcc819511798d7 --only-explicit-features --release-type patch
-cargo +1.98.1 semver-checks --baseline-rev 973f2167facc75727e67a19f25bcc819511798d7 --all-features --release-type patch
+git fetch origin tag v0.2.0
+git rev-parse 'v0.2.0^{commit}'
+cargo +1.98.1 semver-checks --baseline-rev e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc --only-explicit-features --release-type patch
+cargo +1.98.1 semver-checks --baseline-rev e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc --all-features --release-type patch
 ```
 
-Check that the peeled tag matches the recorded commit before comparison. `--release-type patch` deliberately asks for
-compatibility with 0.1.1 even while the manifest says 0.2.0, so expected breaking changes are reported instead of hidden
-by the version bump. For this transition a nonzero result is expected: removed column accessors/constructor arguments,
-`SqlxAdapter`'s new mapping argument, and removal of its `Copy` implementation need migration. The tool also reports
-changed `RqsError` discriminant positions after variant insertions. RestQS exposes error-code strings for machine
-classification, not numeric enum ordinals; do not serialize memory layout or `Debug` output. This observation is recorded
-as part of the deliberately incompatible 0.2 transition, not suppressed in the checker. Review every diagnostic
-against [the 0.2 migration guide](migration-0.2.md); an unexplained new break must be resolved before release. Do not use
-`|| true` to turn tool/build failures into successful verification.
+Check that the peeled tag matches the recorded commit before comparison. Both comparisons must pass for a compatible
+0.2.x update. `--release-type patch` enforces compatibility with the baseline even if the local manifest version has
+not changed or has already been bumped. Investigate every diagnostic and distinguish tool/build failures from API
+findings. Do not use `|| true` to turn failures into successful verification.
 
-The initial comparison for this 0.2 preparation reported three failing check categories for core and four with `sqlx`:
-changed error discriminants, removed column accessors, changed constructor arity, and (with `sqlx`) removed `Copy`.
-These are reviewed migration findings for this new incompatible line; there were no tool/build errors. Keep this record
-with the migration guide and investigate additional findings on later comparisons.
-
-On a compatible patch release both comparisons must pass against the latest published version in that line. After a new
-release, record its tag and full commit as the next baseline; never move the old tag. For the first release of a new line,
-retain the preceding published line as the migration comparison baseline until the new version is published. Before a
-project's first-ever publication, review and archive its complete exported API and immutable release commit instead of
-claiming a comparison to a nonexistent published version.
+After a new release, record its tag and full commit as the next baseline; never move the old tag. When preparing the
+first release of a new incompatible line, keep the latest published release as the comparison baseline until publication
+and document every accepted break in that line's migration guide.
 
 The comparison tool is a maintainer-only check, not a parser dependency or an automatic merge gate. Its pinned version
 requires a newer toolchain than the library; use the command above. Automated API analysis cannot prove query behavior,
 error-code meaning, MSRV, or database semantics. Review the source diff, changelog, focused tests, and migration guide as
 part of the [release checklist](release-checklist.md). Record the baseline, command results, accepted changes, and migration
 links in the release-preparation PR.
+
+## Historical 0.1.1 to 0.2.0 Comparison
+
+The migration to 0.2.0 was reviewed against published [0.1.1](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.1.1),
+tag `v0.1.1`, peeled commit `973f2167facc75727e67a19f25bcc819511798d7`.
+Its manifest used edition `2024`, Rust `1.85`, empty default features, and optional `sqlx`; its
+[released API](https://docs.rs/restqs/0.1.1/restqs/) remains available for migration reference.
+
+The comparison with patch-level compatibility requested reported three failing check categories for core and four with
+`sqlx`: changed error discriminants, removed column accessors, changed constructor arity, and removed adapter `Copy`.
+These were reviewed findings for the deliberately incompatible 0.2 transition, with no tool/build errors; they are
+explained in [the migration guide](migration-0.2.md). They are not accepted failures for subsequent 0.2.x patches.
+RestQS exposes error-code strings for machine classification, not numeric enum ordinals; do not serialize memory layout
+or `Debug` output. Keep the historical tag and migration notes unchanged when advancing the active baseline.

@@ -23,12 +23,13 @@ flowchart LR
 
 ## Install
 
-This documentation describes **RestQS 0.2.0**, which requires Rust 1.85 or newer.
-Version 0.2 introduces breaking changes from 0.1.x; read the
+**RestQS 0.2.0 is published on [crates.io](https://crates.io/crates/restqs/0.2.0)**
+and requires Rust 1.85 or newer. Its [API documentation](https://docs.rs/restqs/0.2.0/restqs/)
+includes the optional SQL adapter. Version 0.2 introduces breaking changes from 0.1.x; read the
 [0.2 migration guide](docs/migration-0.2.md) before upgrading.
-The dependency snippets below apply once 0.2.0 is published. To test the release
-candidate beforehand, use `restqs = { path = "../restqs" }` from a sibling checkout,
-adding `features = ["sqlx"]` when needed.
+
+The library examples describe the published 0.2 API. Developer-tool and fixture instructions in this checkout track
+`main`, including updates made after publication; see [Unreleased changes](CHANGELOG.md#unreleased).
 
 Use the core parser with no runtime dependencies:
 
@@ -293,6 +294,10 @@ for setup and release commands.
 
 ## Documentation
 
+Published crate documentation is a snapshot of its release. The [repository documentation](https://github.com/OneTesseractInMultiverse/restqs#documentation)
+contains subsequent corrections; updating `main` does not replace the README or rustdoc bundled with 0.2.0.
+
+- [Published 0.2.0 API](https://docs.rs/restqs/0.2.0/restqs/)
 - [API Guide](docs/api-guide.md)
 - [Architecture](docs/architecture.md)
 - [Integration Guide](docs/integrations.md)

@@ -7,6 +7,14 @@ line and migration notes for new incompatible lines, with a narrow documented se
 
 ## Unreleased
 
+### Documentation
+
+- Reflect the published 0.2.0 release in installation instructions, the 0.2.x security support policy, and the active
+  API comparison baseline. Record the publication date and workflow, refresh future-release instructions, and distinguish
+  current repository documentation from published snapshots. Correct the policy checker's documented Syn version.
+
+### Changed
+
 - Update SQLite execution to SQLx 0.9.0, including its dynamic-SQL marker and argument types, and refresh its locked
   transitive dependencies. Both database fixtures now require Rust 1.94 and run on stable CI; the library keeps
   Rust 1.85 and no runtime dependencies.
@@ -15,7 +23,12 @@ line and migration notes for new incompatible lines, with a narrow documented se
 - Refresh digest-pinned test services to PostgreSQL 18.6 and the latest available official MySQL image, 26.7.0.
   Document current dependency versions and unavoidable upstream/MSRV constraints.
 
-## 0.2.0
+## 0.2.0 - 2026-09-26
+
+Published on [crates.io](https://crates.io/crates/restqs/0.2.0) from tag
+[`v0.2.0`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.0), commit
+`e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc`. The entries below describe that release snapshot;
+later dependency and tooling updates are recorded under Unreleased.
 
 This release introduces breaking API and validation changes from 0.1.x. Follow
 [the migration guide](docs/migration-0.2.md). The library keeps Rust 1.85 as its minimum supported version,

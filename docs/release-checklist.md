@@ -7,8 +7,8 @@ Use this checklist before publishing a new crate version. See [Publishing](publi
 - Choose an unpublished version after checking the crates.io version history and applying the
   [compatibility policy](compatibility.md#release-lines), including its `0.x` rules.
 - Update `version` in `Cargo.toml` and record user-facing changes in `CHANGELOG.md`.
-- Record the latest published comparison baseline (tag and full commit) in the release-preparation PR. For 0.2.0 use
-  [the recorded 0.1.1 baseline](compatibility.md#public-api-comparison-baseline).
+- Record the latest published comparison baseline (tag and full commit) in the release-preparation PR. For the next
+  0.2.x update, use [the recorded 0.2.0 baseline](compatibility.md#public-api-comparison-baseline).
 - Run the pinned API comparisons for the core and all-feature surfaces. Compatible patches must pass. For a new
   incompatible line, review every diagnostic and document each accepted break; distinguish tool/build errors from
   compatibility findings. Do not hide failures by selecting a larger version number or ignoring the exit status.
@@ -60,6 +60,9 @@ It must exclude build output, editor metadata, credentials, local coverage repor
 - Confirm the intended version appears on crates.io and docs.rs.
 - Record the published tag and full commit as the next API baseline, and update the supported-version policy when
   advancing the maintained minor line. Preserve old tags and migration notes.
+- Reconcile the repository documentation after publication: replace candidate-only installation text, date the changelog,
+  record the publication run, update the active API baseline and support table, and refresh future-release examples.
+  Corrections to `main` do not alter documentation in an already published crate; see [documentation snapshots](publishing.md#docsrs).
 
 All release jobs check out the resolved SHA, including after environment approval. Never move a published release tag.
 Do not reuse a published crate version; prepare a new version for follow-up changes. For a failed upload, check crates.io
