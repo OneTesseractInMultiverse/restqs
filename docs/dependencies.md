@@ -4,6 +4,10 @@ The published library has **no runtime or development dependencies**, including 
 External drivers and test tools live in separate unpublished crates. Updating them does not raise the library's
 Rust 1.85 minimum or change a previously published crate.
 
+This inventory describes the current repository after 0.2.0 publication. The published
+[`v0.2.0` snapshot](https://github.com/OneTesseractInMultiverse/restqs/tree/v0.2.0) predates the developer-dependency updates
+under [Unreleased](../CHANGELOG.md#unreleased); its release notes retain the versions tested at that time.
+
 ## Current Direct Dependencies
 
 Checked against crates.io and upstream release metadata on 2026-09-26. Versions below are the latest stable releases

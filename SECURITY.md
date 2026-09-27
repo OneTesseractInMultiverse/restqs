@@ -2,15 +2,15 @@
 
 ## Supported Versions
 
-The latest published minor line receives vulnerability fixes. Check the
-[crate version history](https://crates.io/crates/restqs/versions) for the published version.
-When 0.2.0 is published, support moves from 0.1.x to 0.2.x; use the
-[migration guide](docs/migration-0.2.md) to upgrade.
+The latest published minor line receives vulnerability fixes. **0.2.x is the supported line**, following the
+publication of [0.2.0](https://crates.io/crates/restqs/0.2.0) on 2026-09-26. Applications on 0.1.x must use the
+[migration guide](docs/migration-0.2.md) to upgrade. Check the
+[crate version history](https://crates.io/crates/restqs/versions) for available patches.
 
 | Version | Status    |
 |---------|-----------|
-| Latest published minor line | Supported |
-| Older published lines | Upgrade to the latest line |
+| 0.2.x | Supported; latest published version is 0.2.0 |
+| 0.1.x | Unsupported; upgrade to 0.2.x |
 | Unpublished branches and release candidates | No release support guarantee |
 
 ## Reporting A Vulnerability

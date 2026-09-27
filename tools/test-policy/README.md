@@ -8,9 +8,9 @@ The Rust library is pure syntax analysis. The CLI owns Git/filesystem reads and 
 standard-library AST and the same source inventory convention. Neither evaluates test input or expands procedural macros.
 See [the testing guide](../../docs/testing-guide.md#one-assertion-rule) for the full policy and documented limitations.
 
-This unpublished tool has an isolated lockfile. `syn` 2.0.119 parses Rust syntax and `proc-macro2` 1.0.107 retains token
-structure and source locations. Both are MIT/Apache-2.0, actively maintained Rust ecosystem crates. Version 2 of `syn`
-keeps the tool compatible with Rust 1.85; its `full` and `visit` features provide function/attribute traversal. The small
+This unpublished tool has an isolated lockfile. `syn` 3.0.6 parses Rust syntax and `proc-macro2` 1.0.107 retains token
+structure and source locations. Both are MIT/Apache-2.0, actively maintained Rust ecosystem crates. The checker is tested
+on Rust 1.85 in CI; Syn's `full` and `visit` features provide function/attribute traversal. The small
 transitive tree (`quote`, `unicode-ident`) is locked, audited by RustSec in CI, and monitored by Dependabot. These
 build-time developer dependencies never enter the library package or runtime parser/adapter boundary. Updating their
 versions requires rerunning the checker regressions, repository scan, MSRV check, and audit.

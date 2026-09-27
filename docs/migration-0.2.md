@@ -2,7 +2,9 @@
 
 Version 0.2 introduces a breaking API change. Published 0.1.x applications keep their existing API until they
 upgrade. Cargo requirements such as `restqs = "0.1"` stay on that line; moving to `0.2` is an explicit upgrade.
-See the [compatibility policy and 0.1.1 API baseline](compatibility.md). This migration separates the endpoint's logical field allowlist from each SQL repository's physical schema.
+Version 0.2.0 was published on 2026-09-26. See the [historical 0.1.1 comparison](compatibility.md#historical-011-to-020-comparison)
+for this migration and the [current 0.2.0 baseline](compatibility.md#public-api-comparison-baseline) for subsequent updates.
+This migration separates the endpoint's logical field allowlist from each SQL repository's physical schema.
 
 ## Logical Catalog
 
