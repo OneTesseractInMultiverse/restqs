@@ -85,7 +85,7 @@ MSRV for all patches in a `0.x` line. Raising the library MSRV requires the next
 after 1.0 under this project's stricter guarantee. Announce the old/new MSRV and reason in release notes and update CI.
 
 Developer tooling and unpublished fixtures may require newer Rust when their requirements are explicit. The SQLx 0.9
-service fixture requires Rust 1.94; the coverage job uses pinned Rust 1.97.1; fuzzing uses pinned nightly. These do not
+database fixtures require Rust 1.94; the coverage job uses pinned Rust 1.98.1; fuzzing uses pinned nightly. These do not
 raise the library MSRV or add dependencies to its published manifest. Application dependencies may impose their own
 MSRV. Keep installation examples clear about that distinction.
 
@@ -101,11 +101,11 @@ Use the published **0.1.1** release as the baseline for preparing 0.2.0:
 From a full Git checkout, install the pinned comparison tool and run both feature surfaces:
 
 ```sh
-cargo +1.97.1 install cargo-semver-checks --locked --version 0.50.0
+cargo +1.98.1 install cargo-semver-checks --locked --version 0.50.0
 git fetch origin tag v0.1.1
 git rev-parse 'v0.1.1^{commit}'
-cargo +1.97.1 semver-checks --baseline-rev 973f2167facc75727e67a19f25bcc819511798d7 --only-explicit-features --release-type patch
-cargo +1.97.1 semver-checks --baseline-rev 973f2167facc75727e67a19f25bcc819511798d7 --all-features --release-type patch
+cargo +1.98.1 semver-checks --baseline-rev 973f2167facc75727e67a19f25bcc819511798d7 --only-explicit-features --release-type patch
+cargo +1.98.1 semver-checks --baseline-rev 973f2167facc75727e67a19f25bcc819511798d7 --all-features --release-type patch
 ```
 
 Check that the peeled tag matches the recorded commit before comparison. `--release-type patch` deliberately asks for

@@ -215,7 +215,7 @@ binds every value through SQLx.
 
 ### PostgreSQL
 
-This example is compiled and executed with SQLx 0.9.0 and PostgreSQL 17.6 by
+This example is compiled and executed with SQLx 0.9.0 and PostgreSQL 18.6 by
 [the service fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/services).
 SQLx 0.9 requires Rust 1.94 or newer; RestQS itself retains Rust 1.85 support. An application can depend on SQLx in its own manifest:
 
@@ -228,7 +228,7 @@ sqlx = { version = "0.9.0", default-features = false, features = ["postgres", "r
 SQLx 0.9's `AssertSqlSafe` marks the reviewed dynamic statement: fixed repository syntax plus authorized mapped
 identifiers and placeholders, with all values bound separately. It does not sanitize arbitrary SQL. The executable
 [source](https://github.com/OneTesseractInMultiverse/restqs/blob/main/integration-tests/services/src/postgres.rs) keeps this
-operation in a private executor. SQLx 0.8 uses `sqlx::query(&statement.sql)` without this marker.
+operation in a private executor. The SQLite example uses the same SQLx 0.9 trust marker.
 
 Use the fixture's [PostgreSQL repository source](https://github.com/OneTesseractInMultiverse/restqs/blob/main/integration-tests/services/src/postgres.rs)
 as the canonical binding example. `list_users` parses and assembles a bounded statement; its private executor binds
@@ -249,7 +249,7 @@ An application that uses SQLite can depend on SQLx in its own manifest:
 ```toml
 [dependencies]
 restqs = { version = "0.2", features = ["sqlx"] }
-sqlx = { version = "0.8.6", default-features = false, features = ["sqlite", "runtime-tokio"] }
+sqlx = { version = "0.9.0", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
 SQLite uses `?` placeholders. The shared users builder appends authorized `ORDER BY` terms after filters and before
@@ -266,21 +266,21 @@ repeatable pagination should include a unique tie-breaker such as `sort=age,id`.
 
 The [SQLite repository source](https://github.com/OneTesseractInMultiverse/restqs/blob/main/integration-tests/sqlite/src/lib.rs)
 contains the complete parse, assembly, bind, execute, and decode flow. It uses the same shared users, budget, and
-pagination modules as the PostgreSQL example, with SQLite-specific scalar binding. Its SQLx 0.8.6 dependency preserves
-the fixture's Rust 1.85 minimum; this is an intentional tested version, not a claim that it is the latest SQLx release.
+pagination modules as the PostgreSQL example, with SQLite-specific scalar binding. SQLx 0.9.0 requires Rust 1.94;
+the library itself still supports Rust 1.85. Dynamic SQL uses `AssertSqlSafe` only after trusted repository assembly.
 
 The [isolated SQLite fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/sqlite)
 compiles this binding and row-decoding flow and includes the same users and pagination modules by path. Run
-`make verify-sqlite` from a repository checkout. It executes SQLx 0.8.6 with bundled SQLite 3.46.0 in memory, checking
+`make verify-sqlite` from a repository checkout. It executes SQLx 0.9.0 with bundled SQLite 3.51.3 in memory, checking
 returned rows for both sort directions, multiple terms, and pagination. No server or credentials are needed. This
-separate test crate is excluded from the published package and ordinary unit suite; both Rust CI jobs run it explicitly.
+separate test crate is excluded from the published package and ordinary unit suite; the stable Rust CI job runs it explicitly.
 
 ### Database Conformance Suites
 
 The SQLite fixture covers scalar and null filters, list membership/exclusion, projection, ordering, pagination, and
 actual default caps. The [service fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/services)
 compiles PostgreSQL and MySQL binding/decoding and executes equivalent contracts plus supported regex against PostgreSQL
-17.6 and MySQL 8.4.6. MySQL's bounded policy always supplies a limit, so offset-only input uses `LIMIT ? OFFSET ?`.
+18.6 and MySQL 26.7.0. MySQL's bounded policy always supplies a limit, so offset-only input uses `LIMIT ? OFFSET ?`.
 Regex is enabled only in the separate fixture catalog. These test repositories use a fixed `id,name` response.
 
 Run `make verify-sqlite` without services, or configure the two test URLs documented in the fixture README and run

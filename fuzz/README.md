@@ -15,7 +15,7 @@ make fuzz-smoke
 make fuzz-smoke FUZZ_SECONDS=3600 FUZZ_RUNS=-1
 ```
 
-Tools are pinned to cargo-fuzz 0.13.2, nightly-2026-09-24 with rust-src, and libfuzzer-sys 0.4.13. AddressSanitizer,
+Tools are pinned to cargo-fuzz 0.13.2, nightly-2026-09-27 with rust-src, and libfuzzer-sys 0.4.13. AddressSanitizer,
 debug assertions, and overflow checks remain enabled. The default smoke run stops each target after 10,000 executions
 or 15 seconds, uses seed 5394771, a 5-second per-input timeout, and a 1024 MiB RSS limit. Compilation is outside the fuzz
 time budget; the CI smoke step also has a 10-minute wall-clock limit. These are bounded smoke checks, not a proof that
@@ -28,8 +28,8 @@ The property fixture replays known regressions with explicit expected outcomes e
 Reproduce and minimize a failing input using the target printed in the log:
 
 ```sh
-cargo +nightly-2026-09-24 fuzz run parsing fuzz/artifacts/parsing/crash-<hash>
-cargo +nightly-2026-09-24 fuzz tmin parsing fuzz/artifacts/parsing/crash-<hash>
+cargo +nightly-2026-09-27 fuzz run parsing fuzz/artifacts/parsing/crash-<hash>
+cargo +nightly-2026-09-27 fuzz tmin parsing fuzz/artifacts/parsing/crash-<hash>
 ```
 
 Copy the minimized query into `integration-tests/robustness/corpus/`, add one assertion proving the correct behavior,

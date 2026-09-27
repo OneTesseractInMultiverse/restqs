@@ -1,6 +1,6 @@
 # PostgreSQL and MySQL execution tests
 
-This unpublished fixture tests SQLx repositories against PostgreSQL 17.6 and MySQL 8.4.6. CI pins their Docker image
+This unpublished fixture tests SQLx repositories against PostgreSQL 18.6 and MySQL 26.7.0. CI pins their Docker image
 digests. The PostgreSQL normal-query path uses the same `examples/support/users.rs` builder documented in the integration
 guide. Separate catalog configuration explicitly authorizes regex; the public user example still disables it.
 
@@ -12,10 +12,10 @@ Use a disposable test database with permission to create temporary tables. For e
 
 ```sh
 docker run -d --name restqs-pg-tests -p 127.0.0.1:55432:5432 \
-  -e POSTGRES_USER=restqs -e POSTGRES_PASSWORD=restqs-test -e POSTGRES_DB=restqs postgres:17.6
+  -e POSTGRES_USER=restqs -e POSTGRES_PASSWORD=restqs-test -e POSTGRES_DB=restqs postgres:18.6
 docker run -d --name restqs-mysql-tests -p 127.0.0.1:53306:3306 \
   -e MYSQL_ROOT_PASSWORD=restqs-root-test -e MYSQL_USER=restqs \
-  -e MYSQL_PASSWORD=restqs-test -e MYSQL_DATABASE=restqs mysql:8.4.6
+  -e MYSQL_PASSWORD=restqs-test -e MYSQL_DATABASE=restqs mysql:26.7.0
 # Wait for both databases to be ready before running the suite.
 export RESTQS_POSTGRES_URL='postgres://restqs:restqs-test@127.0.0.1:55432/restqs'
 export RESTQS_MYSQL_URL='mysql://restqs:restqs-test@127.0.0.1:53306/restqs?ssl-mode=required'
@@ -36,10 +36,10 @@ fixture and additionally checks actual default result caps.
 SQLx 0.9.0 (MIT OR Apache-2.0) provides PostgreSQL/MySQL drivers; Tokio (MIT) runs async execution. Their versions and all
 transitives are committed in `Cargo.lock` and audited in CI. These maintained upstream dependencies add isolated compile
 time, lockfile/update review, and disposable service startup costs. Dependabot checks the manifest weekly. Neither adds
-dependencies to the published library. This fixture requires Rust 1.94 or newer; the core and SQLite 0.8.6 fixture retain
+dependencies to the published library. Both SQLx fixtures require Rust 1.94 or newer; the core and generated-property fixture retain
 Rust 1.85 coverage. SQLx 0.9's optional RSA authentication feature is not enabled; MySQL uses TLS in local and CI examples.
 
 SQLx 0.9 requires `AssertSqlSafe` for dynamically assembled SQL. The private executors accept only statements built from
 fixed repository syntax, authorized mapped identifiers, and placeholders. Values are bound separately. This marker
 performs no sanitization and must never be applied to raw request SQL. The hostile-value execution test guards this
-boundary. SQLite's documented 0.8.6 integration does not require this marker.
+boundary. The SQLite fixture uses the same marker and SQLx 0.9.0.

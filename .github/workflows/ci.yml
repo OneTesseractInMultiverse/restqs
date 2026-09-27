@@ -35,7 +35,7 @@ jobs:
           - stable
     services:
       postgres:
-        image: ${{ matrix.toolchain == 'stable' && 'postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929' || '' }}
+        image: ${{ matrix.toolchain == 'stable' && 'postgres:18.6@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722' || '' }}
         env:
           POSTGRES_USER: restqs
           POSTGRES_PASSWORD: restqs-test
@@ -46,7 +46,7 @@ jobs:
           --health-cmd "pg_isready -U restqs -d restqs"
           --health-interval 10s --health-timeout 5s --health-retries 10
       mysql:
-        image: ${{ matrix.toolchain == 'stable' && 'mysql:8.4.6@sha256:869218921e61d6c3c89820955d63cca42971f0e3e6c1e2792247bbd944ebc6e9' || '' }}
+        image: ${{ matrix.toolchain == 'stable' && 'mysql:26.7.0@sha256:ade067ae2fb15eeb6143e81185afe22573e3b3addc58aaf90c41999fa6883991' || '' }}
         env:
           MYSQL_ROOT_PASSWORD: restqs-root-test
           MYSQL_USER: restqs
@@ -85,7 +85,12 @@ jobs:
       - name: Test docs
         run: make test-doc
 
+      - name: Verify policy checker minimum Rust
+        if: matrix.toolchain == '1.85.0'
+        run: CARGO_TARGET_DIR=target/test-policy cargo test --manifest-path tools/test-policy/Cargo.toml --locked
+
       - name: Verify SQLite repository
+        if: matrix.toolchain == 'stable'
         run: make verify-sqlite
 
       - name: Verify parser and adapter properties
@@ -151,8 +156,8 @@ jobs:
       - name: Install pinned Rust and coverage tools
         run: |
           make coverage-setup
-          rustup component add --toolchain 1.97.1 clippy rustfmt
-          rustup default 1.97.1
+          rustup component add --toolchain 1.98.1 clippy rustfmt
+          rustup default 1.98.1
 
       - name: Verify assertion policy
         run: make verify-test-policy
@@ -175,7 +180,7 @@ jobs:
           rustup default stable
 
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked --version 0.22.1
+        run: cargo install cargo-audit --locked --version 0.22.2
 
       - name: Audit dependencies
         run: |

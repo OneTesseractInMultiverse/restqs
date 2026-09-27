@@ -2,15 +2,16 @@ CARGO ?= cargo
 PYTHON ?= python3
 POLICY_MANIFEST := tools/test-policy/Cargo.toml
 POLICY_CARGO = CARGO_TARGET_DIR=target/test-policy $(CARGO)
-COVERAGE_TOOLCHAIN := 1.97.1
+COVERAGE_TOOLCHAIN := 1.98.1
 COVERAGE_VERSION := 0.9.1
+AUDIT_VERSION := 0.22.2
 SQLITE_MANIFEST := integration-tests/sqlite/Cargo.toml
 SQLITE_CARGO = CARGO_TARGET_DIR=target/sqlite-integration $(CARGO)
 SERVICE_MANIFEST := integration-tests/services/Cargo.toml
 SERVICE_CARGO = CARGO_TARGET_DIR=target/service-integration $(CARGO)
 PROPERTY_MANIFEST := integration-tests/robustness/Cargo.toml
 PROPERTY_CARGO = CARGO_TARGET_DIR=target/robustness $(CARGO)
-FUZZ_TOOLCHAIN ?= nightly-2026-09-24
+FUZZ_TOOLCHAIN ?= nightly-2026-09-27
 FUZZ_SECONDS ?= 15
 FUZZ_RUNS ?= 10000
 FUZZ_OPTIONS = -max_total_time=$(FUZZ_SECONDS) -runs=$(FUZZ_RUNS) -max_len=4096 -timeout=5 -rss_limit_mb=1024 -seed=5394771 -dict=fuzz/rqs.dict
@@ -50,7 +51,7 @@ help:
 		'verify          Run the local quality gate'
 
 setup:
-	$(CARGO) install cargo-audit --locked
+	$(CARGO) install cargo-audit --locked --version $(AUDIT_VERSION)
 	$(MAKE) coverage-setup
 
 build:

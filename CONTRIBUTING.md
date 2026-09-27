@@ -8,7 +8,8 @@ decides authorization and database execution. Contributions need to preserve tha
 
 ## Development Setup
 
-Install a stable Rust toolchain that supports the crate's `rust-version`. Then install local tools:
+Install current stable Rust for developer tooling and driver fixtures. The library's Rust 1.85 minimum is tested
+separately. See [dependency maintenance](docs/dependencies.md) for tool versions and fixture requirements. Then install local tools:
 
 ```sh
 make setup

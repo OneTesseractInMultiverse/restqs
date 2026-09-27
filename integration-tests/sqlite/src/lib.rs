@@ -18,7 +18,8 @@ pub async fn list_sqlite_users(
 ) -> Result<Vec<(i64, String)>, Box<dyn std::error::Error>> {
     let query = parse(raw, &users_catalog()?)?;
     let statement = sqlite_users_statement(&query)?;
-    let mut query = sqlx::query(&statement.sql);
+    // Only repository-built SQL reaches this boundary; request values remain binds.
+    let mut query = sqlx::query(sqlx::AssertSqlSafe(statement.sql.as_str()));
     for value in &statement.binds {
         query = bind_sqlite_value(query, value)?;
     }
@@ -38,12 +39,10 @@ fn decode_sqlite_users(
 /// Bind one flattened scalar, storing dates, timestamps, and UUIDs as text; reject nested list
 /// values.
 fn bind_sqlite_value<'query>(
-    query: sqlx::query::Query<'query, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'query>>,
+    query: sqlx::query::Query<'query, sqlx::Sqlite, sqlx::sqlite::SqliteArguments>,
     value: &'query RqsValue,
-) -> Result<
-    sqlx::query::Query<'query, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'query>>,
-    restqs::RqsError,
-> {
+) -> Result<sqlx::query::Query<'query, sqlx::Sqlite, sqlx::sqlite::SqliteArguments>, restqs::RqsError>
+{
     match value {
         RqsValue::Null => Ok(query.bind(Option::<String>::None)),
         RqsValue::Boolean(value) => Ok(query.bind(*value)),
