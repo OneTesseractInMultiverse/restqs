@@ -9,21 +9,24 @@ and its Python tests stay in `.github/` and are excluded from the crate.
 
 ## Publication Records
 
-**RestQS 0.2.0 was published on 2026-09-26**. Its Rust 1.85 minimum, empty default
+**RestQS 0.2.1 was published on 2026-10-26**. Its Rust 1.85 minimum, empty default
 features, optional `sqlx` adapter, and dependency-free manifest remain the supported library contract.
 
 | Record | Published value |
 | --- | --- |
-| Registry | [restqs 0.2.0 on crates.io](https://crates.io/crates/restqs/0.2.0) |
-| Release tag | [`v0.2.0`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.0) |
-| Peeled commit | `e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc` |
-| Successful publication | [Publish run 36276976250](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/36276976250) |
-| Released documentation | [API](https://docs.rs/restqs/0.2.0/restqs/) and [SQL adapter](https://docs.rs/restqs/0.2.0/restqs/adapters/sqlx/) |
+| Registry | [restqs 0.2.1 on crates.io](https://crates.io/crates/restqs/0.2.1) |
+| Release tag | [`v0.2.1`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.1) |
+| Peeled commit | `df4606ec519614f15361f53ae5d9fe922a48cc4e` |
+| Successful publication | [Publish run 40400089944](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/40400089944) |
+| Released documentation | [API](https://docs.rs/restqs/0.2.1/restqs/) and [SQL adapter](https://docs.rs/restqs/0.2.1/restqs/adapters/sqlx/) |
 
-The 0.2.1 release was checked against [the 0.2.0 API baseline](compatibility.md#public-api-comparison-baseline).
-Future updates must use the latest published patch as their baseline.
-Changes after this tag, including current fixture/tool versions, are recorded under 0.2.1 in [the changelog](../CHANGELOG.md).
-The published version and tag cannot be reused for those changes.
+Use [the published 0.2.1 API baseline](compatibility.md#public-api-comparison-baseline) for future compatible updates.
+The registry archive checksum and embedded source commit were verified against the immutable tag.
+
+The previous [0.2.0 release](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.0) was published on
+2026-09-26 from `e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc` through
+[Publish run 36276976250](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/36276976250).
+Its release record and tag remain unchanged. The [changelog](../CHANGELOG.md) records the changes in each version.
 
 ## Release Flow
 
@@ -115,7 +118,7 @@ four settings above and the GitHub environment rules before rerunning the workfl
 
 The commands below use **0.2.2 as an example of a future compatible patch**, not an already prepared or published release.
 Select an available version first, update the manifest and notes, and use that version consistently in every command.
-Do not rerun publication for 0.2.0.
+Do not rerun publication for 0.2.0 or 0.2.1.
 
 1. Update `Cargo.toml` to an unpublished version and update `CHANGELOG.md`. Complete the API/behavior comparison and
    migration-note steps in [the release checklist](release-checklist.md#prepare-the-version), then merge the PR.
@@ -186,7 +189,7 @@ network, or repository files. `make verify` covers linting, tests, doctests, and
 
 ## docs.rs
 
-The [0.2.0 API documentation](https://docs.rs/restqs/0.2.0/restqs/) is available. docs.rs builds with all features,
+The [0.2.1 API documentation](https://docs.rs/restqs/0.2.1/restqs/) corresponds to this release. docs.rs builds with all features,
 exposing the optional adapter alongside the core API.
 `make doc` builds documentation with `RUSTDOCFLAGS="--cfg docsrs -D warnings"`, with and without `sqlx`. Broken links
 and rustdoc warnings fail the build. GitHub Actions publication does not need a separate docs.rs credential.

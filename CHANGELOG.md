@@ -11,6 +11,11 @@ No changes yet.
 
 ## 0.2.1 - 2026-10-26
 
+Published on [crates.io](https://crates.io/crates/restqs/0.2.1) from tag
+[`v0.2.1`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.1), commit
+`df4606ec519614f15361f53ae5d9fe922a48cc4e`, through
+[the CI publication workflow](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/40400089944).
+
 Compatible maintenance release with no changes to the library API or query behavior. The published crate remains
 dependency-free, with Rust 1.85 as its minimum, empty default features, and the optional `sqlx` fragment adapter.
 
