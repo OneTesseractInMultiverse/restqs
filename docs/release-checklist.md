@@ -7,8 +7,9 @@ Use this checklist before publishing a new crate version. See [Publishing](publi
 - Choose an unpublished version after checking the crates.io version history and applying the
   [compatibility policy](compatibility.md#release-lines), including its `0.x` rules.
 - Update `version` in `Cargo.toml` and record user-facing changes in `CHANGELOG.md`.
-- Record the latest published comparison baseline (tag and full commit) in the release-preparation PR. For the next
-  0.2.x update, use [the recorded 0.2.0 baseline](compatibility.md#public-api-comparison-baseline).
+- Record the latest published comparison baseline (tag and full commit) in the release-preparation PR. Consult
+  [the current repository baseline](https://github.com/OneTesseractInMultiverse/restqs/blob/main/docs/compatibility.md#public-api-comparison-baseline)
+  when using a checklist bundled with an older published crate.
 - Run the pinned API comparisons for the core and all-feature surfaces. Compatible patches must pass. For a new
   incompatible line, review every diagnostic and document each accepted break; distinguish tool/build errors from
   compatibility findings. Do not hide failures by selecting a larger version number or ignoring the exit status.

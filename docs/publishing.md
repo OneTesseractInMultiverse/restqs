@@ -20,7 +20,8 @@ features, optional `sqlx` adapter, and dependency-free manifest remain the suppo
 | Successful publication | [Publish run 36276976250](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/36276976250) |
 | Released documentation | [API](https://docs.rs/restqs/0.2.0/restqs/) and [SQL adapter](https://docs.rs/restqs/0.2.0/restqs/adapters/sqlx/) |
 
-Use [0.2.0 as the active API baseline](compatibility.md#public-api-comparison-baseline) for compatible updates.
+The 0.2.1 release was checked against [the 0.2.0 API baseline](compatibility.md#public-api-comparison-baseline).
+Future updates must use the latest published patch as their baseline.
 Changes after this tag, including current fixture/tool versions, are recorded under 0.2.1 in [the changelog](../CHANGELOG.md).
 The published version and tag cannot be reused for those changes.
 
