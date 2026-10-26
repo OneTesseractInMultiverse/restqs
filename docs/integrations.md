@@ -1,6 +1,6 @@
 # Integration Guide
 
-These examples target RestQS 0.2.0. See [Migrating to 0.2](migration-0.2.md) when upgrading from 0.1.x.
+These examples target the RestQS 0.2 API. See [Migrating to 0.2](migration-0.2.md) when upgrading from 0.1.x.
 Registry dependency snippets apply after publication; release-candidate users can substitute a local path dependency.
 
 RestQS keeps framework and database code outside the core parser. A REST handler extracts the raw query string, selects
