@@ -7,9 +7,9 @@ before preparing an update.
 The package ships source, tests, examples, docs, policy files, `Makefile`, `SUPPORT.md`, and `LICENSE`. Release automation
 and its Python tests stay in `.github/` and are excluded from the crate.
 
-## Current Published Release
+## Publication Records
 
-**RestQS 0.2.0 was published on 2026-09-26** and is the latest stable release. Its Rust 1.85 minimum, empty default
+**RestQS 0.2.0 was published on 2026-09-26**. Its Rust 1.85 minimum, empty default
 features, optional `sqlx` adapter, and dependency-free manifest remain the supported library contract.
 
 | Record | Published value |
@@ -20,8 +20,9 @@ features, optional `sqlx` adapter, and dependency-free manifest remain the suppo
 | Successful publication | [Publish run 36276976250](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/36276976250) |
 | Released documentation | [API](https://docs.rs/restqs/0.2.0/restqs/) and [SQL adapter](https://docs.rs/restqs/0.2.0/restqs/adapters/sqlx/) |
 
-Use [0.2.0 as the active API baseline](compatibility.md#public-api-comparison-baseline) for compatible updates.
-Changes after this tag, including current fixture/tool versions, are recorded under [Unreleased](../CHANGELOG.md#unreleased).
+The 0.2.1 release was checked against [the 0.2.0 API baseline](compatibility.md#public-api-comparison-baseline).
+Future updates must use the latest published patch as their baseline.
+Changes after this tag, including current fixture/tool versions, are recorded under 0.2.1 in [the changelog](../CHANGELOG.md).
 The published version and tag cannot be reused for those changes.
 
 ## Release Flow
@@ -112,25 +113,25 @@ four settings above and the GitHub environment rules before rerunning the workfl
 
 ## Preparing an Update
 
-The commands below use **0.2.1 as an example of a future compatible patch**, not an already prepared or published release.
+The commands below use **0.2.2 as an example of a future compatible patch**, not an already prepared or published release.
 Select an available version first, update the manifest and notes, and use that version consistently in every command.
 Do not rerun publication for 0.2.0.
 
 1. Update `Cargo.toml` to an unpublished version and update `CHANGELOG.md`. Complete the API/behavior comparison and
    migration-note steps in [the release checklist](release-checklist.md#prepare-the-version), then merge the PR.
-2. Create and push the matching tag on the reviewed `main` commit. For example, after changing the manifest to `0.2.1`:
+2. Create and push the matching tag on the reviewed `main` commit. For example, after changing the manifest to `0.2.2`:
 
    ```sh
    git switch main
    git pull --ff-only
-   git tag -a v0.2.1 -m 'Release v0.2.1'
-   git push origin v0.2.1
+   git tag -a v0.2.2 -m 'Release v0.2.2'
+   git push origin v0.2.2
    ```
 
 3. Validate without publishing or creating a GitHub release:
 
    ```sh
-   gh workflow run publish.yml --ref main -f tag=v0.2.1 -f publish=false
+   gh workflow run publish.yml --ref main -f tag=v0.2.2 -f publish=false
    gh run list --workflow publish.yml
    ```
 
@@ -141,7 +142,7 @@ Do not rerun publication for 0.2.0.
 4. Prepare a draft GitHub release for the validated tag using the reviewed changelog notes:
 
    ```sh
-   gh release create v0.2.1 --verify-tag --draft --title v0.2.1 --notes-file release-notes.md
+   gh release create v0.2.2 --verify-tag --draft --title v0.2.2 --notes-file release-notes.md
    ```
 
    Keep `release-notes.md` outside the package, or remove it after use. A draft does not publish to crates.io.
@@ -149,7 +150,7 @@ Do not rerun publication for 0.2.0.
 
 
    ```sh
-   gh release edit v0.2.1 --draft=false
+   gh release edit v0.2.2 --draft=false
    ```
 
 5. Wait for the release checks, then approve the `crates-io` deployment from the Actions run. Check the published version
@@ -160,7 +161,7 @@ Do not rerun publication for 0.2.0.
 Use manual publication to retry a failed run for an unpublished version:
 
 ```sh
-gh workflow run publish.yml --ref main -f tag=v0.2.1 -f publish=true
+gh workflow run publish.yml --ref main -f tag=v0.2.2 -f publish=true
 ```
 
 Retries run all gates again and still require approval. If an upload timed out, check crates.io before retrying: a

@@ -4,21 +4,23 @@ The published library has **no runtime or development dependencies**, including 
 External drivers and test tools live in separate unpublished crates. Updating them does not raise the library's
 Rust 1.85 minimum or change a previously published crate.
 
-This inventory describes the current repository after 0.2.0 publication. The published
+This inventory describes the 0.2.1 release checkout. The published
 [`v0.2.0` snapshot](https://github.com/OneTesseractInMultiverse/restqs/tree/v0.2.0) predates the developer-dependency updates
-under [Unreleased](../CHANGELOG.md#unreleased); its release notes retain the versions tested at that time.
+in [the changelog](../CHANGELOG.md); its release notes retain the versions tested at that time.
 
 ## Current Direct Dependencies
 
-Checked against crates.io and upstream release metadata on 2026-09-26. Versions below are the latest stable releases
-available at that check; prereleases are not selected. Committed lockfiles record transitive resolution.
+The full inventory was checked on 2026-09-26. Dependabot's Tokio, Syn, upload-artifact, and crates-io-auth-action updates
+were reviewed on 2026-10-26; Tokio was advanced to the newer stable 1.54.1. Security-related transitive updates were
+also applied, including yoke-derive 0.8.4 to replace a yanked version. The tables record the versions used by this checkout;
+other tool and image pins retain their earlier verification date. Committed lockfiles record transitive resolution.
 
 | Dependency | Version | Scope |
 | --- | --- | --- |
 | [SQLx](https://crates.io/crates/sqlx) | 0.9.0 | SQLite and PostgreSQL/MySQL execution fixtures; Rust 1.94+ |
-| [Tokio](https://crates.io/crates/tokio) | 1.53.1 | Async fixture runtimes |
+| [Tokio](https://crates.io/crates/tokio) | 1.54.1 | Async fixture runtimes |
 | [Proptest](https://crates.io/crates/proptest) | 1.11.0 | Generated properties; Rust 1.85+ |
-| [Syn](https://crates.io/crates/syn) | 3.0.6 | Syntax-aware assertion-policy checker |
+| [Syn](https://crates.io/crates/syn) | 3.0.9 | Syntax-aware assertion-policy checker |
 | [proc-macro2](https://crates.io/crates/proc-macro2) | 1.0.107 | Source spans and tokens for the checker |
 | [libfuzzer-sys](https://crates.io/crates/libfuzzer-sys) | 0.4.13 | Isolated fuzz entry points |
 
@@ -35,22 +37,27 @@ and run on stable CI. Core, property, and policy-checker tests retain Rust 1.85 
 | cargo-audit | 0.22.2 |
 | cargo-fuzz | 0.13.2 |
 | cargo-semver-checks | 0.50.0 |
-| Fuzz Rust toolchain | nightly-2026-09-27 (latest published nightly manifest at the check) |
+| Fuzz Rust toolchain | nightly-2026-09-27 |
 | actions/checkout | v7.0.1, full commit pinned |
-| actions/upload-artifact | v7.0.1, full commit pinned |
-| rust-lang/crates-io-auth-action | v1.0.5, full commit pinned |
+| actions/upload-artifact | v7.0.2, full commit pinned |
+| rust-lang/crates-io-auth-action | v1.0.6, full commit pinned |
 | PostgreSQL service image | 18.6, manifest digest pinned |
 | MySQL service image | 26.7.0, manifest digest pinned |
 
-GitHub Action pins already matched their latest upstream releases. The database versions identify the latest available
-stable official Docker images used for conformance; MySQL's `26.7.1` image was unavailable at the check even though its
-release notes exist. Production database upgrades are application-owned; these services are disposable test databases.
+GitHub Action pins resolve to the reviewed upstream release tags. The database versions identify the official Docker
+images used for conformance. At the 2026-09-26 image review, MySQL's `26.7.1` image was unavailable even though its release
+notes existed. Production database upgrades are application-owned; these services are disposable test databases.
+
+The service fixture uses ctutils 0.4.6, rustls 0.23.46, rustls-webpki 0.103.16, and webpki-roots 1.0.11 to resolve
+RUSTSEC-2026-0385, RUSTSEC-2026-0346 through RUSTSEC-2026-0349, RUSTSEC-2026-0382, and RUSTSEC-2026-0381.
+All six manifest scopes must pass the release audit.
 
 ## Transitive Constraints
 
 Update to the latest versions accepted by the upstream dependency graph and supported toolchains; do not force a new
 major version into a dependency that requires an older incompatible API. Current exceptions are:
 
+- Proptest remains at 1.11.0 for the property fixture's Rust 1.85 coverage. Version 1.12.0 requires Rust 1.88.
 - Some driver/property transitive dependencies still require Syn 2. The direct checker uses Syn 3; replacing a nested
   `^2` requirement with 3 is an upstream migration, not a lockfile refresh.
 - SQLx's SHA-2 stack uses crypto-common 0.1.7, which requires **exactly** generic-array 0.14.7. Updating generic-array to

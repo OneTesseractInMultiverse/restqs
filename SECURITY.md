@@ -9,7 +9,7 @@ publication of [0.2.0](https://crates.io/crates/restqs/0.2.0) on 2026-09-26. App
 
 | Version | Status    |
 |---------|-----------|
-| 0.2.x | Supported; latest published version is 0.2.0 |
+| 0.2.x | Supported; use the latest published patch |
 | 0.1.x | Unsupported; upgrade to 0.2.x |
 | Unpublished branches and release candidates | No release support guarantee |
 

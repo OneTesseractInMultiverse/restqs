@@ -7,20 +7,36 @@ line and migration notes for new incompatible lines, with a narrow documented se
 
 ## Unreleased
 
+No changes yet.
+
+## 0.2.1 - 2026-10-26
+
+Compatible maintenance release with no changes to the library API or query behavior. The published crate remains
+dependency-free, with Rust 1.85 as its minimum, empty default features, and the optional `sqlx` fragment adapter.
+
 ### Documentation
 
 - Reflect the published 0.2.0 release in installation instructions, the 0.2.x security support policy, and the active
   API comparison baseline. Record the publication date and workflow, refresh future-release instructions, and distinguish
   current repository documentation from published snapshots. Correct the policy checker's documented Syn version.
 
+### Security
+
+- Update isolated service-fixture dependencies to ctutils 0.4.6, rustls 0.23.46, rustls-webpki 0.103.16, and
+  webpki-roots 1.0.11, resolving seven RustSec advisories. Replace yanked yoke-derive 0.8.3 with 0.8.4 in both database
+  fixtures. These dependencies are not part of the published library.
+
 ### Changed
 
 - Update SQLite execution to SQLx 0.9.0, including its dynamic-SQL marker and argument types, and refresh its locked
   transitive dependencies. Both database fixtures now require Rust 1.94 and run on stable CI; the library keeps
   Rust 1.85 and no runtime dependencies.
-- Update the assertion-policy tool to Syn 3.0.6, cargo-audit to 0.22.2, the coverage toolchain to Rust 1.98.1, and
+- Apply Dependabot updates for Syn 3.0.9, actions/upload-artifact 7.0.2, and rust-lang/crates-io-auth-action 1.0.6.
+  Advance Tokio in both database fixtures to stable 1.54.1, superseding the proposed 1.53.3 update.
+  Keep action pins at verified full commit hashes.
+- Update cargo-audit to 0.22.2, the coverage toolchain to Rust 1.98.1, and
   fuzzing to nightly-2026-09-27. Preserve the coverage and single-assertion gates.
-- Refresh digest-pinned test services to PostgreSQL 18.6 and the latest available official MySQL image, 26.7.0.
+- Refresh digest-pinned test services to PostgreSQL 18.6 and MySQL 26.7.0.
   Document current dependency versions and unavoidable upstream/MSRV constraints.
 
 ## 0.2.0 - 2026-09-26
@@ -28,7 +44,7 @@ line and migration notes for new incompatible lines, with a narrow documented se
 Published on [crates.io](https://crates.io/crates/restqs/0.2.0) from tag
 [`v0.2.0`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.0), commit
 `e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc`. The entries below describe that release snapshot;
-later dependency and tooling updates are recorded under Unreleased.
+later dependency and tooling updates are recorded under 0.2.1.
 
 This release introduces breaking API and validation changes from 0.1.x. Follow
 [the migration guide](docs/migration-0.2.md). The library keeps Rust 1.85 as its minimum supported version,
