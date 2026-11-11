@@ -42,4 +42,5 @@ Rust 1.85 coverage. SQLx 0.9's optional RSA authentication feature is not enable
 SQLx 0.9 requires `AssertSqlSafe` for dynamically assembled SQL. The private executors accept only statements built from
 fixed repository syntax, authorized mapped identifiers, and placeholders. Values are bound separately. This marker
 performs no sanitization and must never be applied to raw request SQL. The hostile-value execution test guards this
-boundary. The SQLite fixture uses the same marker and SQLx 0.9.0.
+boundary. The SQLite fixture uses the same marker with a temporary upstream SQLx pin for patched SQLite; see
+[dependency maintenance](../../docs/dependencies.md).

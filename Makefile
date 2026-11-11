@@ -4,7 +4,7 @@ POLICY_MANIFEST := tools/test-policy/Cargo.toml
 POLICY_CARGO = CARGO_TARGET_DIR=target/test-policy $(CARGO)
 COVERAGE_TOOLCHAIN := 1.98.1
 COVERAGE_VERSION := 0.9.1
-AUDIT_VERSION := 0.22.2
+AUDIT_VERSION := 0.23.0
 SQLITE_MANIFEST := integration-tests/sqlite/Cargo.toml
 SQLITE_CARGO = CARGO_TARGET_DIR=target/sqlite-integration $(CARGO)
 SERVICE_MANIFEST := integration-tests/services/Cargo.toml

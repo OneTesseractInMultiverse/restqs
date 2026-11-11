@@ -9,6 +9,27 @@ line and migration notes for new incompatible lines, with a narrow documented se
 
 No changes yet.
 
+## 0.2.2 - 2026-11-10
+
+Compatible maintenance release. The library API, query behavior, Rust 1.85 minimum, and dependency-free manifest
+are unchanged. Database drivers are application-owned and are not installed or upgraded by updating RestQS.
+
+### Security
+
+- Replace the SQLite fixture's vulnerable `libsqlite3-sys` 0.37.0 (SQLite 3.51.3) with 0.39.1 (SQLite 3.54.1), resolving
+  RUSTSEC-2026-0459 / CVE-2026-119375. Temporarily pin SQLx to upstream commit
+  `10462fa4414c6c7f1ed1d39bb31678e3b726878c`, which permits the patched dependency; released SQLx 0.9.0 does not.
+  The advisory concerns opening crafted database/WAL files; the fixture itself uses fresh in-memory databases.
+- Update SQLite installation guidance to use the same reviewed upstream pin and explain application-owned dependency
+  audits and the condition for returning to a registry release. No advisory exclusions were added.
+
+### Changed
+
+- Update the assertion-policy checker to Syn 3.0.10 and the local/CI audit tool to cargo-audit 0.23.0.
+- Refresh compatible transitive dependencies in the isolated fixtures, fuzz harness, and policy checker while retaining
+  their declared Rust minimums. Keep Proptest 1.11.0 for Rust 1.85; newer 1.12.0 requires Rust 1.88.
+- Document the current dependency inventory and keep the published 0.2.1 API as the prepublication comparison baseline.
+
 ## 0.2.1 - 2026-10-26
 
 Published on [crates.io](https://crates.io/crates/restqs/0.2.1) from tag

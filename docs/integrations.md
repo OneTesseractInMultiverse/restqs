@@ -244,12 +244,15 @@ integer values in `statement.binds`. For `status=active&limit=1&skip=1`, the las
 
 ### SQLite
 
-An application that uses SQLite can depend on SQLx in its own manifest:
+An application that uses SQLite owns its database dependency. The temporary upstream pin below permits
+`libsqlite3-sys` 0.39.1 with patched SQLite 3.54.1; the published SQLx 0.9.0 range excludes it.
+See [dependency maintenance](dependencies.md) for RUSTSEC-2026-0459, the affected file-opening scenario, and
+when to return to a registry release. Audit the application's own lockfile after updating:
 
 ```toml
 [dependencies]
 restqs = { version = "0.2", features = ["sqlx"] }
-sqlx = { version = "0.9.0", default-features = false, features = ["sqlite", "runtime-tokio"] }
+sqlx = { git = "https://github.com/transact-rs/sqlx", rev = "10462fa4414c6c7f1ed1d39bb31678e3b726878c", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
 SQLite uses `?` placeholders. The shared users builder appends authorized `ORDER BY` terms after filters and before
@@ -271,7 +274,7 @@ the library itself still supports Rust 1.85. Dynamic SQL uses `AssertSqlSafe` on
 
 The [isolated SQLite fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/sqlite)
 compiles this binding and row-decoding flow and includes the same users and pagination modules by path. Run
-`make verify-sqlite` from a repository checkout. It executes SQLx 0.9.0 with bundled SQLite 3.51.3 in memory, checking
+`make verify-sqlite` from a repository checkout. It executes the pinned SQLx revision with bundled SQLite 3.54.1 in memory, checking
 returned rows for both sort directions, multiple terms, and pagination. No server or credentials are needed. This
 separate test crate is excluded from the published package and ordinary unit suite; the stable Rust CI job runs it explicitly.
 
