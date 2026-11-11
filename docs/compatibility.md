@@ -2,10 +2,10 @@
 
 RestQS follows Cargo's compatible release lines and adds explicit guarantees for query behavior, error codes, and the
 minimum supported Rust version (MSRV). Being pre-1.0 does not make patch releases unrestricted. This policy applies to
-releases from 0.2 onward; it does not change previously published artifacts. **0.2.2 was prepared against the published
-0.2.1 API baseline** recorded below. For subsequent work, consult the
+releases from 0.2 onward; it does not change previously published artifacts. **0.2.2 is the current published release
+and API comparison baseline**. When reading an older package, consult the
 [current repository baseline](https://github.com/OneTesseractInMultiverse/restqs/blob/main/docs/compatibility.md#public-api-comparison-baseline).
-The earlier 0.1.1 comparison is retained below as migration history.
+Earlier comparisons remain below as migration history.
 
 ## Release Lines
 
@@ -92,25 +92,25 @@ MSRV. Keep installation examples clear about that distinction.
 
 ## Public API Comparison Baseline
 
-Use published **0.2.1** as the baseline for the next compatible 0.2.x update. This baseline is also recorded in
+Use published **0.2.2** as the baseline for the next compatible 0.2.x update. This baseline is also recorded in
 [the current repository policy](https://github.com/OneTesseractInMultiverse/restqs/blob/main/docs/compatibility.md#public-api-comparison-baseline).
 
-- Tag: [`v0.2.1`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.1).
-- Peeled commit: `df4606ec519614f15361f53ae5d9fe922a48cc4e` (the annotated tag object has a different ID).
-- Published to [crates.io](https://crates.io/crates/restqs/0.2.1) on 2026-10-26 through the
-  [CI publication workflow](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/40400089944).
-- Manifest: version `0.2.1`, edition `2024`, Rust `1.85`, empty default features, optional `sqlx`, no dependencies.
-- Released API: [restqs 0.2.1 rustdoc](https://docs.rs/restqs/0.2.1/restqs/), including the
-  [SQL adapter](https://docs.rs/restqs/0.2.1/restqs/adapters/sqlx/).
+- Tag: [`v0.2.2`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.2).
+- Peeled commit: `401a8862a482244bb80e41192fea80a60f1e9ff1` (the annotated tag object has a different ID).
+- Published to [crates.io](https://crates.io/crates/restqs/0.2.2) on 2026-11-10 (America/Costa_Rica) through the
+  [CI publication workflow](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/42933852175).
+- Manifest: version `0.2.2`, edition `2024`, Rust `1.85`, empty default features, optional `sqlx`, no dependencies.
+- Released API: [restqs 0.2.2 rustdoc](https://docs.rs/restqs/0.2.2/restqs/), including the
+  [SQL adapter](https://docs.rs/restqs/0.2.2/restqs/adapters/sqlx/).
 
 From a full Git checkout, install the pinned comparison tool and run both feature surfaces:
 
 ```sh
 cargo +1.98.1 install cargo-semver-checks --locked --version 0.50.0
-git fetch origin tag v0.2.1
-git rev-parse 'v0.2.1^{commit}'
-cargo +1.98.1 semver-checks --baseline-rev df4606ec519614f15361f53ae5d9fe922a48cc4e --only-explicit-features --release-type patch
-cargo +1.98.1 semver-checks --baseline-rev df4606ec519614f15361f53ae5d9fe922a48cc4e --all-features --release-type patch
+git fetch origin tag v0.2.2
+git rev-parse 'v0.2.2^{commit}'
+cargo +1.98.1 semver-checks --baseline-rev 401a8862a482244bb80e41192fea80a60f1e9ff1 --only-explicit-features --release-type patch
+cargo +1.98.1 semver-checks --baseline-rev 401a8862a482244bb80e41192fea80a60f1e9ff1 --all-features --release-type patch
 ```
 
 Check that the peeled tag matches the recorded commit before comparison. Both comparisons must pass for a compatible
@@ -127,6 +127,13 @@ requires a newer toolchain than the library; use the command above. Automated AP
 error-code meaning, MSRV, or database semantics. Review the source diff, changelog, focused tests, and migration guide as
 part of the [release checklist](release-checklist.md). Record the baseline, command results, accepted changes, and migration
 links in the release-preparation PR.
+
+## Historical 0.2.1 to 0.2.2 Comparison
+
+The 0.2.2 patch was checked against published [0.2.1](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.1),
+tag `v0.2.1`, peeled commit `df4606ec519614f15361f53ae5d9fe922a48cc4e`. Both core and all-feature comparisons passed
+223 checks with no compatibility findings. The library source and query behavior are unchanged. This release updates
+SQLite integration guidance and isolated development dependencies; the library retains Rust 1.85 and no dependencies.
 
 ## Historical 0.2.0 to 0.2.1 Comparison
 

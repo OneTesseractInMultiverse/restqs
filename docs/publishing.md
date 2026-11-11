@@ -9,26 +9,28 @@ and its Python tests stay in `.github/` and are excluded from the crate.
 
 ## Publication Records
 
-At preparation of 0.2.2, **RestQS 0.2.1 was the latest published release**, uploaded on 2026-10-26.
-Consult [current repository publication records](https://github.com/OneTesseractInMultiverse/restqs/blob/main/docs/publishing.md#publication-records)
-when reading this document from an older package. Its Rust 1.85 minimum, empty default
+**RestQS 0.2.2 was published on 2026-11-10** (America/Costa_Rica). Its Rust 1.85 minimum, empty default
 features, optional `sqlx` adapter, and dependency-free manifest remain the supported library contract.
 
 | Record | Published value |
 | --- | --- |
-| Registry | [restqs 0.2.1 on crates.io](https://crates.io/crates/restqs/0.2.1) |
-| Release tag | [`v0.2.1`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.1) |
-| Peeled commit | `df4606ec519614f15361f53ae5d9fe922a48cc4e` |
-| Successful publication | [Publish run 40400089944](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/40400089944) |
-| Released documentation | [API](https://docs.rs/restqs/0.2.1/restqs/) and [SQL adapter](https://docs.rs/restqs/0.2.1/restqs/adapters/sqlx/) |
+| Registry | [restqs 0.2.2 on crates.io](https://crates.io/crates/restqs/0.2.2) |
+| Release tag | [`v0.2.2`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.2) |
+| Peeled commit | `401a8862a482244bb80e41192fea80a60f1e9ff1` |
+| Successful publication | [Publish run 42933852175](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/42933852175) |
+| Released documentation | [API](https://docs.rs/restqs/0.2.2/restqs/) and [SQL adapter](https://docs.rs/restqs/0.2.2/restqs/adapters/sqlx/) |
 
-Use [the published 0.2.1 API baseline](compatibility.md#public-api-comparison-baseline) for future compatible updates.
+Use [the published 0.2.2 API baseline](compatibility.md#public-api-comparison-baseline) for future compatible updates.
 The registry archive checksum and embedded source commit were verified against the immutable tag.
 
-The previous [0.2.0 release](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.0) was published on
-2026-09-26 from `e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc` through
-[Publish run 36276976250](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/36276976250).
-Its release record and tag remain unchanged. The [changelog](../CHANGELOG.md) records the changes in each version.
+Previous publications remain unchanged:
+
+- [0.2.1](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.1), published on 2026-10-26 from
+  `df4606ec519614f15361f53ae5d9fe922a48cc4e` through [Publish run 40400089944](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/40400089944).
+- [0.2.0](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.0), published on 2026-09-26 from
+  `e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc` through [Publish run 36276976250](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/36276976250).
+
+The [changelog](../CHANGELOG.md) records the changes in each version.
 
 ## Release Flow
 
@@ -120,7 +122,7 @@ four settings above and the GitHub environment rules before rerunning the workfl
 
 The commands below use **0.2.3 as an example of a future compatible patch**, not an already prepared or published release.
 Select an available version first, update the manifest and notes, and use that version consistently in every command.
-Do not rerun publication for 0.2.0 or 0.2.1.
+Do not rerun publication for 0.2.0, 0.2.1, or 0.2.2.
 
 1. Update `Cargo.toml` to an unpublished version and update `CHANGELOG.md`. Complete the API/behavior comparison and
    migration-note steps in [the release checklist](release-checklist.md#prepare-the-version), then merge the PR.

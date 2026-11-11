@@ -11,6 +11,11 @@ No changes yet.
 
 ## 0.2.2 - 2026-11-10
 
+Published on [crates.io](https://crates.io/crates/restqs/0.2.2) from tag
+[`v0.2.2`](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.2), commit
+`401a8862a482244bb80e41192fea80a60f1e9ff1`, through
+[the CI publication workflow](https://github.com/OneTesseractInMultiverse/restqs/actions/runs/42933852175).
+
 Compatible maintenance release. The library API, query behavior, Rust 1.85 minimum, and dependency-free manifest
 are unchanged. Database drivers are application-owned and are not installed or upgraded by updating RestQS.
 
@@ -28,7 +33,8 @@ are unchanged. Database drivers are application-owned and are not installed or u
 - Update the assertion-policy checker to Syn 3.0.10 and the local/CI audit tool to cargo-audit 0.23.0.
 - Refresh compatible transitive dependencies in the isolated fixtures, fuzz harness, and policy checker while retaining
   their declared Rust minimums. Keep Proptest 1.11.0 for Rust 1.85; newer 1.12.0 requires Rust 1.88.
-- Document the current dependency inventory and keep the published 0.2.1 API as the prepublication comparison baseline.
+- Document the current dependency inventory and verify compatibility against published 0.2.1. After publication,
+  record 0.2.2 as the active API baseline while preserving the historical comparison.
 
 ## 0.2.1 - 2026-10-26
 
