@@ -9,7 +9,9 @@ and its Python tests stay in `.github/` and are excluded from the crate.
 
 ## Publication Records
 
-**RestQS 0.2.1 was published on 2026-10-26**. Its Rust 1.85 minimum, empty default
+At preparation of 0.2.2, **RestQS 0.2.1 was the latest published release**, uploaded on 2026-10-26.
+Consult [current repository publication records](https://github.com/OneTesseractInMultiverse/restqs/blob/main/docs/publishing.md#publication-records)
+when reading this document from an older package. Its Rust 1.85 minimum, empty default
 features, optional `sqlx` adapter, and dependency-free manifest remain the supported library contract.
 
 | Record | Published value |
@@ -189,7 +191,7 @@ network, or repository files. `make verify` covers linting, tests, doctests, and
 
 ## docs.rs
 
-The [0.2.1 API documentation](https://docs.rs/restqs/0.2.1/restqs/) corresponds to this release. docs.rs builds with all features,
+The [latest published API documentation](https://docs.rs/restqs/latest/restqs/) tracks the current registry release. docs.rs builds with all features,
 exposing the optional adapter alongside the core API.
 `make doc` builds documentation with `RUSTDOCFLAGS="--cfg docsrs -D warnings"`, with and without `sqlx`. Broken links
 and rustdoc warnings fail the build. GitHub Actions publication does not need a separate docs.rs credential.

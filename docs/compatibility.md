@@ -2,8 +2,10 @@
 
 RestQS follows Cargo's compatible release lines and adds explicit guarantees for query behavior, error codes, and the
 minimum supported Rust version (MSRV). Being pre-1.0 does not make patch releases unrestricted. This policy applies to
-releases from 0.2 onward; it does not change previously published artifacts. **0.2.1 is the current published release
-and API comparison baseline**. The earlier 0.1.1 comparison is retained below as migration history.
+releases from 0.2 onward; it does not change previously published artifacts. **0.2.2 was prepared against the published
+0.2.1 API baseline** recorded below. For subsequent work, consult the
+[current repository baseline](https://github.com/OneTesseractInMultiverse/restqs/blob/main/docs/compatibility.md#public-api-comparison-baseline).
+The earlier 0.1.1 comparison is retained below as migration history.
 
 ## Release Lines
 
