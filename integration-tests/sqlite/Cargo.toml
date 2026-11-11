@@ -7,7 +7,9 @@ publish = false
 
 [dependencies]
 restqs = { path = "../..", features = ["sqlx"] }
-sqlx = { version = "=0.9.0", default-features = false, features = ["sqlite", "runtime-tokio"] }
+# Temporary upstream pin until a released SQLx accepts patched libsqlite3-sys 0.39.x.
+# See ../../docs/dependencies.md for RUSTSEC-2026-0459 and the removal condition.
+sqlx = { git = "https://github.com/transact-rs/sqlx", rev = "10462fa4414c6c7f1ed1d39bb31678e3b726878c", default-features = false, features = ["sqlite", "runtime-tokio"] }
 tokio = { version = "1", features = ["rt"] }
 
 [lints.rust]

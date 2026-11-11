@@ -116,25 +116,25 @@ four settings above and the GitHub environment rules before rerunning the workfl
 
 ## Preparing an Update
 
-The commands below use **0.2.2 as an example of a future compatible patch**, not an already prepared or published release.
+The commands below use **0.2.3 as an example of a future compatible patch**, not an already prepared or published release.
 Select an available version first, update the manifest and notes, and use that version consistently in every command.
 Do not rerun publication for 0.2.0 or 0.2.1.
 
 1. Update `Cargo.toml` to an unpublished version and update `CHANGELOG.md`. Complete the API/behavior comparison and
    migration-note steps in [the release checklist](release-checklist.md#prepare-the-version), then merge the PR.
-2. Create and push the matching tag on the reviewed `main` commit. For example, after changing the manifest to `0.2.2`:
+2. Create and push the matching tag on the reviewed `main` commit. For example, after changing the manifest to `0.2.3`:
 
    ```sh
    git switch main
    git pull --ff-only
-   git tag -a v0.2.2 -m 'Release v0.2.2'
-   git push origin v0.2.2
+   git tag -a v0.2.3 -m 'Release v0.2.3'
+   git push origin v0.2.3
    ```
 
 3. Validate without publishing or creating a GitHub release:
 
    ```sh
-   gh workflow run publish.yml --ref main -f tag=v0.2.2 -f publish=false
+   gh workflow run publish.yml --ref main -f tag=v0.2.3 -f publish=false
    gh run list --workflow publish.yml
    ```
 
@@ -145,7 +145,7 @@ Do not rerun publication for 0.2.0 or 0.2.1.
 4. Prepare a draft GitHub release for the validated tag using the reviewed changelog notes:
 
    ```sh
-   gh release create v0.2.2 --verify-tag --draft --title v0.2.2 --notes-file release-notes.md
+   gh release create v0.2.3 --verify-tag --draft --title v0.2.3 --notes-file release-notes.md
    ```
 
    Keep `release-notes.md` outside the package, or remove it after use. A draft does not publish to crates.io.
@@ -153,7 +153,7 @@ Do not rerun publication for 0.2.0 or 0.2.1.
 
 
    ```sh
-   gh release edit v0.2.2 --draft=false
+   gh release edit v0.2.3 --draft=false
    ```
 
 5. Wait for the release checks, then approve the `crates-io` deployment from the Actions run. Check the published version
@@ -164,7 +164,7 @@ Do not rerun publication for 0.2.0 or 0.2.1.
 Use manual publication to retry a failed run for an unpublished version:
 
 ```sh
-gh workflow run publish.yml --ref main -f tag=v0.2.2 -f publish=true
+gh workflow run publish.yml --ref main -f tag=v0.2.3 -f publish=true
 ```
 
 Retries run all gates again and still require approval. If an upload timed out, check crates.io before retrying: a

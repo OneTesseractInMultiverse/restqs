@@ -4,29 +4,44 @@ The published library has **no runtime or development dependencies**, including 
 External drivers and test tools live in separate unpublished crates. Updating them does not raise the library's
 Rust 1.85 minimum or change a previously published crate.
 
-This inventory describes the 0.2.1 release checkout. The published
+This inventory describes the 0.2.2 release checkout. The published
 [`v0.2.0` snapshot](https://github.com/OneTesseractInMultiverse/restqs/tree/v0.2.0) predates the developer-dependency updates
 in [the changelog](../CHANGELOG.md); its release notes retain the versions tested at that time.
 
 ## Current Direct Dependencies
 
-The full inventory was checked on 2026-09-26. Dependabot's Tokio, Syn, upload-artifact, and crates-io-auth-action updates
-were reviewed on 2026-10-26; Tokio was advanced to the newer stable 1.54.1. Security-related transitive updates were
-also applied, including yoke-derive 0.8.4 to replace a yanked version. The tables record the versions used by this checkout;
-other tool and image pins retain their earlier verification date. Committed lockfiles record transitive resolution.
+Cargo manifests, lockfiles, and GitHub Action releases were reviewed on 2026-11-10. There were no open Dependabot
+alerts or pull requests, but a fresh RustSec audit found RUSTSEC-2026-0459 in the SQLite fixture. The update replaces
+its vulnerable bundled SQLite, advances Syn and cargo-audit, and refreshes compatible transitive dependencies.
+The tables record versions used by this checkout; tool and image pins not changed below retain their earlier
+verification dates. Committed lockfiles record transitive resolution.
 
 | Dependency | Version | Scope |
 | --- | --- | --- |
-| [SQLx](https://crates.io/crates/sqlx) | 0.9.0 | SQLite and PostgreSQL/MySQL execution fixtures; Rust 1.94+ |
+| [SQLx](https://crates.io/crates/sqlx) | 0.9.0 release for PostgreSQL/MySQL; upstream revision `10462fa4` for SQLite | Execution fixtures; Rust 1.94+ |
 | [Tokio](https://crates.io/crates/tokio) | 1.54.1 | Async fixture runtimes |
 | [Proptest](https://crates.io/crates/proptest) | 1.11.0 | Generated properties; Rust 1.85+ |
-| [Syn](https://crates.io/crates/syn) | 3.0.9 | Syntax-aware assertion-policy checker |
+| [Syn](https://crates.io/crates/syn) | 3.0.10 | Syntax-aware assertion-policy checker |
 | [proc-macro2](https://crates.io/crates/proc-macro2) | 1.0.107 | Source spans and tokens for the checker |
 | [libfuzzer-sys](https://crates.io/crates/libfuzzer-sys) | 0.4.13 | Isolated fuzz entry points |
 
-SQLite uses `libsqlite3-sys` 0.37.0 and bundled SQLite 3.51.3 through SQLx. Both driver fixtures use the same SQLx release
-and run on stable CI. Core, property, and policy-checker tests retain Rust 1.85 checks. Fixture examples use SQLx 0.9's
-`AssertSqlSafe` only for repository-built statements; request values stay separate binds.
+SQLite uses `libsqlite3-sys` 0.39.1 and bundled SQLite 3.54.1. Released SQLx 0.9.0 only accepts versions below 0.38,
+so the SQLite fixture temporarily pins SQLx to upstream commit
+[`10462fa4414c6c7f1ed1d39bb31678e3b726878c`](https://github.com/transact-rs/sqlx/commit/10462fa4414c6c7f1ed1d39bb31678e3b726878c).
+This revision permits patched 0.39.x and includes upstream changes since the 0.9.0 release; the complete SQLite
+execution suite validates that snapshot. PostgreSQL/MySQL keep the published 0.9.0 dependency. Both driver fixtures
+require Rust 1.94 and run on stable CI; core, property, and policy-checker tests retain Rust 1.85 checks.
+
+[RUSTSEC-2026-0459](https://github.com/RustSec/advisory-db/blob/main/crates/libsqlite3-sys/RUSTSEC-2026-0459.md)
+concerns memory disclosure when opening a crafted database/WAL file pair. This repository uses fresh in-memory
+fixtures, and the published RestQS library does not include SQLite. Applications own their database dependencies
+and should audit their own lockfiles; upgrading RestQS alone does not upgrade their SQLite engine.
+
+Remove the Git pin once a published SQLx release accepts patched `libsqlite3-sys` (at least 0.39.0; this checkout uses
+0.39.1). Update the SQLite fixture and documented installation snippets together, retain a patched locked version,
+and rerun the RustSec audit, driver MSRV check, and complete execution suite. Never suppress the advisory to return
+to the older registry release. Fixture examples use SQLx 0.9's `AssertSqlSafe` only for repository-built statements;
+request values stay separate binds.
 
 ## Tools and CI
 
@@ -34,7 +49,7 @@ and run on stable CI. Core, property, and policy-checker tests retain Rust 1.85 
 | --- | --- |
 | Coverage Rust toolchain | 1.98.1 |
 | cargo-llvm-cov | 0.9.1 |
-| cargo-audit | 0.22.2 |
+| cargo-audit | 0.23.0 |
 | cargo-fuzz | 0.13.2 |
 | cargo-semver-checks | 0.50.0 |
 | Fuzz Rust toolchain | nightly-2026-09-27 |
@@ -48,7 +63,7 @@ GitHub Action pins resolve to the reviewed upstream release tags. The database v
 images used for conformance. At the 2026-09-26 image review, MySQL's `26.7.1` image was unavailable even though its release
 notes existed. Production database upgrades are application-owned; these services are disposable test databases.
 
-The service fixture uses ctutils 0.4.6, rustls 0.23.46, rustls-webpki 0.103.16, and webpki-roots 1.0.11 to resolve
+The service fixture uses ctutils 0.4.8, rustls 0.23.46, rustls-webpki 0.103.16, and webpki-roots 1.0.12 to resolve
 RUSTSEC-2026-0385, RUSTSEC-2026-0346 through RUSTSEC-2026-0349, RUSTSEC-2026-0382, and RUSTSEC-2026-0381.
 All six manifest scopes must pass the release audit.
 
@@ -60,8 +75,8 @@ major version into a dependency that requires an older incompatible API. Current
 - Proptest remains at 1.11.0 for the property fixture's Rust 1.85 coverage. Version 1.12.0 requires Rust 1.88.
 - Some driver/property transitive dependencies still require Syn 2. The direct checker uses Syn 3; replacing a nested
   `^2` requirement with 3 is an upstream migration, not a lockfile refresh.
-- SQLx's SHA-2 stack uses crypto-common 0.1.7, which requires **exactly** generic-array 0.14.7. Updating generic-array to
-  0.14.9 is rejected by Cargo. Prefer the newer compatible crypto-common and preserve its exact constraint.
+- The released PostgreSQL/MySQL driver's SHA-2 stack uses crypto-common 0.1.7, which requires **exactly**
+  generic-array 0.14.7. Updating generic-array to 0.14.9 is rejected by Cargo. Prefer the newer compatible crypto-common and preserve its exact constraint.
 - The property fixture keeps wasip2 1.0.1+wasi-0.2.4 under its Rust 1.85 resolution policy. The newer
   1.0.4+wasi-0.2.12 requires Rust 1.87 and is not compatible with that fixture's declared minimum.
 

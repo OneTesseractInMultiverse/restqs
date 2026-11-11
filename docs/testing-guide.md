@@ -110,7 +110,7 @@ fresh in-memory SQLite database per test and closes its pool even when the query
 returned ordering against explicit values, including tie-breaking and sorting before pagination.
 
 See [the fixture README](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/sqlite) for tested
-versions and dependency rationale. Stable Rust CI verifies this SQLx 0.9 fixture (Rust 1.94 minimum),
+versions and dependency rationale. Stable Rust CI verifies the pinned SQLx revision with patched SQLite (Rust 1.94 minimum),
 and the security job audits its lockfile. No database service setup is required. PostgreSQL and MySQL execution suites are opt-in locally and run in the required stable CI job.
 
 ## PostgreSQL and MySQL Execution Checks

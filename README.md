@@ -254,12 +254,14 @@ restqs = { version = "0.2", features = ["sqlx"] }
 sqlx = { version = "0.9.0", default-features = false, features = ["postgres", "runtime-tokio"] }
 ```
 
-For the SQLite example (SQLx 0.9.0, Rust 1.94 or newer):
+For the SQLite example (Rust 1.94 or newer), temporarily use the pinned upstream SQLx revision below.
+The released 0.9.0 dependency range cannot select patched SQLite; see
+[dependency maintenance](docs/dependencies.md) for the advisory, tested versions, and when to remove this pin.
 
 ```toml
 [dependencies]
 restqs = { version = "0.2", features = ["sqlx"] }
-sqlx = { version = "0.9.0", default-features = false, features = ["sqlite", "runtime-tokio"] }
+sqlx = { git = "https://github.com/transact-rs/sqlx", rev = "10462fa4414c6c7f1ed1d39bb31678e3b726878c", default-features = false, features = ["sqlite", "runtime-tokio"] }
 ```
 
 The documented examples keep the security boundary visible. SQL text contains
