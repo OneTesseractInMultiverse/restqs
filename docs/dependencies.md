@@ -4,17 +4,26 @@ The published library has **no runtime or development dependencies**, including 
 External drivers and test tools live in separate unpublished crates. Updating them does not raise the library's
 Rust 1.85 minimum or change a previously published crate.
 
-This inventory describes the 0.2.2 release checkout. The published
-[`v0.2.0` snapshot](https://github.com/OneTesseractInMultiverse/restqs/tree/v0.2.0) predates the developer-dependency updates
-in [the changelog](../CHANGELOG.md); its release notes retain the versions tested at that time.
+This inventory describes the current repository checkout after the 0.2.2 release. The published
+[`v0.2.2` snapshot](https://github.com/OneTesseractInMultiverse/restqs/tree/v0.2.2) retains its original dependency inventory;
+subsequent development updates are recorded under Unreleased in [the changelog](../CHANGELOG.md).
 
 ## Current Direct Dependencies
 
-Cargo manifests, lockfiles, and GitHub Action releases were reviewed on 2026-11-10. There were no open Dependabot
-alerts or pull requests, but a fresh RustSec audit found RUSTSEC-2026-0459 in the SQLite fixture. The update replaces
-its vulnerable bundled SQLite, advances Syn and cargo-audit, and refreshes compatible transitive dependencies.
-The tables record versions used by this checkout; tool and image pins not changed below retain their earlier
-verification dates. Committed lockfiles record transitive resolution.
+Cargo manifests, lockfiles, and GitHub Action releases were reviewed on 2026-11-16. There were no open Dependabot
+alerts or pull requests, and all six manifest scopes passed a fresh RustSec audit. Compatible maintenance updates
+advance cc to 1.11.2, mio to 1.2.5, rand to 0.10.4, and rustls-webpki to 0.103.17 in the relevant isolated lockfiles.
+The maintainer API checker advances to cargo-semver-checks 0.51.0, including upstream security hardening and lint fixes.
+Its bundled lockfile is stale: it contains six vulnerability advisories in rustls, rustls-webpki, and webpki-root-certs,
+plus unsoundness warnings in rustix and Tokio. The installation recipe resolves patched dependencies instead;
+reviewed builds must audit the resulting lockfile before installation. The 2026-11-16 build uses rustls 0.23.46,
+rustls-webpki 0.103.17, webpki-root-certs 1.0.12, rustix 1.1.6, and Tokio 1.54.1, and its resolved lockfile passes
+`cargo audit --deny warnings`. This does not change repository lockfile policy.
+These development changes do not require republishing the unchanged, dependency-free library.
+
+The tables record versions used by this checkout; tool and image pins not changed here retain their earlier
+verification dates. Committed lockfiles record transitive resolution. The SQLite advisory fixed during 0.2.2
+preparation remains resolved by the upstream pin described below.
 
 | Dependency | Version | Scope |
 | --- | --- | --- |
@@ -51,7 +60,7 @@ request values stay separate binds.
 | cargo-llvm-cov | 0.9.1 |
 | cargo-audit | 0.23.0 |
 | cargo-fuzz | 0.13.2 |
-| cargo-semver-checks | 0.50.0 |
+| cargo-semver-checks | 0.51.0 |
 | Fuzz Rust toolchain | nightly-2026-09-27 |
 | actions/checkout | v7.0.1, full commit pinned |
 | actions/upload-artifact | v7.0.2, full commit pinned |
@@ -63,7 +72,7 @@ GitHub Action pins resolve to the reviewed upstream release tags. The database v
 images used for conformance. At the 2026-09-26 image review, MySQL's `26.7.1` image was unavailable even though its release
 notes existed. Production database upgrades are application-owned; these services are disposable test databases.
 
-The service fixture uses ctutils 0.4.8, rustls 0.23.46, rustls-webpki 0.103.16, and webpki-roots 1.0.12 to resolve
+The service fixture uses ctutils 0.4.8, rustls 0.23.46, rustls-webpki 0.103.17, and webpki-roots 1.0.12 to resolve
 RUSTSEC-2026-0385, RUSTSEC-2026-0346 through RUSTSEC-2026-0349, RUSTSEC-2026-0382, and RUSTSEC-2026-0381.
 All six manifest scopes must pass the release audit.
 
@@ -72,6 +81,8 @@ All six manifest scopes must pass the release audit.
 Update to the latest versions accepted by the upstream dependency graph and supported toolchains; do not force a new
 major version into a dependency that requires an older incompatible API. Current exceptions are:
 
+- The SQLite fixture retains patched libsqlite3-sys 0.39.1. The newer 0.40.0 is outside the pinned SQLx range;
+  both bundle SQLite 3.54.1, so selecting 0.40.0 is not required to retain the existing SQLite security fix.
 - Proptest remains at 1.11.0 for the property fixture's Rust 1.85 coverage. Version 1.12.0 requires Rust 1.88.
 - Some driver/property transitive dependencies still require Syn 2. The direct checker uses Syn 3; replacing a nested
   `^2` requirement with 3 is an upstream migration, not a lockfile refresh.
