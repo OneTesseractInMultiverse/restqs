@@ -7,7 +7,14 @@ line and migration notes for new incompatible lines, with a narrow documented se
 
 ## Unreleased
 
-No changes yet.
+### Development
+
+- Refresh compatible isolated test dependencies: cc 1.11.2, mio 1.2.5, rand 0.10.4, and rustls-webpki 0.103.17.
+- Update the maintainer API comparison tool to cargo-semver-checks 0.51.0 for upstream security hardening and lint fixes.
+  Correct its installation recipe to resolve patched dependencies instead of restoring the upstream lockfile's six
+  vulnerability advisories and two unsoundness warnings; keep repository locked-build and audit requirements.
+- Preserve the patched SQLite upstream pin, Rust 1.85 property-test constraints, and the published 0.2.2 API baseline.
+  These maintenance updates do not change the library, its dependency-free manifest, or its release version.
 
 ## 0.2.2 - 2026-11-10
 
