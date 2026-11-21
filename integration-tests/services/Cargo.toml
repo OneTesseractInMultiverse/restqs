@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 restqs = { path = "../..", features = ["sqlx"] }
-sqlx = { version = "=0.9.0", default-features = false, features = ["postgres", "mysql", "runtime-tokio", "tls-rustls-ring"] }
+sqlx = { version = "=0.9.1", default-features = false, features = ["postgres", "mysql", "runtime-tokio", "tls-rustls-ring"] }
 tokio = { version = "1", features = ["rt"] }
 
 [lints.rust]
