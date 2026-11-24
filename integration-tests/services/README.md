@@ -1,6 +1,6 @@
 # PostgreSQL and MySQL execution tests
 
-This unpublished fixture tests SQLx repositories against PostgreSQL 18.6 and MySQL 26.7.0. CI pins their Docker image
+This unpublished fixture tests SQLx repositories against PostgreSQL 18.7 and MySQL 26.10.0. CI pins their Docker image
 digests. The PostgreSQL normal-query path uses the same `examples/support/users.rs` builder documented in the integration
 guide. Separate catalog configuration explicitly authorizes regex; the public user example still disables it.
 
@@ -12,10 +12,10 @@ Use a disposable test database with permission to create temporary tables. For e
 
 ```sh
 docker run -d --name restqs-pg-tests -p 127.0.0.1:55432:5432 \
-  -e POSTGRES_USER=restqs -e POSTGRES_PASSWORD=restqs-test -e POSTGRES_DB=restqs postgres:18.6
+  -e POSTGRES_USER=restqs -e POSTGRES_PASSWORD=restqs-test -e POSTGRES_DB=restqs postgres:18.7
 docker run -d --name restqs-mysql-tests -p 127.0.0.1:53306:3306 \
   -e MYSQL_ROOT_PASSWORD=restqs-root-test -e MYSQL_USER=restqs \
-  -e MYSQL_PASSWORD=restqs-test -e MYSQL_DATABASE=restqs mysql:26.7.0
+  -e MYSQL_PASSWORD=restqs-test -e MYSQL_DATABASE=restqs mysql:26.10.0
 # Wait for both databases to be ready before running the suite.
 export RESTQS_POSTGRES_URL='postgres://restqs:restqs-test@127.0.0.1:55432/restqs'
 export RESTQS_MYSQL_URL='mysql://restqs:restqs-test@127.0.0.1:53306/restqs?ssl-mode=required'

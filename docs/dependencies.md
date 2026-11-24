@@ -10,16 +10,9 @@ subsequent development updates are recorded under Unreleased in [the changelog](
 
 ## Current Direct Dependencies
 
-Cargo manifests, lockfiles, and GitHub Action releases were reviewed on 2026-11-16. There were no open Dependabot
-alerts or pull requests, and all six manifest scopes passed a fresh RustSec audit. Compatible maintenance updates
-advance cc to 1.11.2, mio to 1.2.5, rand to 0.10.4, and rustls-webpki to 0.103.17 in the relevant isolated lockfiles.
-The maintainer API checker advances to cargo-semver-checks 0.51.0, including upstream security hardening and lint fixes.
-Its bundled lockfile is stale: it contains six vulnerability advisories in rustls, rustls-webpki, and webpki-root-certs,
-plus unsoundness warnings in rustix and Tokio. The installation recipe resolves patched dependencies instead;
-reviewed builds must audit the resulting lockfile before installation. The 2026-11-16 build uses rustls 0.23.46,
-rustls-webpki 0.103.17, webpki-root-certs 1.0.12, rustix 1.1.6, and Tokio 1.54.1, and its resolved lockfile passes
-`cargo audit --deny warnings`. This does not change repository lockfile policy.
-These development changes do not require republishing the unchanged, dependency-free library.
+On 2026-11-24, RustSec reported [RUSTSEC-2026-0592](https://rustsec.org/advisories/RUSTSEC-2026-0592.html)
+in both SQLx execution fixtures. Their lockfiles now select `url` 2.5.9, which fixes a stack overflow in URL origin
+calculation. Dependabot had no open alerts at review time. The published library does not depend on SQLx or `url`.
 
 The tables record versions used by this checkout; tool and image pins not changed here retain their earlier
 verification dates. Committed lockfiles record transitive resolution. The SQLite advisory fixed during 0.2.2
@@ -57,20 +50,34 @@ request values stay separate binds.
 | Tool or CI dependency | Pinned release |
 | --- | --- |
 | Coverage Rust toolchain | 1.98.1 |
-| cargo-llvm-cov | 0.9.1 |
-| cargo-audit | 0.23.0 |
+| cargo-llvm-cov | 0.9.2 |
+| cargo-audit | [RustSec revision `865ea9d8`](https://github.com/RustSec/rustsec/commit/865ea9d8f7b69e4262cc4ad236fa98e881d7f21f), built with its upstream lockfile |
 | cargo-fuzz | 0.13.2 |
 | cargo-semver-checks | 0.51.0 |
 | Fuzz Rust toolchain | nightly-2026-09-27 |
 | actions/checkout | v7.0.1, full commit pinned |
 | actions/upload-artifact | v7.0.2, full commit pinned |
 | rust-lang/crates-io-auth-action | v1.0.6, full commit pinned |
-| PostgreSQL service image | 18.6, manifest digest pinned |
-| MySQL service image | 26.7.0, manifest digest pinned |
+| PostgreSQL service image | 18.7, manifest digest pinned |
+| MySQL service image | 26.10.0, manifest digest pinned |
+
+Use `make audit-setup`, `make coverage-setup`, `make fuzz-setup`, and `make semver-setup` from a full checkout.
+The audit tool's published 0.23.0 lockfile includes affected Quinn and URL packages. Use the pinned upstream
+revision until a registry release ships an audited lockfile. Coverage 0.9.2 updates the affected quick-xml
+and ruzstd dependencies. The fuzz tool uses a reviewed lockfile to pick up the crossbeam-epoch fix.
+
+The API checker uses a small manifest patch to select gix 0.91. Its older Git backend requires a version of
+faster-hex that still resolves heapless 0.8, which has outstanding soundness advisories. The new graph removes
+heapless and selects url 2.5.9. Remove the patch when a released checker resolves these fixes. Both locally
+maintained tool lockfiles are checked by `make audit` with warnings denied. To refresh one, verify the upstream
+crate checksum, apply its manifest patch if present, update its lockfile with Rust 1.98.1, then audit, build
+and exercise the tool before committing the replacement.
 
 GitHub Action pins resolve to the reviewed upstream release tags. The database versions identify the official Docker
-images used for conformance. At the 2026-09-26 image review, MySQL's `26.7.1` image was unavailable even though its release
-notes existed. Production database upgrades are application-owned; these services are disposable test databases.
+images used for conformance. PostgreSQL 18.7 includes the November 2026 security fixes, and MySQL 26.10.0 supersedes the affected
+26.7 releases in Oracle's October 2026 advisory. See the [PostgreSQL 18 security table](https://www.postgresql.org/support/security/18/)
+and [MySQL Community security advisory](https://dev.mysql.com/community/security/advisories/2026-10-20/).
+Production database upgrades are application-owned; these services are disposable test databases.
 
 The service fixture uses ctutils 0.4.8, rustls 0.23.46, rustls-webpki 0.103.17, and webpki-roots 1.0.12 to resolve
 RUSTSEC-2026-0385, RUSTSEC-2026-0346 through RUSTSEC-2026-0349, RUSTSEC-2026-0382, and RUSTSEC-2026-0381.

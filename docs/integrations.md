@@ -215,7 +215,7 @@ binds every value through SQLx.
 
 ### PostgreSQL
 
-This example is compiled and executed with SQLx 0.9.0 and PostgreSQL 18.6 by
+This example is compiled and executed with SQLx 0.9.0 and PostgreSQL 18.7 by
 [the service fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/services).
 SQLx 0.9 requires Rust 1.94 or newer; RestQS itself retains Rust 1.85 support. An application can depend on SQLx in its own manifest:
 
@@ -283,7 +283,7 @@ separate test crate is excluded from the published package and ordinary unit sui
 The SQLite fixture covers scalar and null filters, list membership/exclusion, projection, ordering, pagination, and
 actual default caps. The [service fixture](https://github.com/OneTesseractInMultiverse/restqs/tree/main/integration-tests/services)
 compiles PostgreSQL and MySQL binding/decoding and executes equivalent contracts plus supported regex against PostgreSQL
-18.6 and MySQL 26.7.0. MySQL's bounded policy always supplies a limit, so offset-only input uses `LIMIT ? OFFSET ?`.
+18.7 and MySQL 26.10.0. MySQL's bounded policy always supplies a limit, so offset-only input uses `LIMIT ? OFFSET ?`.
 Regex is enabled only in the separate fixture catalog. These test repositories use a fixed `id,name` response.
 
 Run `make verify-sqlite` without services, or configure the two test URLs documented in the fixture README and run

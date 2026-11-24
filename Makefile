@@ -3,8 +3,8 @@ PYTHON ?= python3
 POLICY_MANIFEST := tools/test-policy/Cargo.toml
 POLICY_CARGO = CARGO_TARGET_DIR=target/test-policy $(CARGO)
 COVERAGE_TOOLCHAIN := 1.98.1
-COVERAGE_VERSION := 0.9.1
-AUDIT_VERSION := 0.23.0
+COVERAGE_VERSION := 0.9.2
+AUDIT_REV := 865ea9d8f7b69e4262cc4ad236fa98e881d7f21f
 SQLITE_MANIFEST := integration-tests/sqlite/Cargo.toml
 SQLITE_CARGO = CARGO_TARGET_DIR=target/sqlite-integration $(CARGO)
 SERVICE_MANIFEST := integration-tests/services/Cargo.toml
@@ -16,7 +16,7 @@ FUZZ_SECONDS ?= 15
 FUZZ_RUNS ?= 10000
 FUZZ_OPTIONS = -max_total_time=$(FUZZ_SECONDS) -runs=$(FUZZ_RUNS) -max_len=4096 -timeout=5 -rss_limit_mb=1024 -seed=5394771 -dict=fuzz/rqs.dict
 
-.PHONY: all audit build check clippy coverage coverage-setup test-policy verify-test-policy doc doc-internal fmt fmt-check help lint package package-list publish-dry-run setup test test-doc test-sqlite test-services test-properties verify verify-sqlite verify-services verify-properties fuzz-setup fuzz-smoke
+.PHONY: all audit audit-setup semver-setup build check clippy coverage coverage-setup test-policy verify-test-policy doc doc-internal fmt fmt-check help lint package package-list publish-dry-run setup test test-doc test-sqlite test-services test-properties verify verify-sqlite verify-services verify-properties fuzz-setup fuzz-smoke
 
 all: verify
 
@@ -50,9 +50,14 @@ help:
 		'fuzz-smoke      Run bounded decoding, parsing, and adapter fuzz targets' \
 		'verify          Run the local quality gate'
 
-setup:
-	$(CARGO) install cargo-audit --locked --version $(AUDIT_VERSION)
-	$(MAKE) coverage-setup
+setup: audit-setup coverage-setup
+
+audit-setup:
+	$(CARGO) install --git https://github.com/RustSec/rustsec --rev $(AUDIT_REV) --locked --force cargo-audit
+
+semver-setup:
+	rustup toolchain install 1.98.1 --profile minimal
+	sh tools/maintenance/install.sh cargo-semver-checks 0.51.0 484e65e62077aed1a119d04ab414038d20b9013302b7353487ff69a461842bf8
 
 build:
 	$(CARGO) build --all-features
@@ -141,7 +146,8 @@ verify-properties:
 
 fuzz-setup:
 	rustup toolchain install $(FUZZ_TOOLCHAIN) --profile minimal --component rust-src
-	$(CARGO) install cargo-fuzz --locked --version 0.13.2
+	rustup toolchain install 1.98.1 --profile minimal
+	sh tools/maintenance/install.sh cargo-fuzz 0.13.2 5acfd01930e49823e58c30dd8012d3338a620377d7c7d4cc140ca4b2169400e2
 
 fuzz-smoke:
 	$(CARGO) fmt --manifest-path fuzz/Cargo.toml --all -- --check
@@ -159,6 +165,8 @@ audit:
 	$(CARGO) audit --file integration-tests/robustness/Cargo.lock
 	$(CARGO) audit --file fuzz/Cargo.lock
 	$(CARGO) audit --file tools/test-policy/Cargo.lock
+	$(CARGO) audit --deny warnings --file tools/maintenance/cargo-fuzz/Cargo.lock
+	$(CARGO) audit --deny warnings --file tools/maintenance/cargo-semver-checks/Cargo.lock
 	@rm -f Cargo.lock
 
 verify: fmt-check check lint test test-doc doc verify-test-policy
