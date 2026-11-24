@@ -67,8 +67,8 @@ revision until a registry release ships an audited lockfile. Coverage 0.9.2 upda
 and ruzstd dependencies. The fuzz tool uses a reviewed lockfile to pick up the crossbeam-epoch fix.
 
 The API checker uses a small manifest patch to select gix 0.91. Its older Git backend requires a version of
-faster-hex that still resolves heapless 0.8, which has outstanding soundness advisories. The new graph selects
-heapless 0.9.4 and url 2.5.9. Remove the patch when a released checker resolves these fixes. Both locally
+faster-hex that still resolves heapless 0.8, which has outstanding soundness advisories. The new graph removes
+heapless and selects url 2.5.9. Remove the patch when a released checker resolves these fixes. Both locally
 maintained tool lockfiles are checked by `make audit` with warnings denied. To refresh one, verify the upstream
 crate checksum, apply its manifest patch if present, update its lockfile with Rust 1.98.1, then audit, build
 and exercise the tool before committing the replacement.
