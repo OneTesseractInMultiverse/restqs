@@ -58,8 +58,8 @@ request values stay separate binds.
 | actions/checkout | v7.0.1, full commit pinned |
 | actions/upload-artifact | v7.0.2, full commit pinned |
 | rust-lang/crates-io-auth-action | v1.0.6, full commit pinned |
-| PostgreSQL service image | 18.6, manifest digest pinned |
-| MySQL service image | 26.7.0, manifest digest pinned |
+| PostgreSQL service image | 18.7, manifest digest pinned |
+| MySQL service image | 26.10.0, manifest digest pinned |
 
 Use `make audit-setup`, `make coverage-setup`, `make fuzz-setup`, and `make semver-setup` from a full checkout.
 The audit tool's published 0.23.0 lockfile includes affected Quinn and URL packages. Use the pinned upstream
@@ -74,8 +74,10 @@ crate checksum, apply its manifest patch if present, update its lockfile with Ru
 and exercise the tool before committing the replacement.
 
 GitHub Action pins resolve to the reviewed upstream release tags. The database versions identify the official Docker
-images used for conformance. At the 2026-09-26 image review, MySQL's `26.7.1` image was unavailable even though its release
-notes existed. Production database upgrades are application-owned; these services are disposable test databases.
+images used for conformance. PostgreSQL 18.7 includes the November 2026 security fixes, and MySQL 26.10.0 supersedes the affected
+26.7 releases in Oracle's October 2026 advisory. See the [PostgreSQL 18 security table](https://www.postgresql.org/support/security/18/)
+and [MySQL Community security advisory](https://dev.mysql.com/community/security/advisories/2026-10-20/).
+Production database upgrades are application-owned; these services are disposable test databases.
 
 The service fixture uses ctutils 0.4.8, rustls 0.23.46, rustls-webpki 0.103.17, and webpki-roots 1.0.12 to resolve
 RUSTSEC-2026-0385, RUSTSEC-2026-0346 through RUSTSEC-2026-0349, RUSTSEC-2026-0382, and RUSTSEC-2026-0381.

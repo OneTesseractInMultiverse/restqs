@@ -10,6 +10,7 @@ line and migration notes for new incompatible lines, with a narrow documented se
 ### Security
 
 - Update both database test fixtures to url 2.5.9 for RUSTSEC-2026-0592. The published crate has no URL dependency.
+- Update the CI database services to PostgreSQL 18.7 and MySQL 26.10.0 for upstream security fixes.
 - Refresh the audit, coverage, fuzzing and API comparison tools to build with patched dependencies. CI audits the
   maintained fuzzing and API comparison lockfiles with warnings denied.
 
