@@ -19,3 +19,4 @@ Cargo.lock
 __pycache__/
 !tools/test-policy/Cargo.lock
 /tools/test-policy/target/
+!tools/maintenance/*/Cargo.lock

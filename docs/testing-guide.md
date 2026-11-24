@@ -149,7 +149,7 @@ make setup
 make coverage
 ```
 
-Coverage uses pinned Rust 1.98.1 with `llvm-tools-preview` and cargo-llvm-cov 0.9.1 (`make coverage-setup` installs both).
+Coverage uses pinned Rust 1.98.1 with `llvm-tools-preview` and cargo-llvm-cov 0.9.2 (`make coverage-setup` installs both).
 The command checks every measured file under the library's `src/` with all features and all root test targets, requiring
 100% total line coverage and zero uncovered lines across the measured files. Example executables, external fixtures, checker tooling, doctests, and
 compiler-generated code are outside this source-line metric; their separate suites still run. No changed-line exemption

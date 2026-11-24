@@ -7,6 +7,12 @@ line and migration notes for new incompatible lines, with a narrow documented se
 
 ## Unreleased
 
+### Security
+
+- Update both database test fixtures to url 2.5.9 for RUSTSEC-2026-0592. The published crate has no URL dependency.
+- Refresh the audit, coverage, fuzzing and API comparison tools to build with patched dependencies. CI audits the
+  maintained fuzzing and API comparison lockfiles with warnings denied.
+
 ### Development
 
 - Refresh compatible isolated test dependencies: cc 1.11.2, mio 1.2.5, rand 0.10.4, and rustls-webpki 0.103.17.

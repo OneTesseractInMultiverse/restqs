@@ -180,15 +180,7 @@ jobs:
           rustup default stable
 
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked --version 0.23.0
+        run: make audit-setup
 
       - name: Audit dependencies
-        run: |
-          cargo generate-lockfile
-          cargo audit
-          cargo audit --file integration-tests/sqlite/Cargo.lock
-          cargo audit --file integration-tests/services/Cargo.lock
-          cargo audit --file integration-tests/robustness/Cargo.lock
-          cargo audit --file fuzz/Cargo.lock
-          cargo audit --file tools/test-policy/Cargo.lock
-          rm -f Cargo.lock
+        run: make audit

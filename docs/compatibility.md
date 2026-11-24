@@ -106,19 +106,16 @@ Use published **0.2.2** as the baseline for the next compatible 0.2.x update. Th
 From a full Git checkout, install the pinned comparison tool and run both feature surfaces:
 
 ```sh
-cargo +1.98.1 install cargo-semver-checks --version 0.51.0 --force
+make semver-setup
 git fetch origin tag v0.2.2
 git rev-parse 'v0.2.2^{commit}'
 cargo +1.98.1 semver-checks --baseline-rev 401a8862a482244bb80e41192fea80a60f1e9ff1 --only-explicit-features --release-type patch
 cargo +1.98.1 semver-checks --baseline-rev 401a8862a482244bb80e41192fea80a60f1e9ff1 --all-features --release-type patch
 ```
 
-For tool version 0.51.0, deliberately resolve current compatible dependencies instead of using its upstream
-`--locked` snapshot: that snapshot includes packages with six vulnerability advisories and two unsoundness warnings.
-`--force` refreshes an existing installation of the same version. This exception applies only to installing this
-maintainer tool; repository builds and CI retain their committed lockfiles and audit gates. To reproduce a reviewed
-tool build exactly, retain its resolved lockfile, require `cargo audit --file <path>/Cargo.lock --deny warnings`,
-then install that prepared source with `cargo install --path <path> --locked`. See [dependency maintenance](dependencies.md).
+The setup target verifies the 0.51.0 crate checksum, applies the reviewed Git backend update and installs from
+the committed tool lockfile with Rust 1.98.1. The repository audit checks that lockfile with warnings denied.
+See [dependency maintenance](dependencies.md) for the reason and the upstream replacement condition.
 
 Check that the peeled tag matches the recorded commit before comparison. Both comparisons must pass for a compatible
 0.2.x update. `--release-type patch` enforces compatibility with the baseline even if the local manifest version has
